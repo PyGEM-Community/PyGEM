@@ -29,13 +29,13 @@ jobs:
     name: 'Test suite'
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/ddundo/pygem:latest
+      image: ghcr.io/pygem-community/pygem:latest
       options: --user root
 
     steps:
       - name: 'Check out the repo'
         id: checkout
-        uses: actions/checkout@v4     
+        uses: actions/checkout@v4
 
       - name: 'Test PyGEM installation'
         run: |
