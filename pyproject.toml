@@ -34,7 +34,7 @@ jupyter = "^1.1.1"
 arviz = "^0.20.0"
 oggm = "^1.6.2"
 ruamel-yaml = "^0.18.10"
-ruff = ">0.9.6"
+ruff = ">=0.9.6"
 
 [tool.poetry.scripts]
 initialize = "pygem.bin.op.initialize:main"
