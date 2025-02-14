@@ -1,0 +1,54 @@
+name: 'Install PyGEM and Run Test Suite'
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**.py'
+      - '.github/workflows/test_suite.yml'
+      - 'pyproject.toml'
+
+  pull_request:
+    paths:
+      - '**.py'
+      - '.github/workflows/test_suite.yml'
+      - 'pyproject.toml'
+
+  # Run test suite every Saturday at 1AM
+  schedule:
+    - cron: '0 1 * * 6'
+
+# Stop the workflow if a new one is started
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test_suite:
+    name: 'Test suite'
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/ddundo/pygem:latest
+      options: --user root
+
+    steps:
+      - name: 'Check out the repo'
+        id: checkout
+        uses: actions/checkout@v4     
+
+      - name: 'Test PyGEM installation'
+        run: |
+          . /home/ubuntu/pygem_venv/bin/activate
+          git config --global --add safe.directory '*'
+          pip install -e .
+
+      # - name: 'Lint'
+      #   run: |
+      #     . /home/ubuntu/pygem_venv/bin/activate
+      #     ruff check
+
+      - name: 'Run tests'
+        run: |
+          . /home/ubuntu/pygem_venv/bin/activate
+          pytest -v --durations=20 pygem/tests
