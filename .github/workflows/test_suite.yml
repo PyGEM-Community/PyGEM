@@ -3,7 +3,7 @@ name: 'Install PyGEM and Run Test Suite'
 on:
   push:
     branches:
-      - main
+      - master
     paths:
       - '**.py'
       - '.github/workflows/test_suite.yml'
