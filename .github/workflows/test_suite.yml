@@ -52,4 +52,6 @@ jobs:
       - name: 'Run tests'
         run: |
           . /home/ubuntu/pygem_venv/bin/activate
-          pytest -v --durations=20 pygem/tests
+          python -m coverage erase
+          python -m coverage run -m pytest -v --durations=20 pygem/tests
+          python -m coverage report -m
