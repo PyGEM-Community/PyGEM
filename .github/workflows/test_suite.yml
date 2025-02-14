@@ -42,6 +42,7 @@ jobs:
           . /home/ubuntu/pygem_venv/bin/activate
           git config --global --add safe.directory '*'
           pip install -e .
+          initialize
 
       # - name: 'Lint'
       #   run: |
