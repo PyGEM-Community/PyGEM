@@ -7,10 +7,11 @@ on:
       - '.github/workflows/docker_pygem.yml'
       - 'docker/Dockerfile'
 
-  # Trigger when these files change on the master branch
+  # Trigger when these files change on the master or dev branches
   push:
     branches:
       - master
+      - dev
     paths:
       - '.github/workflows/docker_pygem.yml'
       - 'docker/Dockerfile'
