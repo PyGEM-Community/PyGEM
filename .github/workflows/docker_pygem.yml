@@ -55,7 +55,8 @@ jobs:
       - name: 'Build and Push Docker Container'
         uses: docker/build-push-action@v5
         with:
-          push: ${{ github.ref == 'refs/heads/master' }}
+          push: ${{ github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev' }}
           no-cache: true
           file: 'docker/Dockerfile'
-          tags: 'ghcr.io/pygem-community/pygem:latest'
+          tags: |
+            ghcr.io/pygem-community/pygem:${{ github.ref == 'refs/heads/master' && 'latest' || github.ref == 'refs/heads/dev' && 'dev' }}
