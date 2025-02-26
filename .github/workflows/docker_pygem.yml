@@ -58,5 +58,7 @@ jobs:
           push: ${{ github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev' }}
           no-cache: true
           file: 'docker/Dockerfile'
+          build-args: |
+            PYGEM_BRANCH=${{ github.ref == 'refs/heads/master' && 'master' || 'dev' }}
           tags: |
             ghcr.io/pygem-community/pygem:${{ github.ref == 'refs/heads/master' && 'latest' || github.ref == 'refs/heads/dev' && 'dev' }}

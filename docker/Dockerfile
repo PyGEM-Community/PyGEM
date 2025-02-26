@@ -16,7 +16,7 @@ WORKDIR /home/ubuntu
 # Add .local/bin to PATH
 ENV PATH="/home/ubuntu/.local/bin:${PATH}"
 
-RUN git clone https://github.com/PyGEM-Community/PyGEM.git && \
+RUN git clone --branch ${PYGEM_BRANCH} https://github.com/PyGEM-Community/PyGEM.git && \
     pip install --break-system-packages -e PyGEM && \
     initialize
 
