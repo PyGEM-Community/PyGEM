@@ -39,14 +39,11 @@ jobs:
 
       - name: 'Test PyGEM installation'
         run: |
-          . /home/ubuntu/pygem_venv/bin/activate
-          git config --global --add safe.directory '*'
-          pip install -e .
+          pip install --break-system-packages -e .
           initialize
 
       - name: 'Run tests'
         run: |
-          . /home/ubuntu/pygem_venv/bin/activate
           python -m coverage erase
           python -m coverage run --source=pygem --omit=pygem/tests/* \
             -m pytest -v --durations=20 pygem/tests
