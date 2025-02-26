@@ -20,8 +20,7 @@ ENV PATH="/home/ubuntu/.local/bin:${PATH}"
 ARG PYGEM_BRANCH=master
 
 RUN git clone --branch ${PYGEM_BRANCH} https://github.com/PyGEM-Community/PyGEM.git && \
-    pip install --break-system-packages -e PyGEM && \
-    initialize
+    pip install --break-system-packages -e PyGEM
 
 # Clone the PyGEM notebooks repository, which are used for testing
 RUN git clone https://github.com/PyGEM-Community/PyGEM-notebooks.git
