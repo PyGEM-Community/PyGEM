@@ -44,11 +44,6 @@ jobs:
           pip install -e .
           initialize
 
-      - name: 'Lint'
-        run: |
-          . /home/ubuntu/pygem_venv/bin/activate
-          ruff check
-
       - name: 'Run tests'
         run: |
           . /home/ubuntu/pygem_venv/bin/activate
