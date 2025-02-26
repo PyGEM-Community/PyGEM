@@ -16,6 +16,9 @@ WORKDIR /home/ubuntu
 # Add .local/bin to PATH
 ENV PATH="/home/ubuntu/.local/bin:${PATH}"
 
+# What PyGEM branch to clone (either master or dev; see docker_pygem.yml)
+ARG PYGEM_BRANCH=master
+
 RUN git clone --branch ${PYGEM_BRANCH} https://github.com/PyGEM-Community/PyGEM.git && \
     pip install --break-system-packages -e PyGEM && \
     initialize
