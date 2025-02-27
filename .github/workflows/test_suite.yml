@@ -33,7 +33,7 @@ jobs:
     strategy:
       matrix:
         # Use both master and dev branches for scheduled runs, otherwise use the current branch
-        branch: ${{ github.event_name == 'schedule' && fromJSON('["master", "dev"]') || fromJSON('["${{ github.ref }}"]') }}
+        branch: ${{ github.event_name == 'schedule' && fromJSON('["master", "dev"]') || fromJSON('["${{ github.ref_name }}"]') }}
 
     # Use pygem:latest for master branch and pygem:dev otherwise
     container:
