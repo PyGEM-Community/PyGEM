@@ -1,0 +1,49 @@
+name: 'Install PyGEM and Run Test Suite'
+
+on:
+  push:
+    branches:
+      - master
+      - dev
+    paths:
+      - '**.py'
+      - '.github/workflows/test_suite.yml'
+      - 'pyproject.toml'
+
+  pull_request:
+    paths:
+      - '**.py'
+      - '.github/workflows/test_suite.yml'
+      - 'pyproject.toml'
+
+  # Run test suite every Saturday at 1AM GMT (1 hour after the Docker image is updated)
+  schedule:
+    - cron: '0 1 * * 6'
+
+# Stop the workflow if a new one is started
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test_suite:
+    name: 'Test suite'
+    runs-on: ubuntu-latest
+
+    # Use pygem:latest for master branch and pygem:dev otherwise
+    container:
+      image: ghcr.io/pygem-community/pygem:${{ github.ref == 'refs/heads/master' && 'latest' || 'dev' }}
+      options: --user root
+
+    steps:
+      - name: 'Checkout the repo'
+        id: checkout
+        uses: actions/checkout@v4
+
+      - name: 'Reinstall PyGEM'
+        run: pip install --break-system-packages -e .
+
+      - name: 'Run tests'
+        run: |
+          python3 -m coverage erase
+          python3 -m pytest --cov=pygem -v --durations=20 pygem/tests
