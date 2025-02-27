@@ -29,16 +29,23 @@ jobs:
   test_suite:
     name: 'Test suite'
     runs-on: ubuntu-latest
-
-    # Use pygem:latest for master branch and pygem:dev otherwise
     container:
+      # Use pygem:latest for master branch and pygem:dev otherwise
       image: ghcr.io/pygem-community/pygem:${{ github.ref == 'refs/heads/master' && 'latest' || 'dev' }}
       options: --user root
+    env:
+      GITHUB_NOTEBOOKS_PATH: $HOME/PyGEM-notebooks
 
     steps:
-      - name: 'Checkout the repo'
+      - name: 'Checkout the PyGEM repo'
         id: checkout
         uses: actions/checkout@v4
+
+      - name: 'Checkout the PyGEM-notebooks repo'
+        uses: actions/checkout@v4
+        with:
+          repository: 'pygem-community/PyGEM-notebooks'
+          path: ${{ env.GITHUB_NOTEBOOKS_PATH }}
 
       - name: 'Reinstall PyGEM'
         run: pip install --break-system-packages -e .
