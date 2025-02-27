@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - dev
     paths:
       - '**.py'
       - '.github/workflows/test_suite.yml'
@@ -29,7 +30,7 @@ jobs:
     name: 'Test suite'
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/pygem-community/pygem:latest
+      image: ghcr.io/pygem-community/pygem:${{ github.ref == 'refs/heads/master' && 'latest' || 'dev' }}
       options: --user root
 
     steps:
