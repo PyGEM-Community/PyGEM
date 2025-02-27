@@ -38,7 +38,7 @@ jobs:
           if [[ "${{ github.event_name }}" == "schedule" ]]; then
             echo "matrix={\"branch\":[\"master\",\"dev\"]}" >> $GITHUB_OUTPUT
           else
-            echo "matrix={\"branch\":[\"${{ github.ref_name }}\"]}" >> $GITHUB_OUTPUT
+            echo "matrix={\"branch\":[\"${{ github.head_ref }}\"]}" >> $GITHUB_OUTPUT
           fi
 
   test_suite:
