@@ -7,42 +7,93 @@ Distrubted under the MIT lisence
 """
 import os
 import shutil
-import sys
 import yaml
+import argparse
+from ruamel.yaml import YAML
 
-# pygem_params file name
-config_fn = 'config.yaml'
-
-# Define the base directory and the path to the configuration file
-basedir = os.path.join(os.path.expanduser('~'), 'PyGEM')
-config_file = os.path.join(basedir, config_fn)  # Path where you want the config file
-
-# Get the source configuration file path from your package
-package_dir = os.path.dirname(__file__)  # Get the directory of the current script
-source_config_file = os.path.join(package_dir, config_fn)  # Path to params.py
-
-def ensure_config(overwrite=False):
-    isfile = os.path.isfile(config_file)
-    if isfile and overwrite:
-        overwrite = None
-        while overwrite is None:
-            # Ask the user for a y/n response
-            response = input(f"PyGEM configuration.yaml file already exist ({config_file}), do you wish to overwrite (y/n):").strip().lower()
-            # Check if the response is valid
-            if response == 'y' or response == 'yes':
-                overwrite = True
-            elif response == 'n' or response == 'no':
-                overwrite = False
-            else:
-                print("Invalid input. Please enter 'y' or 'n'.")
+class ConfigManager:
+    def __init__(self, config_filename='config.yaml', base_dir=None):
+        """initialize the ConfigManager class"""
+        self.config_filename = config_filename
+        self.base_dir = base_dir or os.path.join(os.path.expanduser('~'), 'PyGEM')
+        self.config_path = os.path.join(self.base_dir, self.config_filename)
+        self.package_dir = os.path.dirname(__file__)
+        self.source_config_path = os.path.join(self.package_dir, self.config_filename)
     
-    if (not isfile) or (overwrite):
-        os.makedirs(basedir, exist_ok=True)  # Ensure the base directory exists
-        shutil.copy(source_config_file, config_file)  # Copy the file
-        print(f"Copied default configuration to {config_file}")
+    def ensure_config(self, overwrite=False):
+        """Ensure the configuration file exists"""
+        if os.path.isfile(self.config_path) and not overwrite:
+            return
+        
+        if os.path.isfile(self.config_path) and overwrite:
+            overwrite = self._prompt_overwrite()
+        
+        if not os.path.isfile(self.config_path) or overwrite:
+            os.makedirs(self.base_dir, exist_ok=True)
+            shutil.copy(self.source_config_path, self.config_path)
+            print(f"Copied default configuration to {self.config_path}")
     
-def read_config():
-    """Read the configuration file and return its contents as a dictionary."""
-    with open(config_file, 'r') as f:
-        config = yaml.safe_load(f)  # Use safe_load to avoid arbitrary code execution
-    return config
+    def read_config(self):
+        """Read the configuration file and return its contents as a dictionary."""
+        with open(self.config_path, 'r') as f:
+            return yaml.safe_load(f)
+    
+    def update_config(self, updates):
+        """Update multiple keys in the YAML configuration file while preserving quotes and original types."""
+        yaml = YAML()
+        yaml.preserve_quotes = True  # Preserve quotes around string values
+
+        try:
+            with open(self.config_path, 'r') as file:
+                config = yaml.load(file)
+
+            for key, value in updates.items():
+                keys = key.split('.')
+                d = config
+                for k in keys[:-1]:
+                    if k not in d:
+                        print(f"Key '{key}' not found in the config. Skipping update.")
+                        break
+                    d = d[k]
+                else:
+                    # Reparse value with YAML to infer correct type
+                    if keys[-1] in d:
+                        d[keys[-1]] = yaml.load(value)
+                    else:
+                        print(f"Key '{key}' not found in the config. Skipping update.")
+
+            with open(self.config_path, 'w') as file:
+                yaml.dump(config, file)
+
+        except Exception as e:
+            print(f"Error updating config: {e}")
+
+    
+    def _prompt_overwrite(self):
+        """Prompt the user for confirmation before overwriting the config file."""
+        while True:
+            response = input(f"Configuration file already exists ({self.config_path}). Overwrite? (y/n): ").strip().lower()
+            if response in ['y', 'yes']:
+                return True
+            elif response in ['n', 'no']:
+                return False
+            print("Invalid input. Please enter 'y' or 'n'.")
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--config', default='config.yaml', help='Path to the config file')
+    parser.add_argument('updates', nargs='*', help='Key-value pairs to update in the config file')
+    
+    args = parser.parse_args()
+    
+    # Parse the updates into a dictionary
+    updates = {}
+    for update in args.updates:
+        key, value = update.split('=')
+        updates[key] = value
+    
+    config_manager = ConfigManager(config_filename=args.config)
+    config_manager.update_config(updates)
+
+if __name__ == '__main__':
+    main()
