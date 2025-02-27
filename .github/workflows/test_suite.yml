@@ -52,7 +52,5 @@ jobs:
 
       - name: 'Run tests'
         run: |
-          python -m coverage erase
-          python -m coverage run --source=pygem --omit=pygem/tests/* \
-            -m pytest -v --durations=20 pygem/tests
-          python -m coverage report -m
+          python3 -m coverage erase
+          python3 -m pytest --cov=pygem -v --durations=20 pygem/tests
