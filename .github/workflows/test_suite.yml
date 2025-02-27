@@ -30,24 +30,15 @@ jobs:
     name: 'Test suite'
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        # Run the workflow on master and dev branches if triggered by a schedule event.
-        # Otherwise, run the workflow on the source branch of the pull request.
-        branch: ${{ github.event_name == 'schedule' && fromJSON('["master", "dev"]') || fromJSON('["${{ github.head_ref }}"]') }}
-      fail-fast: false
-
     # Use pygem:latest for master branch and pygem:dev otherwise
     container:
       image: ghcr.io/pygem-community/pygem:${{ github.ref == 'refs/heads/master' && 'latest' || 'dev' }}
       options: --user root
 
     steps:
-      - name: 'Check out the repo'
+      - name: 'Checkout the repo'
         id: checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ matrix.branch }}
 
       - name: 'Reinstall PyGEM'
         run: pip install --break-system-packages -e .
