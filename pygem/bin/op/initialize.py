@@ -7,48 +7,56 @@ Distrubted under the MIT lisence
 
 initialization script (ensure config.yaml and get sample datasets)
 """
-import requests
-import zipfile
-import os,sys
+
+import os
 import shutil
+import zipfile
+
+import requests
 from ruamel.yaml import YAML
+
 # set up config.yaml
 import pygem.setup.config as config
+
 config.ensure_config(overwrite=True)
+
 
 def update_config_root(conf_path, datapath):
     yaml = YAML()
     yaml.preserve_quotes = True  # Preserve quotes around string values
-    
+
     # Read the YAML file
-    with open(conf_path, 'r') as file:
+    with open(conf_path, "r") as file:
         config = yaml.load(file)
 
     # Update the key with the new value
-    config['root'] = datapath
+    config["root"] = datapath
 
     # Save the updated configuration back to the file
-    with open(conf_path, 'w') as file:
+    with open(conf_path, "w") as file:
         yaml.dump(config, file)
+
 
 def print_file_tree(start_path, indent=""):
     # Loop through all files and directories in the current directory
     for item in os.listdir(start_path):
         path = os.path.join(start_path, item)
-        
+
         # Print the current item with indentation
         print(indent + "|-- " + item)
-        
+
         # Recursively call this function if the item is a directory
         if os.path.isdir(path):
             print_file_tree(path, indent + "    ")
-            
+
+
 def get_confirm_token(response):
     """Extract confirmation token for Google Drive large file download."""
     for key, value in response.cookies.items():
         if key.startswith("download_warning"):
             return value
     return None
+
 
 def save_response_content(response, destination):
     """Save the response content to a file."""
@@ -57,6 +65,7 @@ def save_response_content(response, destination):
         for chunk in response.iter_content(chunk_size):
             if chunk:  # Filter out keep-alive chunks
                 file.write(chunk)
+
 
 def get_unique_folder_name(dir):
     """Generate a unique folder name by appending a suffix if the folder already exists."""
@@ -67,14 +76,15 @@ def get_unique_folder_name(dir):
         counter += 1
     return unique_dir
 
+
 def download_and_unzip_from_google_drive(file_id, output_dir):
     """
     Download a ZIP file from Google Drive and extract its contents.
-    
+
     Args:
         file_id (str): The Google Drive file ID.
         output_dir (str): The directory to save and extract the contents of the ZIP file.
-    
+
     Returns:
         int: 1 if the ZIP file was successfully downloaded and extracted, 0 otherwise.
     """
@@ -90,19 +100,29 @@ def download_and_unzip_from_google_drive(file_id, output_dir):
     try:
         # Start the download process
         with requests.Session() as session:
-            response = session.get(base_url, params={"id": file_id}, stream=True)
+            response = session.get(
+                base_url, params={"id": file_id}, stream=True
+            )
             token = get_confirm_token(response)
             if token:
-                response = session.get(base_url, params={"id": file_id, "confirm": token}, stream=True)
+                response = session.get(
+                    base_url,
+                    params={"id": file_id, "confirm": token},
+                    stream=True,
+                )
             save_response_content(response, zip_path)
 
         # Unzip the file
-        tmppath = os.path.join(output_dir, 'tmp')
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        tmppath = os.path.join(output_dir, "tmp")
+        with zipfile.ZipFile(zip_path, "r") as zip_ref:
             zip_ref.extractall(tmppath)
 
         # get root dir name of zipped files
-        dir = [item for item in os.listdir(tmppath) if os.path.isdir(os.path.join(tmppath, item))][0]
+        dir = [
+            item
+            for item in os.listdir(tmppath)
+            if os.path.isdir(os.path.join(tmppath, item))
+        ][0]
         unzip_dir = os.path.join(tmppath, dir)
         # get unique name if root dir name already exists in output_dir
         output_dir = get_unique_folder_name(os.path.join(output_dir, dir))
@@ -112,19 +132,20 @@ def download_and_unzip_from_google_drive(file_id, output_dir):
         os.remove(zip_path)
         return output_dir  # Success
 
-    except (requests.RequestException, zipfile.BadZipFile, Exception) as e:
+    except (requests.RequestException, zipfile.BadZipFile, Exception):
         return None  # Failure
-    
+
+
 def main():
     # Define the base directory
-    basedir = os.path.join(os.path.expanduser('~'), 'PyGEM')
+    basedir = os.path.join(os.path.expanduser("~"), "PyGEM")
     # Google Drive file id for sample dataset
     file_id = "1Wu4ZqpOKxnc4EYhcRHQbwGq95FoOxMfZ"
     # download and unzip
     out = download_and_unzip_from_google_drive(file_id, basedir)
 
     if out:
-        print(f"Downloaded PyGEM sample dataset:")
+        print("Downloaded PyGEM sample dataset:")
         print(os.path.abspath(out))
         try:
             print_file_tree(out)
@@ -132,13 +153,14 @@ def main():
             pass
 
     else:
-        print(f'Error downloading PyGEM sample dataset.')
+        print("Error downloading PyGEM sample dataset.")
 
     # update root path in config.yaml
     try:
-        update_config_root(config.config_file, out+'/sample_data/')
+        update_config_root(config.config_file, out + "/sample_data/")
     except:
         pass
-    
+
+
 if __name__ == "__main__":
     main()

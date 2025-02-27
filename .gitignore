@@ -1,7 +1,6 @@
-# pycache
+# Subdirectories
 __pycache__/
-
-# vscode
+sample_data/
 .vscode/
 
 # python bytecode
