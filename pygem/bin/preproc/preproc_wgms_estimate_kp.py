@@ -22,11 +22,13 @@ from matplotlib.ticker import MultipleLocator
 from scipy.stats import median_abs_deviation
 # pygem imports
 from pygem import class_climate
-import pygem.setup.config as config
+from pygem.setup.config import ConfigManager
+# instantiate ConfigManager
+config_manager = ConfigManager()
 # check for config
-config.ensure_config()
+config_manager.ensure_config()
 # read the config
-pygem_prms = config.read_config()
+pygem_prms = config_manager.read_config()
 import pygem.pygem_modelsetup as modelsetup
 
 

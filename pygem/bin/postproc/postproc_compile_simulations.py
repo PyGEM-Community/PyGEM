@@ -21,11 +21,13 @@ import multiprocessing
 
 # pygem imports
 import pygem
-import pygem.setup.config as config
+from pygem.setup.config import ConfigManager
+# instantiate ConfigManager
+config_manager = ConfigManager()
 # check for config
-config.ensure_config()
+config_manager.ensure_config()
 # read the config
-pygem_prms = config.read_config()
+pygem_prms = config_manager.read_config()
 import pygem.pygem_modelsetup as modelsetup
 
 rgi_reg_dict = {'all':'Global',

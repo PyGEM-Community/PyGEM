@@ -24,9 +24,13 @@ import xarray as xr
 from oggm import workflow, tasks, cfg
 from oggm.sandbox import distribute_2d
 # pygem imports
-import pygem.setup.config as config
-# read config
-pygem_prms = config.read_config()
+from pygem.setup.config import ConfigManager
+# instantiate ConfigManager
+config_manager = ConfigManager()
+# check for config
+config_manager.ensure_config()
+# read the config
+pygem_prms = config_manager.read_config()
 import pygem
 import pygem.pygem_modelsetup as modelsetup
 from pygem.oggm_compat import single_flowline_glacier_directory

@@ -11,25 +11,13 @@ import requests
 import zipfile
 import os,sys
 import shutil
-from ruamel.yaml import YAML
-# set up config.yaml
-import pygem.setup.config as config
-config.ensure_config(overwrite=True)
-
-def update_config_root(conf_path, datapath):
-    yaml = YAML()
-    yaml.preserve_quotes = True  # Preserve quotes around string values
-    
-    # Read the YAML file
-    with open(conf_path, 'r') as file:
-        config = yaml.load(file)
-
-    # Update the key with the new value
-    config['root'] = datapath
-
-    # Save the updated configuration back to the file
-    with open(conf_path, 'w') as file:
-        yaml.dump(config, file)
+from pygem.setup.config import ConfigManager
+# instantiate ConfigManager
+config_manager = ConfigManager()
+# check for config
+config_manager.ensure_config(overwrite=True)
+# read the config
+pygem_prms = config_manager.read_config()
 
 def print_file_tree(start_path, indent=""):
     # Loop through all files and directories in the current directory
@@ -136,7 +124,7 @@ def main():
 
     # update root path in config.yaml
     try:
-        update_config_root(config.config_file, out+'/sample_data/')
+        config_manager.update_config(updates={'root':f'{out}/sample_data'})
     except:
         pass
     

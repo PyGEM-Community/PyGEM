@@ -21,9 +21,13 @@ import time
 import numpy as np
 import xarray as xr
 # pygem imports
-import pygem.setup.config as config
-# read config
-pygem_prms = config.read_config()
+from pygem.setup.config import ConfigManager
+# instantiate ConfigManager
+config_manager = ConfigManager()
+# check for config
+config_manager.ensure_config()
+# read the config
+pygem_prms = config_manager.read_config()
 
 # ----- FUNCTIONS -----
 def getparser():
