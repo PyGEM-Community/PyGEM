@@ -26,14 +26,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  set-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-branches.outputs.matrix }}
+    steps:
+      # Set the matrix for the test_suite job. Use master and dev branches for scheduled runs
+      # and the branch of the push event otherwise
+      - id: set-branches
+        run: |
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            echo "matrix={\"branch\":[\"master\",\"dev\"]}" >> $GITHUB_OUTPUT
+          else
+            echo "matrix={\"branch\":[\"${{ github.ref_name }}\"]}" >> $GITHUB_OUTPUT
+          fi
+
   test_suite:
     name: 'Test suite'
+    needs: set-matrix
     runs-on: ubuntu-latest
 
     strategy:
-      matrix:
-        # Use both master and dev branches for scheduled runs, otherwise use the current branch
-        branch: ${{ github.event_name == 'schedule' && fromJSON('["master", "dev"]') || fromJSON(format('[""{0}""']', github.ref_name)) }}
+      matrix: ${{ fromJSON(needs.set-matrix.outputs.matrix) }}
       fail-fast: false
 
     # Use pygem:latest for master branch and pygem:dev otherwise
