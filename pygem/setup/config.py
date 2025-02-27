@@ -21,17 +21,18 @@ class ConfigManager:
         self.source_config_path = os.path.join(self.package_dir, self.config_filename)
     
     def ensure_config(self, overwrite=False):
-        """Ensure the configuration file exists"""
-        if os.path.isfile(self.config_path) and not overwrite:
-            return
-        
-        if os.path.isfile(self.config_path) and overwrite:
-            overwrite = self._prompt_overwrite()
-        
+        """Ensure the configuration file exists, creating or overwriting it if necessary"""
         if not os.path.isfile(self.config_path) or overwrite:
-            os.makedirs(self.base_dir, exist_ok=True)
-            shutil.copy(self.source_config_path, self.config_path)
-            print(f"Copied default configuration to {self.config_path}")
+            self.create_config()
+
+    def create_config(self):
+        """Copy the default configuration file to the expected location"""
+        if not os.path.exists(self.source_config_path):
+            raise FileNotFoundError(f"Default config file not found at {self.source_config_path}, there may have been an installation issue")
+        
+        os.makedirs(self.base_dir, exist_ok=True)
+        shutil.copy(self.source_config_path, self.config_path)
+        print(f"Copied default configuration to {self.config_path}")
     
     def read_config(self):
         """Read the configuration file and return its contents as a dictionary."""
@@ -70,16 +71,6 @@ class ConfigManager:
         # Save the updated config back to the file
         with open(self.config_path, 'w') as file:
             yaml.dump(config, file)
-    
-    def _prompt_overwrite(self):
-        """Prompt the user for confirmation before overwriting the config file."""
-        while True:
-            response = input(f"Configuration file already exists ({self.config_path}). Overwrite? (y/n): ").strip().lower()
-            if response in ['y', 'yes']:
-                return True
-            elif response in ['n', 'no']:
-                return False
-            print("Invalid input. Please enter 'y' or 'n'.")
 
 def main():
     parser = argparse.ArgumentParser()
