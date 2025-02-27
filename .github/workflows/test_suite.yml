@@ -29,6 +29,13 @@ jobs:
   test_suite:
     name: 'Test suite'
     runs-on: ubuntu-latest
+
+    # Run the job on both master and dev branches if triggered by schedule
+    strategy:
+      matrix:
+        branch: [master, dev]
+
+    # Use pygem:latest for master branch and pygem:dev otherwise
     container:
       image: ghcr.io/pygem-community/pygem:${{ github.ref == 'refs/heads/master' && 'latest' || 'dev' }}
       options: --user root
@@ -37,6 +44,9 @@ jobs:
       - name: 'Check out the repo'
         id: checkout
         uses: actions/checkout@v4
+        with:
+          # If triggered by schedule, checkout the branch specified in the matrix
+          ref: ${{ github.event_name == 'schedule' && matrix.branch || github.ref }}
 
       - name: 'Reinstall PyGEM'
         run: pip install --break-system-packages -e .
