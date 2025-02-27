@@ -34,7 +34,7 @@ jobs:
       matrix:
         # Run the workflow on master and dev branches if triggered by a schedule event.
         # Otherwise, run the workflow on the source branch of the pull request.
-        branch: ${{ github.event_name == 'schedule' && fromJSON('["master", "dev"]') || fromJSON('["' + github.head_ref + '"]') }}
+        branch: ${{ github.event_name == 'schedule' && fromJSON('["master", "dev"]') || fromJSON('["${{ github.head_ref }}"]') }}
       fail-fast: false
 
     # Use pygem:latest for master branch and pygem:dev otherwise
