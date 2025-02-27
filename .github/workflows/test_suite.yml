@@ -15,7 +15,7 @@ on:
       - '.github/workflows/test_suite.yml'
       - 'pyproject.toml'
 
-  # Run test suite every Saturday at 1AM
+  # Run test suite every Saturday at 1AM GMT (1 hour after the Docker image is updated)
   schedule:
     - cron: '0 1 * * 6'
 
@@ -37,10 +37,8 @@ jobs:
         id: checkout
         uses: actions/checkout@v4
 
-      - name: 'Test PyGEM installation'
-        run: |
-          pip install --break-system-packages -e .
-          initialize
+      - name: 'Reinstall PyGEM'
+        run: pip install --break-system-packages -e .
 
       - name: 'Run tests'
         run: |
