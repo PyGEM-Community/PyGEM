@@ -43,31 +43,33 @@ class ConfigManager:
         yaml = YAML()
         yaml.preserve_quotes = True  # Preserve quotes around string values
 
-        try:
-            with open(self.config_path, 'r') as file:
-                config = yaml.load(file)
+        with open(self.config_path, 'r') as file:
+            config = yaml.load(file)
 
-            for key, value in updates.items():
-                keys = key.split('.')
-                d = config
-                for k in keys[:-1]:
-                    if k not in d:
-                        print(f"Key '{key}' not found in the config. Skipping update.")
-                        break
-                    d = d[k]
-                else:
-                    # Reparse value with YAML to infer correct type
-                    if keys[-1] in d:
-                        d[keys[-1]] = yaml.load(value)
-                    else:
-                        print(f"Key '{key}' not found in the config. Skipping update.")
+        for key, value in updates.items():
+            keys = key.split('.')
+            d = config
+            # Traverse the keys up to the second-to-last
+            for i, k in enumerate(keys[:-1]):
+                if k not in d:
+                    raise KeyError(f"No matching `{'.'.join(keys[:i+1])}` key found in the configuration file at path: {self.config_path}")
+                d = d[k]
 
-            with open(self.config_path, 'w') as file:
-                yaml.dump(config, file)
+            final_key = keys[-1]
 
-        except Exception as e:
-            print(f"Error updating config: {e}")
+            # Ensure the final key exists before updating its value
+            if final_key not in d:
+                raise KeyError(f"No matching `{key}` key found in the configuration file at path: {self.config_path}")
 
+            # Prevent replacing a dictionary with a non-dictionary value
+            if isinstance(d[final_key], dict):
+                raise ValueError(f"Cannot directly overwrite key `{key}` because it contains a dictionary.")
+            
+            d[final_key] = yaml.load(value)
+
+        # Save the updated config back to the file
+        with open(self.config_path, 'w') as file:
+            yaml.dump(config, file)
     
     def _prompt_overwrite(self):
         """Prompt the user for confirmation before overwriting the config file."""
