@@ -12,17 +12,18 @@ import argparse
 from ruamel.yaml import YAML
 
 class ConfigManager:
-    def __init__(self, config_filename='config.yaml', base_dir=None):
+    def __init__(self, config_filename='config.yaml', base_dir=None, overwrite=False):
         """initialize the ConfigManager class"""
         self.config_filename = config_filename
         self.base_dir = base_dir or os.path.join(os.path.expanduser('~'), 'PyGEM')
         self.config_path = os.path.join(self.base_dir, self.config_filename)
         self.source_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.yaml")
+        self.overwrite = overwrite
         self.ensure_config()
     
-    def ensure_config(self, overwrite=False):
+    def ensure_config(self):
         """Ensure the configuration file exists, creating or overwriting it if necessary"""
-        if not os.path.isfile(self.config_path) or overwrite:
+        if not os.path.isfile(self.config_path) or self.overwrite:
             self.create_config()
 
     def create_config(self):

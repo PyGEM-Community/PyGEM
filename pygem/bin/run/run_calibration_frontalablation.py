@@ -27,8 +27,6 @@ import xarray as xr
 from pygem.setup.config import ConfigManager
 # instantiate ConfigManager
 config_manager = ConfigManager()
-# check for config
-config_manager.ensure_config()
 # read the config
 pygem_prms = config_manager.read_config()
 import pygem.pygem_modelsetup as modelsetup

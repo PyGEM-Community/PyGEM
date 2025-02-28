@@ -13,9 +13,7 @@ import os,sys
 import shutil
 from pygem.setup.config import ConfigManager
 # instantiate ConfigManager
-config_manager = ConfigManager()
-# check for config
-config_manager.ensure_config(overwrite=True)
+config_manager = ConfigManager(overwrite=True)
 # read the config
 pygem_prms = config_manager.read_config()
 

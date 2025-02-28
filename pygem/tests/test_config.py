@@ -14,8 +14,7 @@ def test_update_config():
         "constants.density_ice": "850"
     }
     
-    config_manager = ConfigManager()
-    config_manager.ensure_config(overwrite=True)
+    config_manager = ConfigManager(overwrite=True)
     config_manager.update_config(updates)
     config = config_manager.read_config()
     
