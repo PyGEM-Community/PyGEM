@@ -17,7 +17,6 @@ class ConfigManager:
         self.config_filename = config_filename
         self.base_dir = base_dir or os.path.join(os.path.expanduser('~'), 'PyGEM')
         self.config_path = os.path.join(self.base_dir, self.config_filename)
-        self.package_dir = os.path.dirname(__file__)
         self.source_config_path = os.path.join(os.path.abspath(__file__), "config.yaml")
     
     def ensure_config(self, overwrite=False):
