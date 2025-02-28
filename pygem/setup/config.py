@@ -122,22 +122,3 @@ class ConfigManager:
                     _check(ref_val, test_val, current_path)
 
         _check(default_config, user_config)
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--config', default='config.yaml', help='Path to the config file')
-    parser.add_argument('updates', nargs='*', help='Key-value pairs to update in the config file')
-    
-    args = parser.parse_args()
-    
-    # Parse the updates into a dictionary
-    updates = {}
-    for update in args.updates:
-        key, value = update.split('=')
-        updates[key] = value
-    
-    config_manager = ConfigManager(config_filename=args.config)
-    config_manager.update_config(updates)
-
-if __name__ == '__main__':
-    main()
