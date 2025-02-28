@@ -39,9 +39,13 @@ class ConfigManager:
             return yaml.safe_load(f)
     
     def update_config(self, updates):
-        """Update multiple keys in the YAML configuration file while preserving quotes and original types."""
-        yaml = YAML()
-        yaml.preserve_quotes = True  # Preserve quotes around string values
+        """Update multiple keys in the YAML configuration file while preserving quotes and original types.
+
+        Args:
+            updates (dict): Dictionary with key-value pairs to be updated
+        """
+        ryaml = YAML()
+        ryaml.preserve_quotes = True  # Preserve quotes around string values
 
         with open(self.config_path, 'r') as file:
             config = yaml.load(file)
@@ -65,11 +69,11 @@ class ConfigManager:
             if isinstance(d[final_key], dict):
                 raise ValueError(f"Cannot directly overwrite key `{key}` because it contains a dictionary.")
             
-            d[final_key] = yaml.load(value)
+            d[final_key] = ryaml.load(value)
 
         # Save the updated config back to the file
         with open(self.config_path, 'w') as file:
-            yaml.dump(config, file)
+            ryaml.dump(config, file)
 
 def main():
     parser = argparse.ArgumentParser()
