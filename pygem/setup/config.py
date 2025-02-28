@@ -75,11 +75,16 @@ class ConfigManager:
             # Ensure the final key exists before updating its value
             if final_key not in d:
                 raise KeyError(f"No matching `{key}` key found in the configuration file at path: {self.config_path}")
-
             # Prevent replacing a dictionary with a non-dictionary value
             if isinstance(d[final_key], dict):
-                raise ValueError(f"Cannot directly overwrite key `{key}` because it contains a dictionary.")
-            
+                raise TypeError(f"Cannot directly overwrite key `{key}` because it contains a dictionary.")
+            # Check if the original value is a string, and raise an error if a non-string type is passed
+            if isinstance(d[final_key], str) and not isinstance(value, str):
+                raise TypeError(f"Cannot update `{key}` with a non-string value: expected a string.")
+            # Check if the original value is a string, and raise an error if a non-string type is passed
+            if isinstance(d[final_key], bool) and not isinstance(value, bool):
+                raise TypeError(f"Cannot update `{key}` with a non-bool value: expected a bool.")
+
             d[final_key] = ryaml.load(value)
 
         # Save the updated config back to the file
