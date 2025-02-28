@@ -59,7 +59,7 @@ class ConfigManager:
         ryaml.preserve_quotes = True  # Preserve quotes around string values
 
         with open(self.config_path, 'r') as file:
-            config = yaml.load(file)
+            config = ryaml.load(file)
 
         for key, value in updates.items():
             keys = key.split('.')
