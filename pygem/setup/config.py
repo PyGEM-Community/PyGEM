@@ -19,7 +19,7 @@ class ConfigManager:
         self.config_path = os.path.join(self.base_dir, self.config_filename)
         self.source_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.yaml")
         self.ensure_config()
-        
+    
     def ensure_config(self, overwrite=False):
         """Ensure the configuration file exists, creating or overwriting it if necessary"""
         if not os.path.isfile(self.config_path) or overwrite:
@@ -33,11 +33,20 @@ class ConfigManager:
         os.makedirs(self.base_dir, exist_ok=True)
         shutil.copy(self.source_config_path, self.config_path)
         print(f"Copied default configuration to {self.config_path}")
-    
-    def read_config(self):
-        """Read the configuration file and return its contents as a dictionary."""
+        
+    def read_config(self, validate=True):
+        """Read the configuration file and return its contents as a dictionary.
+        
+        Args:
+            validate (bool): Whether to compare with the default config
+        """
         with open(self.config_path, 'r') as f:
-            return yaml.safe_load(f)
+            user_config = yaml.safe_load(f)
+
+        if validate:
+            self.compare_with_source()
+
+        return user_config
     
     def update_config(self, updates):
         """Update multiple keys in the YAML configuration file while preserving quotes and original types.
@@ -75,6 +84,38 @@ class ConfigManager:
         # Save the updated config back to the file
         with open(self.config_path, 'w') as file:
             ryaml.dump(config, file)
+
+    def compare_with_source(self):
+        """Compare the user's config with the default and raise errors for missing keys or type mismatches."""
+        with open(self.source_config_path, 'r') as f:
+            default_config = yaml.safe_load(f)
+        with open(self.config_path, 'r') as f:
+            user_config = yaml.safe_load(f)
+
+        def _check(ref, test, path=""):
+            if not isinstance(ref, dict) or not isinstance(test, dict):
+                return
+            
+            for key in ref:
+                current_path = f"{path}.{key}" if path else key
+                if key not in test:
+                    raise ValueError(f"Missing key in user config: {current_path}")
+
+                ref_val, test_val = ref[key], test[key]
+
+                # Allow any type if ref[key] is None
+                if ref_val is not None:
+                    # Ignore type mismatches if the source was a list but now a single value
+                    if isinstance(ref_val, list) and not isinstance(test_val, list):
+                        pass  # Ignore type mismatch
+                    elif type(ref_val) != type(test_val):
+                        raise TypeError(f"Type mismatch at {current_path}: "
+                                        f"expected {type(ref_val)}, got {type(test_val)}")
+
+                if isinstance(ref_val, dict):
+                    _check(ref_val, test_val, current_path)
+
+        _check(default_config, user_config)
 
 def main():
     parser = argparse.ArgumentParser()
