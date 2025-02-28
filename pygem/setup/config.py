@@ -58,37 +58,42 @@ class ConfigManager:
         ryaml = ruamel.yaml.YAML()
         ryaml.preserve_quotes = True  # Preserve quotes around string values
 
+        # Load the unmodified configuration file to compare types and keys against
+        with open(self.source_config_path, 'r') as file:
+            source_config = ryaml.load(file)
+
         with open(self.config_path, 'r') as file:
             config = ryaml.load(file)
 
         for key, value in updates.items():
             keys = key.split('.')
             d = config
+            sd = source_config
             # Traverse the keys up to the second-to-last
             for i, k in enumerate(keys[:-1]):
-                if k not in d:
+                if k not in sd:
                     raise KeyError(f"No matching `{'.'.join(keys[:i+1])}` key found in the configuration file at path: {self.config_path}")
                 d = d[k]
+                sd = sd[k]
 
             final_key = keys[-1]
 
             # Ensure the final key exists before updating its value
-            if final_key not in d:
+            if final_key not in sd:
                 raise KeyError(f"No matching `{key}` key found in the configuration file at path: {self.config_path}")
 
             # Handle CommentedSeq (YAML list) specially
-            if isinstance(d[final_key], ruamel.yaml.comments.CommentedSeq): 
+            if isinstance(sd[final_key], ruamel.yaml.comments.CommentedSeq): 
                 if not isinstance(value, list):
                     raise TypeError(f"Type mismatch at {key}: expected list, not {type(value)}")
                 if isinstance(value, list):
                     d[final_key].clear()
                     for item in value:
                         d[final_key].append(item)
-                    print(d[final_key])
                     continue
 
-            if type(d[final_key]) != type(value):
-                raise TypeError(f"Type mismatch at {key}: expected {type(d[final_key])}, not {type(value)}")
+            if type(sd[final_key]) != type(value):
+                raise TypeError(f"Type mismatch at {key}: expected {type(sd[final_key])}, not {type(value)}")
 
             d[final_key] = value
 
