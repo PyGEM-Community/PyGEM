@@ -37,18 +37,21 @@ jobs:
       GITHUB_NOTEBOOKS_PATH: $HOME/PyGEM-notebooks
 
     steps:
-      - name: 'Checkout the PyGEM repo'
-        id: checkout
-        uses: actions/checkout@v4
-
       - name: 'Checkout the PyGEM-notebooks repo'
         uses: actions/checkout@v4
         with:
           repository: 'pygem-community/PyGEM-notebooks'
           path: ${{ env.GITHUB_NOTEBOOKS_PATH }}
 
+      - name: 'Checkout the PyGEM repo'
+        id: checkout
+        uses: actions/checkout@v4
+
       - name: 'Reinstall PyGEM'
         run: pip install --break-system-packages -e .
+
+      - name: 'Initialize PyGEM'
+        run: initialize
 
       - name: 'Run tests'
         run: |
