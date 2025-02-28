@@ -34,14 +34,14 @@ jobs:
       image: ghcr.io/pygem-community/pygem:${{ github.ref == 'refs/heads/master' && 'latest' || 'dev' }}
       options: --user root
     env:
-      GITHUB_NOTEBOOKS_PATH: $HOME/PyGEM-notebooks
+      NOTEBOOKS_DIRPATH: ${{ github.workspace }}/PyGEM-notebooks
 
     steps:
       - name: 'Checkout the PyGEM-notebooks repo'
         uses: actions/checkout@v4
         with:
           repository: 'pygem-community/PyGEM-notebooks'
-          path: ${{ env.GITHUB_NOTEBOOKS_PATH }}
+          path: ${{ env.NOTEBOOKS_DIRPATH }}
 
       - name: 'Checkout the PyGEM repo'
         id: checkout
