@@ -9,7 +9,7 @@ import os
 import shutil
 import yaml
 import argparse
-from ruamel.yaml import YAML
+import ruamel.yaml
 
 class ConfigManager:
     def __init__(self, config_filename='config.yaml', base_dir=None, overwrite=False):
@@ -55,7 +55,7 @@ class ConfigManager:
         Args:
             updates (dict): Dictionary with key-value pairs to be updated
         """
-        ryaml = YAML()
+        ryaml = ruamel.yaml.YAML()
         ryaml.preserve_quotes = True  # Preserve quotes around string values
 
         with open(self.config_path, 'r') as file:
@@ -75,17 +75,22 @@ class ConfigManager:
             # Ensure the final key exists before updating its value
             if final_key not in d:
                 raise KeyError(f"No matching `{key}` key found in the configuration file at path: {self.config_path}")
-            # Prevent replacing a dictionary with a non-dictionary value
-            if isinstance(d[final_key], dict):
-                raise TypeError(f"Cannot directly overwrite key `{key}` because it contains a dictionary.")
-            # Check if the original value is a string, and raise an error if a non-string type is passed
-            if isinstance(d[final_key], str) and not isinstance(value, str):
-                raise TypeError(f"Cannot update `{key}` with a non-string value: expected a string.")
-            # Check if the original value is a string, and raise an error if a non-string type is passed
-            if isinstance(d[final_key], bool) and not isinstance(value, bool):
-                raise TypeError(f"Cannot update `{key}` with a non-bool value: expected a bool.")
 
-            d[final_key] = ryaml.load(value)
+            # Handle CommentedSeq (YAML list) specially
+            if isinstance(d[final_key], ruamel.yaml.comments.CommentedSeq): 
+                if not isinstance(value, list):
+                    raise TypeError(f"Type mismatch at {key}: expected list, not {type(value)}")
+                if isinstance(value, list):
+                    d[final_key].clear()
+                    for item in value:
+                        d[final_key].append(item)
+                    print(d[final_key])
+                    continue
+
+            if type(d[final_key]) != type(value):
+                raise TypeError(f"Type mismatch at {key}: expected {type(d[final_key])}, not {type(value)}")
+
+            d[final_key] = value
 
         # Save the updated config back to the file
         with open(self.config_path, 'w') as file:
