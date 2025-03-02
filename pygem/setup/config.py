@@ -54,7 +54,7 @@ class ConfigManager:
     
     def update_config(self, updates):
         """Update multiple keys in the YAML configuration file while preserving quotes and original types."""
-        config = self.read_config(validate=False)  # Read existing config
+        config = self.read_config(validate=False)
         
         for key, value in updates.items():
             if key not in self.EXPECTED_TYPES:
