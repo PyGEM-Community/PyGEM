@@ -29,19 +29,29 @@ jobs:
   test_suite:
     name: 'Test suite'
     runs-on: ubuntu-latest
-
-    # Use pygem:latest for master branch and pygem:dev otherwise
     container:
+      # Use pygem:latest for master branch and pygem:dev otherwise
       image: ghcr.io/pygem-community/pygem:${{ github.ref == 'refs/heads/master' && 'latest' || 'dev' }}
       options: --user root
+    env:
+      # Since we are root we need to set PYTHONPATH to be able to find the installed packages
+      PYTHONPATH: /home/ubuntu/.local/lib/python3.12/site-packages
 
     steps:
-      - name: 'Checkout the repo'
+      - name: 'Checkout the PyGEM repo'
         id: checkout
         uses: actions/checkout@v4
 
       - name: 'Reinstall PyGEM'
         run: pip install --break-system-packages -e .
+
+      - name: 'Initialize PyGEM'
+        run: initialize
+
+      - name: 'Clone the PyGEM-notebooks repo'
+        run: |
+          git clone --depth 1 https://github.com/pygem-community/PyGEM-notebooks.git
+          echo "PYGEM_NOTEBOOKS_DIRPATH=$(pwd)/PyGEM-notebooks" >> $GITHUB_ENV
 
       - name: 'Run tests'
         run: |
