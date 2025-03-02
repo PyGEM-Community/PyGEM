@@ -69,11 +69,11 @@ class ConfigManager:
         self.validate_config(config)
         self.write_config(config)
     
-    def validate_config(self, data):
+    def validate_config(self, config):
         """Validate the configuration file against expected types and required keys"""
         for key, expected_type in self.EXPECTED_TYPES.items():
             keys = key.split(".")
-            sub_data = data
+            sub_data = config
             for sub_key in keys:
                 if isinstance(sub_data, dict) and sub_key in sub_data:
                     sub_data = sub_data[sub_key]
