@@ -50,8 +50,7 @@ jobs:
 
       - name: 'Clone the PyGEM-notebooks repo'
         run: |
-          git clone -b 11_config_update --depth 1 https://github.com/pygem-community/PyGEM-notebooks.git
-
+          git clone --depth 1 https://github.com/pygem-community/PyGEM-notebooks.git
           echo "PYGEM_NOTEBOOKS_DIRPATH=$(pwd)/PyGEM-notebooks" >> $GITHUB_ENV
 
       - name: 'Run tests'
