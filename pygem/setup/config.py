@@ -13,21 +13,29 @@ __all__ = ["ConfigManager"]
 
 
 class ConfigManager:
+    """Manages PyGEMs configuration file, ensuring it exists, reading, updating, and validating its contents."""
     def __init__(self, config_filename='config.yaml', base_dir=None, overwrite=False):
-        """initialize the ConfigManager class"""
+        """
+        Initialize the ConfigManager class.
+
+        Parameters:
+        config_filename (str, optional): Name of the configuration file. Defaults to 'config.yaml'.
+        base_dir (str, optional): Directory where the configuration file is stored. Defaults to '~/PyGEM'.
+        overwrite (bool, optional): Whether to overwrite an existing configuration file. Defaults to False.
+        """
         self.config_filename = config_filename
         self.base_dir = base_dir or os.path.join(os.path.expanduser('~'), 'PyGEM')
         self.config_path = os.path.join(self.base_dir, self.config_filename)
         self.source_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.yaml")
         self.overwrite = overwrite
-        self.ensure_config()
+        self._ensure_config()
     
-    def ensure_config(self):
+    def _ensure_config(self):
         """Ensure the configuration file exists, creating or overwriting it if necessary"""
         if not os.path.isfile(self.config_path) or self.overwrite:
-            self.copy_source_config()
+            self._copy_source_config()
 
-    def copy_source_config(self):
+    def _copy_source_config(self):
         """Copy the default configuration file to the expected location"""
 
         os.makedirs(self.base_dir, exist_ok=True)
@@ -35,25 +43,36 @@ class ConfigManager:
         print(f"Copied default configuration to {self.config_path}")
         
     def read_config(self, validate=True):
-        """Read the configuration file and return its contents as a dictionary while preserving formatting."""
+        """Read the configuration file and return its contents as a dictionary while preserving formatting.
+        Parameters:
+        validate (bool): Whether to validate the configuration file contents. Defaults to True.
+        """
         ryaml = ruamel.yaml.YAML()
         with open(self.config_path, 'r') as f:
             user_config = ryaml.load(f)
 
         if validate:
-            self.validate_config(user_config)
+            self._validate_config(user_config)
 
         return user_config
 
-    def write_config(self, config):
-        """Write the configuration dictionary to the file while preserving quotes."""
+    def _write_config(self, config):
+        """Write the configuration dictionary to the file while preserving quotes.
+
+        Parameters:
+        config (dict): configuration dictionary object
+        """
         ryaml = ruamel.yaml.YAML()
         ryaml.preserve_quotes = True
         with open(self.config_path, 'w') as file:
-            ryaml.dump(config, file)  # This will preserve quotes
+            ryaml.dump(config, file)
     
     def update_config(self, updates):
-        """Update multiple keys in the YAML configuration file while preserving quotes and original types."""
+        """Update multiple keys in the YAML configuration file while preserving quotes and original types.
+        
+        Parameters:
+        updates (dict): Key-Value pairs to be updated
+        """
         config = self.read_config(validate=False)
         
         for key, value in updates.items():
@@ -66,11 +85,15 @@ class ConfigManager:
 
             d[keys[-1]] = value
         
-        self.validate_config(config)
-        self.write_config(config)
+        self._validate_config(config)
+        self._write_config(config)
     
-    def validate_config(self, config):
-        """Validate the configuration file against expected types and required keys"""
+    def _validate_config(self, config):
+        """Validate the configuration dictionary against expected types and required keys.
+        
+        Parameters:
+        config (dict): The configuration dictionary to be validated.
+        """
         for key, expected_type in self.EXPECTED_TYPES.items():
             keys = key.split(".")
             sub_data = config
