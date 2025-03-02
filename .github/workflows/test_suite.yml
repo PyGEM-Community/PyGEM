@@ -53,6 +53,9 @@ jobs:
           git clone --depth 1 https://github.com/pygem-community/PyGEM-notebooks.git
           export PYGEM_NOTEBOOKS_DIRPATH=$(pwd)/PyGEM-notebooks
 
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+
       - name: 'Run tests'
         run: |
           python3 -m coverage erase
