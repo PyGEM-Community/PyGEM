@@ -83,10 +83,10 @@ class ConfigManager:
                 if isinstance(sub_data, dict) and sub_key in sub_data:
                     sub_data = sub_data[sub_key]
                 else:
-                    raise KeyError(f"Missing required key: '{key}' in configuration")
+                    raise KeyError(f"Missing required key in configuration: {key}")
 
             if not isinstance(sub_data, expected_type):
-                raise TypeError(f"Invalid type for '{key}': expected {expected_type}, got {type(sub_data)}")
+                raise TypeError(f"Invalid type for '{key}': expected {expected_type}, not {type(sub_data)}")
 
             # Check elements inside lists (if defined)
             if key in self.LIST_ELEMENT_TYPES and isinstance(sub_data, list):

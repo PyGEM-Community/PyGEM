@@ -21,7 +21,6 @@ class TestConfigManager:
         assert config_path.is_file()
 
     def test_read_config(self):
-        self.config_manager.create_config()
         config = self.config_manager.read_config()
         assert isinstance(config, dict)
         assert "sim" in config
@@ -36,12 +35,28 @@ class TestConfigManager:
     def test_update_config_type_error(self, key, invalid_value, expected_type, invalid_type):
         """
         Test that a TypeError is raised when updating a value with a new value of a
-        different type.
+        wrong type.
         """
         with pytest.raises(
             TypeError, 
-            match=f"Type mismatch at {key.replace('.', '\\.')}:"
+            match=f"Invalid type for '{key.replace('.', '\\.')}':"
                   f" expected.*{expected_type}.*, not.*{invalid_type}.*"
+        ):
+            self.config_manager.update_config({key: invalid_value})
+
+    def test_update_config_list_element_type_error(self):
+        """
+        Test that a TypeError is raised when updating a value with a new list value
+        containing elements of a different type than expected.
+        """
+        key = "rgi.rgi_cols_drop"
+        invalid_value = ["a", "b", 100]
+        expected_type = "str"
+
+        with pytest.raises(
+            TypeError, 
+            match=f"Invalid type for elements in '{key.replace('.', '\\.')}':"
+                  f" expected all elements to be .*{expected_type}.*, but got.*{invalid_value}.*"
         ):
             self.config_manager.update_config({key: invalid_value})
 
@@ -54,7 +69,7 @@ class TestConfigManager:
         with open(self.config_manager.config_path, 'w') as f:
             yaml.dump(config, f)
 
-        with pytest.raises(ValueError, match=r"Missing key in user config: sim\.nsims"):
+        with pytest.raises(KeyError, match=r"Missing required key in configuration: sim\.nsims"):
             self.config_manager.read_config(validate=True)
 
     def test_update_config(self):
