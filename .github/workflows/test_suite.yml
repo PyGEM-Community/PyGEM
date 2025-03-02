@@ -34,14 +34,15 @@ jobs:
       image: ghcr.io/pygem-community/pygem:${{ github.ref == 'refs/heads/master' && 'latest' || 'dev' }}
       options: --user root
     env:
-      NOTEBOOKS_DIRPATH: ${{ github.workspace }}/PyGEM-notebooks
+      # Since we are root we need to set PYTHONPATH to be able to find the installed packages
+      PYTHONPATH: /home/ubuntu/.local/lib/python3.12/site-packages
 
     steps:
       - name: 'Checkout the PyGEM-notebooks repo'
         uses: actions/checkout@v4
         with:
           repository: 'pygem-community/PyGEM-notebooks'
-          path: ${{ env.NOTEBOOKS_DIRPATH }}
+          path: PyGEM-notebooks
 
       - name: 'Checkout the PyGEM repo'
         id: checkout
@@ -55,5 +56,6 @@ jobs:
 
       - name: 'Run tests'
         run: |
+          export PYGEM_NOTEBOOKS_DIRPATH=$(pwd)/PyGEM-notebooks
           python3 -m coverage erase
           python3 -m pytest --cov=pygem -v --durations=20 pygem/tests
