@@ -28,9 +28,7 @@ class ConfigManager:
 
     def copy_source_config(self):
         """Copy the default configuration file to the expected location"""
-        if not os.path.exists(self.source_config_path):
-            raise FileNotFoundError(f"Default config file not found at {self.source_config_path}, there may have been an installation issue")
-        
+
         os.makedirs(self.base_dir, exist_ok=True)
         shutil.copy(self.source_config_path, self.config_path)
         print(f"Copied default configuration to {self.config_path}")
