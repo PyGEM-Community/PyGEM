@@ -63,7 +63,7 @@ class ConfigManager:
             for sub_key in keys[:-1]:
                 d = d[sub_key]
 
-            d[keys[-1] ] = value
+            d[keys[-1]] = value
         
         self.validate_config(config)
         self.write_config(config)
