@@ -93,9 +93,9 @@ class ConfigManager:
     EXPECTED_TYPES = {
         "root": str,
         "user": dict,
-        "user.name": str,
-        "user.institution": str,
-        "user.email": str,
+        "user.name":  (str, type(None)),
+        "user.institution":  (str, type(None)),
+        "user.email":  (str, type(None)),
         "setup": dict,
         "setup.rgi_region01": list,
         "setup.rgi_region02": str,
