@@ -51,10 +51,7 @@ jobs:
       - name: 'Clone the PyGEM-notebooks repo'
         run: |
           git clone --depth 1 https://github.com/pygem-community/PyGEM-notebooks.git
-          export PYGEM_NOTEBOOKS_DIRPATH=$(pwd)/PyGEM-notebooks
-
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
+          echo "PYGEM_NOTEBOOKS_DIRPATH=$(pwd)/PyGEM-notebooks" >> $GITHUB_ENV
 
       - name: 'Run tests'
         run: |
