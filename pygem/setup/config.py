@@ -56,20 +56,16 @@ class ConfigManager:
         config = self.read_config(validate=False)  # Read existing config
         
         for key, value in updates.items():
+            if key not in self.EXPECTED_TYPES:
+                raise KeyError(f"Unrecognized configuration key: {key}")
             keys = key.split('.')
             d = config
             for sub_key in keys[:-1]:
-                if sub_key not in d or not isinstance(d[sub_key], dict):
-                    raise KeyError(f"Invalid configuration path: {key}")
                 d = d[sub_key]
-            
-            final_key = keys[-1]
-            if final_key not in d:
-                raise KeyError(f"Invalid configuration key: {key}")
-            
-            d[final_key] = value
+
+            d[keys[-1] ] = value
         
-        self.validate_config(config)  # Validate before writing to file
+        self.validate_config(config)
         self.write_config(config)
     
     def validate_config(self, data):

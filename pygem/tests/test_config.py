@@ -26,6 +26,11 @@ class TestConfigManager:
         assert "sim" in config
         assert "nsims" in config["sim"]
 
+    def test_update_config_unrecognized_key_error(self):
+        """Test that a KeyError is raised when updating a value with an unrecognized key."""
+        with pytest.raises(KeyError, match="Unrecognized configuration key: invalid_key"):
+            self.config_manager.update_config({"invalid_key": None})
+
     @pytest.mark.parametrize("key, invalid_value, expected_type, invalid_type", [
         ("sim.nsims", [1, 2, 3], "int", "list"),
         ("calib.HH2015_params.kp_init", "0.5", "float", "str"),
@@ -99,3 +104,26 @@ class TestConfigManager:
         assert config["setup"]["include_landterm"] == False
         assert config["user"]["email"] == "updated@example.com"
         assert config["rgi"]["rgi_cols_drop"] == ["Item1", "Item2"]
+
+    def test_update_config_dict(self):
+        """Test that update_config updates the config file for nested dictionaries."""
+        # Values before updating
+        config = self.config_manager.read_config()
+        assert config["user"]["name"] == "David Rounce"
+        assert config["user"]["email"] == "drounce@cmu.edu"
+        assert config["user"]["institution"] == "Carnegie Mellon University, Pittsburgh PA"
+
+        updates = {
+            "user": {
+                "name": "New Name",
+                "email": "New email",
+                "institution": "New Institution",
+            }
+        }
+        self.config_manager.update_config(updates)
+
+        # Values after updating
+        config = self.config_manager.read_config()
+        assert config["user"]["name"] == "New Name"
+        assert config["user"]["email"] == "New email"
+        assert config["user"]["institution"] == "New Institution"
