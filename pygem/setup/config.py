@@ -9,6 +9,9 @@ import os
 import shutil
 import ruamel.yaml
 
+__all__ = ["ConfigManager"]
+
+
 class ConfigManager:
     def __init__(self, config_filename='config.yaml', base_dir=None, overwrite=False):
         """initialize the ConfigManager class"""
