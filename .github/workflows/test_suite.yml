@@ -50,14 +50,14 @@ jobs:
         with:
           path: PyGEM
 
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+
       - name: 'Reinstall PyGEM'
         run: pip install --break-system-packages -e .
 
       - name: 'Initialize PyGEM'
         run: initialize
-
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
 
       - name: 'Run tests'
         run: |
