@@ -7,8 +7,6 @@ Distrubted under the MIT lisence
 """
 import os
 import shutil
-import yaml
-import argparse
 import ruamel.yaml
 
 class ConfigManager:
