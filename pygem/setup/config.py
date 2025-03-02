@@ -38,7 +38,7 @@ class ConfigManager:
         """Read the configuration file and return its contents as a dictionary while preserving formatting."""
         ryaml = ruamel.yaml.YAML()
         with open(self.config_path, 'r') as f:
-            user_config = ryaml.load(f)  # Using ruamel.yaml for preservation
+            user_config = ryaml.load(f)
 
         if validate:
             self.validate_config(user_config)
