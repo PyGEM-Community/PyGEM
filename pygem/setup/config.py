@@ -45,6 +45,13 @@ class ConfigManager:
             self.validate_config(user_config)
 
         return user_config
+
+    def write_config(self, config):
+        """Write the configuration dictionary to the file while preserving quotes."""
+        ryaml = ruamel.yaml.YAML()
+        ryaml.preserve_quotes = True
+        with open(self.config_path, 'w') as file:
+            ryaml.dump(config, file)  # This will preserve quotes
     
     def update_config(self, updates):
         """Update multiple keys in the YAML configuration file while preserving quotes and original types."""
@@ -66,13 +73,6 @@ class ConfigManager:
         
         self.validate_config(config)  # Validate before writing to file
         self.write_config(config)
-    
-    def write_config(self, config):
-        """Write the configuration dictionary to the file while preserving quotes."""
-        ryaml = ruamel.yaml.YAML()
-        ryaml.preserve_quotes = True
-        with open(self.config_path, 'w') as file:
-            ryaml.dump(config, file)  # This will preserve quotes
     
     def validate_config(self, data):
         """Validate the configuration file against expected types and required keys"""
