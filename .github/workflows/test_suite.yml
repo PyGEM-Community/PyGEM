@@ -50,7 +50,9 @@ jobs:
 
       - name: 'Clone the PyGEM-notebooks repo'
         run: |
-          git clone --depth 1 https://github.com/pygem-community/PyGEM-notebooks.git
+          BRANCH=${GITHUB_REF#refs/heads/}
+          git clone --depth 1 --branch $([[ "$BRANCH" == "master" ]] && echo "main" || echo "dev") \
+            https://github.com/pygem-community/PyGEM-notebooks.git
           echo "PYGEM_NOTEBOOKS_DIRPATH=$(pwd)/PyGEM-notebooks" >> $GITHUB_ENV
 
       - name: 'Run tests'
