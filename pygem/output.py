@@ -74,7 +74,6 @@ class single_glacier:
     gcm_endyear: int
     option_calibration: str
     option_bias_adjustment: str
-    outfn: str
 
     def __post_init__(self):
         """
@@ -98,9 +97,16 @@ class single_glacier:
         self.model_params_record()
         self.init_dicts()
 
-    def set_fn(self):
-        """Set the dataset output file name."""
-        if not self.outfn:
+    def set_fn(self, outfn):
+        """Set the dataset output file name.
+        Parameters
+        ----------
+        outfn : str
+            Output filename string.
+        """
+        if outfn:
+            self.outfn = outfn
+        else:
             self.outfn = self.glacier_str + '_' + self.gcm_name + '_'
             if self.scenario:
                 self.outfn += f'{self.scenario}_'
@@ -268,16 +274,10 @@ class single_glacier:
         """Return the xarray dataset."""
         return self.output_xr_ds
     
-    def save_xr_ds(self, netcdf_fn):
-        """Save the xarray dataset.
-
-        Parameters
-        ----------
-        netcdf_fn : str
-            Output filename.
-        """
+    def save_xr_ds(self):
+        """Save the xarray dataset."""
         # export netcdf
-        self.output_xr_ds.to_netcdf(self.outdir + netcdf_fn, encoding=self.encoding) 
+        self.output_xr_ds.to_netcdf(self.outdir + self.outfn, encoding=self.encoding) 
         # close datasets
         self.output_xr_ds.close()
 
