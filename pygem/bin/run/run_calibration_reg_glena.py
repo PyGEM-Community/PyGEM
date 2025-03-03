@@ -22,11 +22,11 @@ import numpy as np
 from scipy.optimize import brentq
 # pygem imports
 import pygem
-import pygem.setup.config as config
-# Check for config
-config.ensure_config()  # This will ensure the config file is created
-# Read the config
-pygem_prms = config.read_config()  # This reads the configuration file
+from pygem.setup.config import ConfigManager
+# instantiate ConfigManager
+config_manager = ConfigManager()
+# read the config
+pygem_prms = config_manager.read_config()
 from pygem import class_climate
 from pygem.massbalance import PyGEMMassBalance
 from pygem.oggm_compat import single_flowline_glacier_directory

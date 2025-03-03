@@ -31,11 +31,11 @@ import gpytorch
 import sklearn.model_selection
 
 # pygem imports
-import pygem.setup.config as config
-# check for config
-config.ensure_config()
+from pygem.setup.config import ConfigManager
+# instantiate ConfigManager
+config_manager = ConfigManager()
 # read the config
-pygem_prms = config.read_config()
+pygem_prms = config_manager.read_config()
 from pygem import mcmc
 from pygem import class_climate
 from pygem.massbalance import PyGEMMassBalance
