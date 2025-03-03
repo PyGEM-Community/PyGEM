@@ -35,11 +35,11 @@ import xarray as xr
 
 # pygem imports
 import pygem
-import pygem.setup.config as config
-# check for config
-config.ensure_config()
+from pygem.setup.config import ConfigManager
+# instantiate ConfigManager
+config_manager = ConfigManager()
 # read the config
-pygem_prms = config.read_config()
+pygem_prms = config_manager.read_config()
 import pygem.gcmbiasadj as gcmbiasadj
 import pygem.pygem_modelsetup as modelsetup
 from pygem.massbalance import PyGEMMassBalance

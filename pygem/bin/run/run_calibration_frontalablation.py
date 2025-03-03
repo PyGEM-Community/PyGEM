@@ -24,11 +24,11 @@ import numpy as np
 from scipy.stats import linregress
 import xarray as xr
 # pygem imports
-import pygem.setup.config as config
-# check for config
-config.ensure_config()
+from pygem.setup.config import ConfigManager
+# instantiate ConfigManager
+config_manager = ConfigManager()
 # read the config
-pygem_prms = config.read_config()
+pygem_prms = config_manager.read_config()
 import pygem.pygem_modelsetup as modelsetup
 from pygem.massbalance import PyGEMMassBalance
 from pygem.glacierdynamics import MassRedistributionCurveModel

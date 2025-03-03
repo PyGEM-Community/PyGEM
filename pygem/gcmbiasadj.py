@@ -16,10 +16,11 @@ import math
 import numpy as np
 from scipy.ndimage import uniform_filter
 from scipy.stats import percentileofscore
-# load pygem config
-import pygem.setup.config as config
-# Read the config
-pygem_prms = config.read_config()
+from pygem.setup.config import ConfigManager
+# instantiate ConfigManager
+config_manager = ConfigManager()
+# read the config
+pygem_prms = config_manager.read_config()
 
 #%% FUNCTIONS
 def annual_avg_2darray(x):

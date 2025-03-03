@@ -20,10 +20,11 @@ from oggm.core import flowline
 from oggm.core.massbalance import MassBalanceModel
 #from oggm.shop import rgitopo
 from pygem.shop import debris, mbdata, icethickness
-# Local libraries
-import pygem.setup.config as config
-# read config
-pygem_prms = config.read_config()
+from pygem.setup.config import ConfigManager
+# instantiate ConfigManager
+config_manager = ConfigManager()
+# read the config
+pygem_prms = config_manager.read_config()
 
 
 class CompatGlacDir:

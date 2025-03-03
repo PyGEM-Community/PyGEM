@@ -18,10 +18,12 @@ from oggm import cfg
 from oggm.utils import entity_task
 from oggm.core.gis import rasterio_to_gdir
 from oggm.utils import ncDataset
-# Local libraries
-import pygem.setup.config as config
-# Read the config
-pygem_prms = config.read_config()  # This reads the configuration file
+# pygem imports
+from pygem.setup.config import ConfigManager
+# instantiate ConfigManager
+config_manager = ConfigManager()
+# read the config
+pygem_prms = config_manager.read_config()
 
 if not 'consensus_mass' in cfg.BASENAMES:
     cfg.BASENAMES['consensus_mass'] = ('consensus_mass.pkl', 'Glacier mass from consensus ice thickness data')
