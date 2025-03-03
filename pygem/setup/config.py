@@ -11,7 +11,6 @@ import ruamel.yaml
 
 __all__ = ["ConfigManager"]
 
-
 class ConfigManager:
     """Manages PyGEMs configuration file, ensuring it exists, reading, updating, and validating its contents."""
     def __init__(self, config_filename='config.yaml', base_dir=None, overwrite=False):
@@ -251,10 +250,6 @@ class ConfigManager:
         "calib.data.massbalance.hugonnet2021_relpath": str,
         "calib.data.massbalance.hugonnet2021_fn": str,
         "calib.data.massbalance.hugonnet2021_facorrected_fn": str,
-        "calib.data.oib": dict,
-        "calib.data.oib.oib_relpath": str,
-        "calib.data.oib.oib_rebin": int,
-        "calib.data.oib.oib_filter_pctl": int,
         "calib.data.frontalablation": dict,
         "calib.data.frontalablation.frontalablation_relpath": str,
         "calib.data.frontalablation.frontalablation_cal_fn": str,
