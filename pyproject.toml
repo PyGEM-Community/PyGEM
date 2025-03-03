@@ -53,6 +53,7 @@ postproc_distribute_ice = "pygem.bin.postproc.postproc_distribute_ice:main"
 postproc_compile_simulations = "pygem.bin.postproc.postproc_compile_simulations:main"
 list_failed_simulations = "pygem.bin.op.list_failed_simulations:main"
 duplicate_gdirs = "pygem.bin.op.duplicate_gdirs:main"
+fetch_data = "pygem.bin.op.fetch_data:main"
 
 [build-system]
 requires = ["poetry-core"]
