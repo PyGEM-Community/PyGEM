@@ -34,7 +34,6 @@ from scipy.stats import median_abs_deviation
 import xarray as xr
 
 # pygem imports
-import pygem
 from pygem.setup.config import ConfigManager
 # instantiate ConfigManager
 config_manager = ConfigManager()
@@ -162,6 +161,8 @@ def getparser():
                         help='number of simulations (note, defaults to 1 if `option_calibration` != `MCMC`)')
     parser.add_argument('-modelprms_fp', action='store', type=str, default=None,
                         help='model parameters filepath')
+    parser.add_argument('-outputfn_sfix', action='store', type=str, default='',
+                        help='append custom filename suffix to simulation output')
     # flags
     parser.add_argument('-export_all_simiters', action='store_true',
                         help='Flag to export data from all simulations', default=pygem_prms['sim']['out']['export_all_simiters'])  
@@ -1057,7 +1058,6 @@ def run(list_packed_vars):
                         output_stats = output.glacierwide_stats(glacier_rgi_table=glacier_rgi_table, 
                                                 dates_table=dates_table,
                                                 nsims=1,
-                                                pygem_version=pygem.__version__,
                                                 gcm_name = gcm_name,
                                                 scenario = scenario,
                                                 realization=realization,
@@ -1100,13 +1100,12 @@ def run(list_packed_vars):
                                 output_ds_all_stats['offglac_snowpack_monthly'].values[0,:] = output_offglac_snowpack_monthly[:,n_iter]
 
                             # export glacierwide stats for iteration
-                            output_stats.save_xr_ds(output_stats.get_fn().replace('SETS',f'set{n_iter}') + 'all.nc')
+                            output_stats.save_xr_ds(output_stats.get_fn().replace('SETS',f'set{n_iter}') + args.outputfn_sfix + 'all.nc')
 
                     # instantiate dataset for merged simulations
                     output_stats = output.glacierwide_stats(glacier_rgi_table=glacier_rgi_table, 
                                             dates_table=dates_table,
                                             nsims=nsims,
-                                            pygem_version=pygem.__version__,
                                             gcm_name = gcm_name,
                                             scenario = scenario,
                                             realization=realization,
@@ -1195,7 +1194,7 @@ def run(list_packed_vars):
                             output_ds_all_stats['offglac_snowpack_monthly_mad'].values[0,:] = output_offglac_snowpack_monthly_stats[:,1]
 
                     # export merged netcdf glacierwide stats
-                    output_stats.save_xr_ds(output_stats.get_fn().replace('SETS',f'{nsims}sets') + 'all.nc')
+                    output_stats.save_xr_ds(output_stats.get_fn().replace('SETS',f'{nsims}sets') + args.outputfn_sfix + 'all.nc')
 
                     # ----- DECADAL ICE THICKNESS STATS FOR OVERDEEPENINGS -----
                     if args.export_binned_data and glacier_rgi_table.Area > pygem_prms['sim']['out']['export_binned_area_threshold']:
@@ -1210,7 +1209,6 @@ def run(list_packed_vars):
                                                     nsims=1,
                                                     nbins = surface_h_initial.shape[0],
                                                     binned_components = args.export_binned_components,
-                                                    pygem_version=pygem.__version__,
                                                     gcm_name = gcm_name,
                                                     scenario = scenario,
                                                     realization=realization,
@@ -1241,7 +1239,7 @@ def run(list_packed_vars):
                                     output_ds_binned_stats['bin_refreeze_monthly'].values[0,:,:] = output_glac_bin_refreeze_monthly[:,:,n_iter]
 
                                 # export binned stats for iteration
-                                output_binned.save_xr_ds(output_binned.get_fn().replace('SETS',f'set{n_iter}') + 'binned.nc')
+                                output_binned.save_xr_ds(output_binned.get_fn().replace('SETS',f'set{n_iter}') + args.outputfn_sfix + 'binned.nc')
 
                         # instantiate dataset for merged simulations
                         output_binned = output.binned_stats(glacier_rgi_table=glacier_rgi_table, 
@@ -1249,7 +1247,6 @@ def run(list_packed_vars):
                                                 nsims=nsims,
                                                 nbins = surface_h_initial.shape[0],
                                                 binned_components = args.export_binned_components,
-                                                pygem_version=pygem.__version__,
                                                 gcm_name = gcm_name,
                                                 scenario = scenario,
                                                 realization=realization,
@@ -1293,7 +1290,7 @@ def run(list_packed_vars):
                                 median_abs_deviation(output_glac_bin_massbalclim_annual, axis=2)[np.newaxis,:,:])
                         
                         # export merged netcdf glacierwide stats
-                        output_binned.save_xr_ds(output_binned.get_fn().replace('SETS',f'{nsims}sets') + 'binned.nc')
+                        output_binned.save_xr_ds(output_binned.get_fn().replace('SETS',f'{nsims}sets') + args.outputfn_sfix + 'binned.nc')
 
         except Exception as err:
             # LOG FAILURE
