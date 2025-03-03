@@ -11,7 +11,6 @@ import ruamel.yaml
 
 __all__ = ["ConfigManager"]
 
-
 class ConfigManager:
     """Manages PyGEMs configuration file, ensuring it exists, reading, updating, and validating its contents."""
     def __init__(self, config_filename='config.yaml', base_dir=None, overwrite=False):

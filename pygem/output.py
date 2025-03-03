@@ -18,12 +18,14 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import os, types, json, cftime, collections
-import pygem
+import pygem.__version__ as version
 from pygem.setup.config import ConfigManager
 # instantiate ConfigManager
 config_manager = ConfigManager()
 # read the config
 pygem_prms = config_manager.read_config()
+
+__all__ = ['single_glacier', 'glacierwide_stats', 'binned_stats']
 
 @dataclass
 class single_glacier:
@@ -62,7 +64,6 @@ class single_glacier:
     """
     glacier_rgi_table : pd.DataFrame
     dates_table : pd.DataFrame
-    pygem_version : float
     gcm_name : str
     scenario : str
     realization : str
@@ -87,7 +88,7 @@ class single_glacier:
         - Defines the output directory path for storing simulation results.
         - Calls setup functions to initialize and store filenames, time values, model parameters, and dictionaries.
         """
-        self.pygem_version = pygem.__version__
+        self.pygem_version = version
         self.glac_values = np.array([self.glacier_rgi_table.name])
         self.glacier_str = '{0:0.5f}'.format(self.glacier_rgi_table['RGIId_float'])
         self.reg_str  = str(self.glacier_rgi_table.O1Region).zfill(2)
