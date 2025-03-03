@@ -194,11 +194,6 @@ calib:
       hugonnet2021_relpath: /DEMs/Hugonnet2021/   # relative to main data path
       hugonnet2021_fn: df_pergla_global_20yr-filled.csv                                             # this file is 'raw', filled geodetic mass balance from Hugonnet et al. (2021) - pulled by prerproc_fetch_mbdata.py
       hugonnet2021_facorrected_fn: df_pergla_global_20yr-filled-frontalablation-corrected.csv       # frontal ablation corrected geodetic mass balance (produced by run_calibration_frontalablation.py)
-    # operation icebridge altimetric surface elevations
-    oib:
-      oib_relpath: /OIB/lidar_cop30_deltas/       # relative to main data path
-      oib_rebin: 100                              # elevation rebinning in meters
-      oib_filter_pctl: 10                         # pixel count percentile filter - for each survey
     # frontal ablation
     frontalablation:
       frontalablation_relpath: /frontalablation_data/                                               # relative to main data path
