@@ -1,11 +1,11 @@
 (install_pygem_target)=
 # Installation
-The Python Glacier Evolution Model has been packaged using Poetry and is hosted on the Python Package Index ([PyPI](https://pypi.org/project/pygem/)), such that all dependencies should install seamlessly. It is recommended that users create a [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/index.html) environment from which to install the model dependencies and core code. If you do not yet have conda installed, see [conda's documentation](https://docs.conda.io/projects/conda/en/latest/user-guide/install) for instructions.
+The Python Glacier Evolution Model has been packaged using Poetry and is hosted on the Python Package Index ([PyPI](https://pypi.org/project/pygem/)), to ensure that all dependencies install seamlessly. It is recommended that users create a [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/index.html) environment from which to install the model dependencies and core code. If you do not yet have conda installed, see [conda's documentation](https://docs.conda.io/projects/conda/en/latest/user-guide/install) for instructions.
 
 Next, choose your preferred PyGEM installation option:<br>
-- [**stable**](stable_install_target): this is the latest version officially released and has a fixed version number (e.g. v1.0.1).
-- [**dev**](dev_install_target): this is the development version. It might contain new features and bug fixes, but is also likely to continue to change until a new release is made. This is the recommended way if you want to work with the latest changes to the code.
-- [**dev+**](dev+_install_target): this is the recommended way if you plan to contribute to the PyGEM and make your own changes to the code.
+- [**stable**](stable_install_target): this is the latest version that has been officially released to PyPI, with a fixed version number (e.g. v1.0.1). It is intended for general use.
+- [**dev**](dev_install_target): this is the development version. It might contain new features and bug fixes, but is also likely to continue to change until a new release is made. This is the recommended option if you want to work with the latest changes to the code.
+- [**dev+**](dev+_install_target): this is the recommended option if you plan to contribute to the PyGEM and make your own changes to the code.
 
 ```{note}
 The **dev** and **dev+** installation options require [git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) software to be installed on your computer.
@@ -48,7 +48,7 @@ If you opted to create your own fork, clone using appropriate repo URL: `git clo
 
 Navigate to root project directory:
 ```
-cd pygem
+cd PyGEM
 ```
 
 Install PyGEM in 'editable' mode:
@@ -56,13 +56,13 @@ Install PyGEM in 'editable' mode:
 pip install -e .
 ```
 
-Installing a package in editable mode (also called development mode) creates a symbolic link to your source code directory (*/path/to/your/PyGEM/clone*), rather than copying the package files into the site-packages directory. This allows you to modify the package code without reinstalling it. Changes to the source code take effect immediately without needing to reinstall the package, thus efficiently facilitating development.<br>
+Installing a package in editable mode creates a symbolic link to your source code directory (*/path/to/your/PyGEM/clone*), rather than copying the package files into the site-packages directory. This allows you to modify the package code without reinstalling it.<br>
 
 To contribute to PyGEM's development, see the [contribution guide](contributing_pygem_target).
 
 (setup_target)=
 # Setup
-Following installation, an initialization script should to be executed.
+Following installation, an initialization script should be executed.
 
 The initialization script accomplishes two things:
 1. Initializes the PyGEM configuration file *~/PyGEM/config.yaml*. If this file already exists, an overwrite prompt will appear.
@@ -74,4 +74,4 @@ initialize
 ```
 
 # Demonstration Notebooks
-A series of accompanying Jupyter notebooks have been produced for demonstrating the functionality of PyGEM. These can be acquired from [GitHub](https://github.com/PyGEM-Community/PyGEM-notebooks).
+A series of accompanying Jupyter notebooks has been produced for demonstrating the functionality of PyGEM. These are hosted in the [PyGEM-notebooks repository](https://github.com/PyGEM-Community/PyGEM-notebooks).
