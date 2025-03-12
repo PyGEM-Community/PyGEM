@@ -4,12 +4,8 @@ The Python Glacier Evolution Model has been packaged using Poetry and is hosted 
 
 Next, choose your preferred PyGEM installation option:<br>
 - [**stable**](stable_install_target): this is the latest version that has been officially released to PyPI, with a fixed version number (e.g. v1.0.1). It is intended for general use.
-- [**dev**](dev_install_target): this is the development version. It might contain new features and bug fixes, but is also likely to continue to change until a new release is made. This is the recommended option if you want to work with the latest changes to the code.
-- [**dev+**](dev+_install_target): this is the recommended option if you plan to contribute to the PyGEM and make your own changes to the code.
+- [**development**](dev_install_target): this is the development version of PyGEM hosted on [GitHub](https://github.com/PyGEM-Community/PyGEM/tree/dev). It might contain new features and bug fixes, but is also likely to continue to change until a new release is made. This is the recommended option if you want to work with the latest changes to the code. Note, this installation options require [git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) software to be installed on your computer.
 
-```{note}
-The **dev** and **dev+** installation options require [git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) software to be installed on your computer.
-```
 **Copyright note**: PyGEM's installation instructions are modified from that of [OGGM](https://docs.oggm.org/en/stable/installing-oggm.html)
 
 (stable_install_target)=
@@ -22,43 +18,14 @@ By default the environment will be named `pygem`. A different name can be specif
 ```
 
 (dev_install_target)=
-## Dev install
+## Development install
 Install the [development version](https://github.com/PyGEM-Community/PyGEM/tree/dev) of PyGEM in your conda environment using pip:
 ```
 pip uninstall pygem
 pip install git+https://github.com/PyGEM-Community/pygem/@dev
 ```
 
-(dev+_install_target)=
-## Dev+ install
-If you intend to access and make your own edits to the model, is is recommended that you clone the source code locally to your computer.
-
-Either clone [PyGEM's GitHub repository](https://github.com/PyGEM-Community/PyGEM) directly, or initiate your own fork to clone. See [here](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo) for instructions on how to fork a repo.
-
-If PyGEM was already installed in your conda environment it is recommended that you first uninstall:
-```
-pip uninstall pygem
-```
-
-Next, clone PyGEM. This will place the code at your current directory, so you may wish to navigate to a desired location in your terminal before cloning:
-```
-git clone https://github.com/PyGEM-Community/PyGEM.git
-```
-If you opted to create your own fork, clone using appropriate repo URL: `git clone https://github.com/YOUR-USERNAME/PyGEM.git`
-
-Navigate to root project directory:
-```
-cd PyGEM
-```
-
-Install PyGEM in 'editable' mode:
-```
-pip install -e .
-```
-
-Installing a package in editable mode creates a symbolic link to your source code directory (*/path/to/your/PyGEM/clone*), rather than copying the package files into the site-packages directory. This allows you to modify the package code without reinstalling it.<br>
-
-To contribute to PyGEM's development, see the [contribution guide](contributing_pygem_target).
+If you intend to access and make your own edits to the model's source code, see the [contribution guide](contributing_pygem_target).
 
 (setup_target)=
 # Setup

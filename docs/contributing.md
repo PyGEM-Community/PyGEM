@@ -1,5 +1,31 @@
 (contributing_pygem_target)=
 # PyGEM Contribution Guide
+
+Before contributing to PyGEM, it is recommended that you either clone [PyGEM's GitHub repository](https://github.com/PyGEM-Community/PyGEM) directly, or initiate your own fork to then clone. See [here](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo) for instructions on how to fork a repo.
+
+If PyGEM was already installed in your conda environment (see [here](install_pygem_target)), it is recommended that you first uninstall:
+```
+pip uninstall pygem
+```
+
+Next, clone PyGEM. This will place the code at your current directory, so you may wish to navigate to a desired location in your terminal before cloning:
+```
+git clone https://github.com/PyGEM-Community/PyGEM.git
+```
+If you opted to create your own fork, clone using appropriate repo URL: `git clone https://github.com/YOUR-USERNAME/PyGEM.git`
+
+Navigate to root project directory:
+```
+cd PyGEM
+```
+
+Install PyGEM in 'editable' mode:
+```
+pip install -e .
+```
+
+Installing a package in editable mode creates a symbolic link to your source code directory (*/path/to/your/PyGEM/clone*), rather than copying the package files into the site-packages directory. This allows you to modify the package code without reinstalling it.<br>
+
 ## General
 - The `dev` branch is the repository's working branch and should almost always be the base branch for Pull Requests (PRs). Exceptions include hotfixes that need to be pushed to the `master` branch immediately, or updates to the `README`.
 - Do not push to other people's branches. Instead create a new branch and open a PR that merges your new branch into the branch you want to modify.
