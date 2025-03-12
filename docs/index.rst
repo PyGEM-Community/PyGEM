@@ -56,7 +56,7 @@ with respect to modeling glacier dynamics and ice thickness inversions.
    :maxdepth: 1
    :caption: Contributing:
 
-   dev
+   contributing
    citing
 
 .. Indices and tables
