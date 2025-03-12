@@ -4,7 +4,7 @@ The Python Glacier Evolution Model (PyGEM) is an open-source glacier evolution m
 
 Details concerning the model installation, physics, and more may be found at [pygem.readthedocs.io](https://pygem.readthedocs.io/en/latest/).
 
-PyGEM<1.0.0 are no longer being actively being supported.
+PyGEM versions prior to 1.0.0 are no longer actively supported.
 
 ***
 
