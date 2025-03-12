@@ -13,7 +13,7 @@
 ## Pull requests (PRs)
 - PRs should be submitted [here](https://github.com/PyGEM-Community/PyGEM/pulls).
 - PRs should be linked to an issue that it addresses (unless it's a really minor fix when it's not worth opening a new issue).
-- PRs should generally address only one issue. This helps PRs stay shorter, which makes it easier to review.
+- PRs should generally address only one issue. This helps PRs stay shorter, which in turn makes the review process easier.
 - Concisely describe what your PR does. Avoid repeating what was already said in the issue.
 - Assign the PR to yourself.
 - First open a Draft PR. Then think:
