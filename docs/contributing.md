@@ -1,9 +1,9 @@
 (contributing_pygem_target)=
 # PyGEM Contribution Guide
 
-Before contributing to PyGEM, it is recommended that you either clone [PyGEM's GitHub repository](https://github.com/PyGEM-Community/PyGEM) directly, or initiate your own fork to then clone. See [here](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo) for instructions on how to fork a repo.
+Before contributing to PyGEM, it is recommended that you either clone [PyGEM's GitHub repository](https://github.com/PyGEM-Community/PyGEM) directly, or initiate your own fork (as described [here](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo)) to then clone.
 
-If PyGEM was already installed in your conda environment (see [here](install_pygem_target)), it is recommended that you first uninstall:
+If PyGEM was already installed in your conda environment (as outlined [here](install_pygem_target)), it is recommended that you first uninstall:
 ```
 pip uninstall pygem
 ```
