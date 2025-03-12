@@ -10,6 +10,7 @@ Next, choose your preferred PyGEM installation option:<br>
 ```{note}
 The **dev** and **dev+** installation options require [git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) software to be installed on your computer.
 ```
+**Copyright note**: PyGEM's installation instructions are modified from that of [OGGM](https://docs.oggm.org/en/stable/installing-oggm.html)
 
 (stable_install_target)=
 ## Stable install
