@@ -26,7 +26,6 @@ scipy = "^1.14.1"
 matplotlib = "^3.9.2"
 rasterio = "^1.4.2"
 pyproj = "^3.7.0"
-torch = ">=2.0.0,<=2.2.2"
 gpytorch = "^1.13"
 scikit-learn = "^1.5.2"
 tqdm = "^4.66.6"
@@ -37,6 +36,10 @@ ruamel-yaml = "^0.18.10"
 pytest = ">=8.3.4"
 pytest-cov = ">=6.0.0"
 nbmake = ">=1.5.5"
+torch = ">=2.0.0,<=2.2.2" # default GPU-supported version
+
+[tool.poetry.extras]
+cpu = ["torch"]  # Define the 'cpu' extra to install the torch package
 
 [tool.poetry.scripts]
 initialize = "pygem.bin.op.initialize:main"
