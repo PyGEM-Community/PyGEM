@@ -1,0 +1,33 @@
+name: "Workflows static analysis using zizmor"
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+      - dev
+  pull_request:
+    paths:
+      - ".github/workflows/*"
+
+jobs:
+  zizmor-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install zizmor
+        run: |
+          python3 -m pip instlal --upgrade pip
+          python3 -m pip install zizmor
+
+      - name: Run zizmor
+        run: zizmor .github/workflows/
