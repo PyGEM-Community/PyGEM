@@ -56,3 +56,17 @@ Installing a package in editable mode creates a symbolic link to your source cod
   - After responding to a reviewer's comment, do not mark it as resolved.
   - Once all comments are addressed, request a new review from the same reviewer. The reviewer should then resolve the comments they are satisfied with.
 - After approving someone else's PR, do not merge it. Let the original author of the PR merge it when they are ready, as they might notice necessary last-minute changes.
+
+## Code linting and formatting
+PyGEM uses [ruff](https://docs.astral.sh/ruff/formatter) for linting and formatting, which ensures that the code adheres to a consistent coding style ([Black](https://black.readthedocs.io/en/stable/the_black_code_style/index.html)) and prevents potential errors, stylistic issues, or deviations from coding standards. The configuration for Ruff can be found in the `pyproject.toml` file.
+
+To lint the codebase using Ruff, run the following command:
+```
+ruff check /path/to/code
+```
+Please address all reported errors. Many errors may be automatically and safely fixed by passing `--fix` to the above command. Other errors will need to be manually addressed.
+
+To automatically format the codebase using Ruff, run the following command:
+```
+ruff format /path/to/code
+```
