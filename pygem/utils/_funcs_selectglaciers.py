@@ -7,6 +7,7 @@ Distrubted under the MIT lisence
 
 Functions of different ways to select glaciers
 """
+
 # Built-in libraries
 import os
 import pickle
@@ -16,7 +17,7 @@ import numpy as np
 import pandas as pd
 
 
-#%% ----- Functions to select specific glacier numbers -----
+# %% ----- Functions to select specific glacier numbers -----
 def get_same_glaciers(glac_fp, ending):
     """
     Get same glaciers for testing of priors
@@ -58,12 +59,12 @@ def glac_num_fromrange(int_low, int_high):
     y : list
         list of rgi glacier numbers
     """
-    x = (np.arange(int_low, int_high+1)).tolist()
+    x = (np.arange(int_low, int_high + 1)).tolist()
     y = [str(i).zfill(5) for i in x]
     return y
 
 
-def glac_fromcsv(csv_fullfn, cn='RGIId'):
+def glac_fromcsv(csv_fullfn, cn="RGIId"):
     """
     Generate list of glaciers from csv file
 
@@ -78,31 +79,31 @@ def glac_fromcsv(csv_fullfn, cn='RGIId'):
         list of glacier numbers, e.g., ['14.00001', 15.00001']
     """
     df = pd.read_csv(csv_fullfn)
-    return [x.split('-')[1] for x in df[cn].values]
+    return [x.split("-")[1] for x in df[cn].values]
 
 
-def glac_wo_cal(regions, prms_fp_sub=None, cal_option='MCMC'):
+def glac_wo_cal(regions, prms_fp_sub=None, cal_option="MCMC"):
     """
     Glacier list of glaciers that still need to be calibrated
     """
-    todo_list=[]
+    todo_list = []
     for reg in regions:
         prms_fns = []
-        prms_fp = prms_fp_sub + str(reg).zfill(2) + '/'
+        prms_fp = prms_fp_sub + str(reg).zfill(2) + "/"
         for i in os.listdir(prms_fp):
-            if i.endswith('-modelprms_dict.pkl'):
+            if i.endswith("-modelprms_dict.pkl"):
                 prms_fns.append(i)
 
         prms_fns = sorted(prms_fns)
 
         for nfn, prms_fn in enumerate(prms_fns):
-            glac_str = prms_fn.split('-')[0]
+            glac_str = prms_fn.split("-")[0]
 
-            if nfn%500 == 0:
+            if nfn % 500 == 0:
                 print(glac_str)
 
             # Load model parameters
-            with open(prms_fp + prms_fn, 'rb') as f:
+            with open(prms_fp + prms_fn, "rb") as f:
                 modelprms_dict = pickle.load(f)
 
             # Check if 'MCMC' is in the modelprms_dict

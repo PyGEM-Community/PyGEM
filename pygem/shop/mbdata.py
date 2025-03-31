@@ -5,6 +5,7 @@ copyright © 2018 David Rounce <drounce@cmu.edu>
 
 Distrubted under the MIT lisence
 """
+
 # Built-in libaries
 import json
 import logging
@@ -16,14 +17,14 @@ from datetime import timedelta
 import numpy as np
 import pandas as pd
 
-#import rasterio
-#import xarray as xr
+# import rasterio
+# import xarray as xr
 # Local libraries
 from oggm import cfg
 from oggm.utils import entity_task
 
-#from oggm.core.gis import rasterio_to_gdir
-#from oggm.utils import ncDataset
+# from oggm.core.gis import rasterio_to_gdir
+# from oggm.utils import ncDataset
 # pygem imports
 from pygem.setup.config import ConfigManager
 
@@ -37,12 +38,19 @@ pygem_prms = config_manager.read_config()
 log = logging.getLogger(__name__)
 
 # Add the new name "mb_calib_pygem" to the list of things that the GlacierDirectory understands
-if 'mb_calib_pygem' not in cfg.BASENAMES:
-    cfg.BASENAMES['mb_calib_pygem'] = ('mb_calib_pygem.json', 'Mass balance observations for model calibration')
+if "mb_calib_pygem" not in cfg.BASENAMES:
+    cfg.BASENAMES["mb_calib_pygem"] = (
+        "mb_calib_pygem.json",
+        "Mass balance observations for model calibration",
+    )
 
 
-@entity_task(log, writes=['mb_calib_pygem'])
-def mb_df_to_gdir(gdir, mb_dataset='Hugonnet2021', facorrected=pygem_prms['setup']['include_frontalablation']):
+@entity_task(log, writes=["mb_calib_pygem"])
+def mb_df_to_gdir(
+    gdir,
+    mb_dataset="Hugonnet2021",
+    facorrected=pygem_prms["setup"]["include_frontalablation"],
+):
     """Select specific mass balance and add observations to the given glacier directory
 
     Parameters
@@ -52,19 +60,28 @@ def mb_df_to_gdir(gdir, mb_dataset='Hugonnet2021', facorrected=pygem_prms['setup
     """
     # get dataset name (could potentially be swapped with others besides Hugonnet21)
     mbdata_fp = f"{pygem_prms['root']}/{pygem_prms['calib']['data']['massbalance']['hugonnet2021_relpath']}"
-    mbdata_fp_fa = mbdata_fp + pygem_prms['calib']['data']['massbalance']['hugonnet2021_facorrected_fn']
+    mbdata_fp_fa = (
+        mbdata_fp
+        + pygem_prms["calib"]["data"]["massbalance"]["hugonnet2021_facorrected_fn"]
+    )
     if facorrected and os.path.exists(mbdata_fp_fa):
         mbdata_fp = mbdata_fp_fa
     else:
-        mbdata_fp = mbdata_fp + pygem_prms['calib']['data']['massbalance']['hugonnet2021_fn']
+        mbdata_fp = (
+            mbdata_fp + pygem_prms["calib"]["data"]["massbalance"]["hugonnet2021_fn"]
+        )
 
-    assert os.path.exists(mbdata_fp), "Error, mass balance dataset does not exist: {mbdata_fp}"
-    assert 'hugonnet2021' in mbdata_fp.lower(), "Error, mass balance dataset not yet supported: {mbdata_fp}"
-    rgiid_cn = 'rgiid'
-    mb_cn = 'mb_mwea'
-    mberr_cn = 'mb_mwea_err'
-    mb_clim_cn = 'mb_clim_mwea'
-    mberr_clim_cn = 'mb_clim_mwea_err'
+    assert os.path.exists(mbdata_fp), (
+        "Error, mass balance dataset does not exist: {mbdata_fp}"
+    )
+    assert "hugonnet2021" in mbdata_fp.lower(), (
+        "Error, mass balance dataset not yet supported: {mbdata_fp}"
+    )
+    rgiid_cn = "rgiid"
+    mb_cn = "mb_mwea"
+    mberr_cn = "mb_mwea_err"
+    mb_clim_cn = "mb_clim_mwea"
+    mberr_clim_cn = "mb_clim_mwea_err"
 
     # read reference mass balance dataset and pull data of interest
     mb_df = pd.read_csv(mbdata_fp)
@@ -85,7 +102,7 @@ def mb_df_to_gdir(gdir, mb_dataset='Hugonnet2021', facorrected=pygem_prms['setup
             mb_clim_mwea = None
             mb_clim_mwea_err = None
 
-        t1_str, t2_str = mb_df.loc[rgiid_idx, 'period'].split('_')
+        t1_str, t2_str = mb_df.loc[rgiid_idx, "period"].split("_")
         t1_datetime = pd.to_datetime(t1_str)
         t2_datetime = pd.to_datetime(t2_str)
 
@@ -98,23 +115,27 @@ def mb_df_to_gdir(gdir, mb_dataset='Hugonnet2021', facorrected=pygem_prms['setup
         mbdata = {
             key: value
             for key, value in {
-                'mb_mwea': float(mb_mwea),
-                'mb_mwea_err': float(mb_mwea_err),
-                'mb_clim_mwea': float(mb_clim_mwea) if mb_clim_mwea is not None else None,
-                'mb_clim_mwea_err': float(mb_clim_mwea_err) if mb_clim_mwea_err is not None else None,
-                't1_str': t1_str,
-                't2_str': t2_str,
-                'nyears': nyears,
+                "mb_mwea": float(mb_mwea),
+                "mb_mwea_err": float(mb_mwea_err),
+                "mb_clim_mwea": float(mb_clim_mwea)
+                if mb_clim_mwea is not None
+                else None,
+                "mb_clim_mwea_err": float(mb_clim_mwea_err)
+                if mb_clim_mwea_err is not None
+                else None,
+                "t1_str": t1_str,
+                "t2_str": t2_str,
+                "nyears": nyears,
             }.items()
             if value is not None
         }
-        mb_fn = gdir.get_filepath('mb_calib_pygem')
-        with open(mb_fn, 'w') as f:
+        mb_fn = gdir.get_filepath("mb_calib_pygem")
+        with open(mb_fn, "w") as f:
             json.dump(mbdata, f)
 
 
-#@entity_task(log, writes=['mb_obs'])
-#def mb_bins_to_glacierwide(gdir, mb_binned_fp=pygem_prms.mb_binned_fp):
+# @entity_task(log, writes=['mb_obs'])
+# def mb_bins_to_glacierwide(gdir, mb_binned_fp=pygem_prms.mb_binned_fp):
 #    """Convert binned mass balance data to glacier-wide and add observations to the given glacier directory
 #
 #    Parameters
@@ -155,7 +176,7 @@ def mb_df_to_gdir(gdir, mb_dataset='Hugonnet2021', facorrected=pygem_prms['setup
 #
 #
 ##%%
-#def mb_bins_to_reg_glacierwide(mb_binned_fp=pygem_prms.mb_binned_fp, O1Regions=['01']):
+# def mb_bins_to_reg_glacierwide(mb_binned_fp=pygem_prms.mb_binned_fp, O1Regions=['01']):
 #    # Delete these import
 #    mb_binned_fp=pygem_prms.mb_binned_fp
 #    O1Regions=['19']
@@ -268,5 +289,3 @@ def mb_df_to_gdir(gdir, mb_dataset='Hugonnet2021', facorrected=pygem_prms['setup
 #        print('TO-DO LIST:')
 #        print(' - quality control based on 3-sigma filter like Shean')
 #        print(' - extrapolate for missing or outlier glaciers by region')
-
-

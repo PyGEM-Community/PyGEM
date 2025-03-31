@@ -5,6 +5,7 @@ copyright © 2018 David Rounce <drounce@cmu.edu>
 
 Distrubted under the MIT lisence
 """
+
 import os
 import shutil
 
@@ -12,9 +13,11 @@ import ruamel.yaml
 
 __all__ = ["ConfigManager"]
 
+
 class ConfigManager:
     """Manages PyGEMs configuration file, ensuring it exists, reading, updating, and validating its contents."""
-    def __init__(self, config_filename='config.yaml', base_dir=None, overwrite=False):
+
+    def __init__(self, config_filename="config.yaml", base_dir=None, overwrite=False):
         """
         Initialize the ConfigManager class.
 
@@ -24,9 +27,11 @@ class ConfigManager:
         overwrite (bool, optional): Whether to overwrite an existing configuration file. Defaults to False.
         """
         self.config_filename = config_filename
-        self.base_dir = base_dir or os.path.join(os.path.expanduser('~'), 'PyGEM')
+        self.base_dir = base_dir or os.path.join(os.path.expanduser("~"), "PyGEM")
         self.config_path = os.path.join(self.base_dir, self.config_filename)
-        self.source_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.yaml")
+        self.source_config_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "config.yaml"
+        )
         self.overwrite = overwrite
         self._ensure_config()
 
@@ -48,7 +53,7 @@ class ConfigManager:
         validate (bool): Whether to validate the configuration file contents. Defaults to True.
         """
         ryaml = ruamel.yaml.YAML()
-        with open(self.config_path, 'r') as f:
+        with open(self.config_path, "r") as f:
             user_config = ryaml.load(f)
 
         if validate:
@@ -64,7 +69,7 @@ class ConfigManager:
         """
         ryaml = ruamel.yaml.YAML()
         ryaml.preserve_quotes = True
-        with open(self.config_path, 'w') as file:
+        with open(self.config_path, "w") as file:
             ryaml.dump(config, file)
 
     def update_config(self, updates):
@@ -78,7 +83,7 @@ class ConfigManager:
         for key, value in updates.items():
             if key not in self.EXPECTED_TYPES:
                 raise KeyError(f"Unrecognized configuration key: {key}")
-            keys = key.split('.')
+            keys = key.split(".")
             d = config
             for sub_key in keys[:-1]:
                 d = d[sub_key]
@@ -104,22 +109,25 @@ class ConfigManager:
                     raise KeyError(f"Missing required key in configuration: {key}")
 
             if not isinstance(sub_data, expected_type):
-                raise TypeError(f"Invalid type for '{key}': expected {expected_type}, not {type(sub_data)}")
+                raise TypeError(
+                    f"Invalid type for '{key}': expected {expected_type}, not {type(sub_data)}"
+                )
 
             # Check elements inside lists (if defined)
             if key in self.LIST_ELEMENT_TYPES and isinstance(sub_data, list):
                 elem_type = self.LIST_ELEMENT_TYPES[key]
                 if not all(isinstance(item, elem_type) for item in sub_data):
-                    raise TypeError(f"Invalid type for elements in '{key}': expected all elements to be {elem_type}, but got {sub_data}")
-
+                    raise TypeError(
+                        f"Invalid type for elements in '{key}': expected all elements to be {elem_type}, but got {sub_data}"
+                    )
 
     # expected config types
     EXPECTED_TYPES = {
         "root": str,
         "user": dict,
-        "user.name":  (str, type(None)),
-        "user.institution":  (str, type(None)),
-        "user.email":  (str, type(None)),
+        "user.name": (str, type(None)),
+        "user.institution": (str, type(None)),
+        "user.email": (str, type(None)),
         "setup": dict,
         "setup.rgi_region01": list,
         "setup.rgi_region02": str,

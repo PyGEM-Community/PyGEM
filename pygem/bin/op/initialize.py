@@ -7,6 +7,7 @@ Distrubted under the MIT lisence
 
 initialization script (ensure config.yaml and get sample datasets)
 """
+
 import os
 import shutil
 import zipfile
@@ -20,6 +21,7 @@ config_manager = ConfigManager(overwrite=True)
 # read the config
 pygem_prms = config_manager.read_config()
 
+
 def print_file_tree(start_path, indent=""):
     # Loop through all files and directories in the current directory
     for item in os.listdir(start_path):
@@ -32,12 +34,14 @@ def print_file_tree(start_path, indent=""):
         if os.path.isdir(path):
             print_file_tree(path, indent + "    ")
 
+
 def get_confirm_token(response):
     """Extract confirmation token for Google Drive large file download."""
     for key, value in response.cookies.items():
         if key.startswith("download_warning"):
             return value
     return None
+
 
 def save_response_content(response, destination):
     """Save the response content to a file."""
@@ -47,6 +51,7 @@ def save_response_content(response, destination):
             if chunk:  # Filter out keep-alive chunks
                 file.write(chunk)
 
+
 def get_unique_folder_name(dir):
     """Generate a unique folder name by appending a suffix if the folder already exists."""
     counter = 1
@@ -55,6 +60,7 @@ def get_unique_folder_name(dir):
         unique_dir = f"{dir}_{counter}"
         counter += 1
     return unique_dir
+
 
 def download_and_unzip_from_google_drive(file_id, output_dir):
     """
@@ -82,16 +88,22 @@ def download_and_unzip_from_google_drive(file_id, output_dir):
             response = session.get(base_url, params={"id": file_id}, stream=True)
             token = get_confirm_token(response)
             if token:
-                response = session.get(base_url, params={"id": file_id, "confirm": token}, stream=True)
+                response = session.get(
+                    base_url, params={"id": file_id, "confirm": token}, stream=True
+                )
             save_response_content(response, zip_path)
 
         # Unzip the file
-        tmppath = os.path.join(output_dir, 'tmp')
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        tmppath = os.path.join(output_dir, "tmp")
+        with zipfile.ZipFile(zip_path, "r") as zip_ref:
             zip_ref.extractall(tmppath)
 
         # get root dir name of zipped files
-        dir = [item for item in os.listdir(tmppath) if os.path.isdir(os.path.join(tmppath, item))][0]
+        dir = [
+            item
+            for item in os.listdir(tmppath)
+            if os.path.isdir(os.path.join(tmppath, item))
+        ][0]
         unzip_dir = os.path.join(tmppath, dir)
         # get unique name if root dir name already exists in output_dir
         output_dir = get_unique_folder_name(os.path.join(output_dir, dir))
@@ -104,9 +116,10 @@ def download_and_unzip_from_google_drive(file_id, output_dir):
     except (requests.RequestException, zipfile.BadZipFile, Exception) as e:
         return None  # Failure
 
+
 def main():
     # Define the base directory
-    basedir = os.path.join(os.path.expanduser('~'), 'PyGEM')
+    basedir = os.path.join(os.path.expanduser("~"), "PyGEM")
     # Google Drive file id for sample dataset
     file_id = "1Wu4ZqpOKxnc4EYhcRHQbwGq95FoOxMfZ"
     # download and unzip
@@ -121,13 +134,14 @@ def main():
             pass
 
     else:
-        print('Error downloading PyGEM sample dataset.')
+        print("Error downloading PyGEM sample dataset.")
 
     # update root path in config.yaml
     try:
-        config_manager.update_config(updates={'root':f'{out}/sample_data'})
+        config_manager.update_config(updates={"root": f"{out}/sample_data"})
     except:
         pass
+
 
 if __name__ == "__main__":
     main()

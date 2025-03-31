@@ -7,6 +7,7 @@ Distrubted under the MIT lisence
 
 derive monthly glacierwide mass for PyGEM simulation using annual glacier mass and monthly total mass balance
 """
+
 # Built-in libraries
 import argparse
 import collections
@@ -34,14 +35,31 @@ def getparser():
     """
     Use argparse to add arguments from the command line
     """
-    parser = argparse.ArgumentParser(description="process monthly glacierwide mass from annual mass and total monthly mass balance")
+    parser = argparse.ArgumentParser(
+        description="process monthly glacierwide mass from annual mass and total monthly mass balance"
+    )
     # add arguments
-    parser.add_argument('-simpath', action='store', type=str, nargs='+',
-                        help='path to PyGEM simulation (can take multiple)')
-    parser.add_argument('-simdir', action='store', type=str, default=None,
-                        help='directory with glacierwide simulation outputs for which to process monthly mass')
-    parser.add_argument('-ncores', action='store', type=int, default=1,
-                        help='number of simultaneous processes (cores) to use')
+    parser.add_argument(
+        "-simpath",
+        action="store",
+        type=str,
+        nargs="+",
+        help="path to PyGEM simulation (can take multiple)",
+    )
+    parser.add_argument(
+        "-simdir",
+        action="store",
+        type=str,
+        default=None,
+        help="directory with glacierwide simulation outputs for which to process monthly mass",
+    )
+    parser.add_argument(
+        "-ncores",
+        action="store",
+        type=int,
+        default=1,
+        help="number of simultaneous processes (cores) to use",
+    )
 
     return parser
 
@@ -72,10 +90,14 @@ def get_monthly_mass(glac_mass_annual, glac_massbaltotal_monthly):
     """
     # get running total monthly mass balance - reshape into subarrays of all values for a given year, then take cumulative sum
     oshape = glac_massbaltotal_monthly.shape
-    running_glac_massbaltotal_monthly = np.reshape(glac_massbaltotal_monthly, (-1,12), order='C').cumsum(axis=-1).reshape(oshape)
+    running_glac_massbaltotal_monthly = (
+        np.reshape(glac_massbaltotal_monthly, (-1, 12), order="C")
+        .cumsum(axis=-1)
+        .reshape(oshape)
+    )
 
     # tile annual mass to then superimpose atop running glacier mass balance (trim off final year from annual mass)
-    glac_mass_monthly = np.repeat(glac_mass_annual[:,:-1], 12, axis=-1)
+    glac_mass_monthly = np.repeat(glac_mass_annual[:, :-1], 12, axis=-1)
 
     # add annual mass values to running glacier mass balance
     glac_mass_monthly += running_glac_massbaltotal_monthly
@@ -106,25 +128,33 @@ def update_xrdataset(input_ds, glac_mass_monthly):
     time_values = input_ds.time.values
 
     output_coords_dict = collections.OrderedDict()
-    output_coords_dict['glac_mass_monthly'] = (
-            collections.OrderedDict([('glac', glac_values), ('time', time_values)]))
+    output_coords_dict["glac_mass_monthly"] = collections.OrderedDict(
+        [("glac", glac_values), ("time", time_values)]
+    )
 
     # Attributes dictionary
     output_attrs_dict = {}
-    output_attrs_dict['glac_mass_monthly'] = {
-            'long_name': 'glacier mass',
-            'units': 'kg',
-            'temporal_resolution': 'monthly',
-            'comment': 'monthly glacier mass'}
-
+    output_attrs_dict["glac_mass_monthly"] = {
+        "long_name": "glacier mass",
+        "units": "kg",
+        "temporal_resolution": "monthly",
+        "comment": "monthly glacier mass",
+    }
 
     # Add variables to empty dataset and merge together
     count_vn = 0
     encoding = {}
     for vn in output_coords_dict.keys():
-        empty_holder = np.zeros([len(output_coords_dict[vn][i]) for i in list(output_coords_dict[vn].keys())])
-        output_ds = xr.Dataset({vn: (list(output_coords_dict[vn].keys()), empty_holder)},
-                               coords=output_coords_dict[vn])
+        empty_holder = np.zeros(
+            [
+                len(output_coords_dict[vn][i])
+                for i in list(output_coords_dict[vn].keys())
+            ]
+        )
+        output_ds = xr.Dataset(
+            {vn: (list(output_coords_dict[vn].keys()), empty_holder)},
+            coords=output_coords_dict[vn],
+        )
         count_vn += 1
         # Merge datasets of stats into one output
         if count_vn == 1:
@@ -138,14 +168,9 @@ def update_xrdataset(input_ds, glac_mass_monthly):
         except:
             pass
         # Encoding (specify _FillValue, offsets, etc.)
-        encoding[vn] = {'_FillValue': None,
-                        'zlib':True,
-                        'complevel':9
-                        }
+        encoding[vn] = {"_FillValue": None, "zlib": True, "complevel": 9}
 
-    output_ds_all['glac_mass_monthly'].values = (
-            glac_mass_monthly
-            )
+    output_ds_all["glac_mass_monthly"].values = glac_mass_monthly
 
     return output_ds_all, encoding
 
@@ -165,9 +190,10 @@ def run(simpath):
 
             # calculate monthly mass - pygem glac_massbaltotal_monthly is in units of m3, so convert to mass using density of ice
             glac_mass_monthly = get_monthly_mass(
-                                                statsds.glac_mass_annual.values,
-                                                statsds.glac_massbaltotal_monthly.values * pygem_prms['constants']['density_ice'],
-                                                )
+                statsds.glac_mass_annual.values,
+                statsds.glac_massbaltotal_monthly.values
+                * pygem_prms["constants"]["density_ice"],
+            )
             statsds.close()
 
             # update dataset to add monthly mass change
@@ -177,7 +203,9 @@ def run(simpath):
             statsds.close()
 
             # append to existing stats netcdf
-            output_ds_stats.to_netcdf(simpath, mode='a', encoding=encoding, engine='netcdf4')
+            output_ds_stats.to_netcdf(
+                simpath, mode="a", encoding=encoding, engine="netcdf4"
+            )
 
             # close datasets
             output_ds_stats.close()
@@ -185,7 +213,7 @@ def run(simpath):
         except:
             pass
     else:
-        print('Simulation not found: ',simpath)
+        print("Simulation not found: ", simpath)
 
     return
 
@@ -197,7 +225,7 @@ def main():
     simpath = None
     if args.simdir:
         # get list of sims
-        simpath = glob.glob(args.simdir+'*.nc')
+        simpath = glob.glob(args.simdir + "*.nc")
     else:
         if args.simpath:
             simpath = args.simpath
@@ -210,11 +238,12 @@ def main():
             ncores = 1
 
         # Parallel processing
-        print('Processing with ' + str(args.ncores) + ' cores...')
+        print("Processing with " + str(args.ncores) + " cores...")
         with multiprocessing.Pool(args.ncores) as p:
-            p.map(run,simpath)
+            p.map(run, simpath)
 
-    print('Total processing time:', time.time()-time_start, 's')
+    print("Total processing time:", time.time() - time_start, "s")
+
 
 if __name__ == "__main__":
     main()

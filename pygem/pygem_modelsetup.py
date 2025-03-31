@@ -7,6 +7,7 @@ Distrubted under the MIT lisence
 
 List of functions used to set up different aspects of the model
 """
+
 # Built-in libaries
 import os
 from datetime import datetime
@@ -24,8 +25,12 @@ config_manager = ConfigManager()
 pygem_prms = config_manager.read_config()
 
 
-def datesmodelrun(startyear=pygem_prms['climate']['ref_startyear'], endyear=pygem_prms['climate']['ref_endyear'],
-                  spinupyears=pygem_prms['climate']['ref_spinupyears'], option_wateryear=pygem_prms['climate']['ref_wateryear']):
+def datesmodelrun(
+    startyear=pygem_prms["climate"]["ref_startyear"],
+    endyear=pygem_prms["climate"]["ref_endyear"],
+    spinupyears=pygem_prms["climate"]["ref_spinupyears"],
+    option_wateryear=pygem_prms["climate"]["ref_wateryear"],
+):
     """
     Create table of year, month, day, water year, season and number of days in the month.
 
@@ -46,83 +51,92 @@ def datesmodelrun(startyear=pygem_prms['climate']['ref_startyear'], endyear=pyge
     # Include spinup time in start year
     startyear_wspinup = startyear - spinupyears
     # Convert start year into date depending on option_wateryear
-    if option_wateryear == 'hydro':
-        startdate = str(startyear_wspinup - 1) + '-10-01'
-        enddate = str(endyear) + '-09-30'
-    elif option_wateryear == 'calendar':
-        startdate = str(startyear_wspinup) + '-01-01'
-        enddate = str(endyear) + '-12-31'
-    elif option_wateryear == 'custom':
-        startdate = str(startyear_wspinup) + '-' + pygem_prms['time']['startmonthday']
-        enddate = str(endyear) + '-' + pygem_prms['time']['endmonthday']
+    if option_wateryear == "hydro":
+        startdate = str(startyear_wspinup - 1) + "-10-01"
+        enddate = str(endyear) + "-09-30"
+    elif option_wateryear == "calendar":
+        startdate = str(startyear_wspinup) + "-01-01"
+        enddate = str(endyear) + "-12-31"
+    elif option_wateryear == "custom":
+        startdate = str(startyear_wspinup) + "-" + pygem_prms["time"]["startmonthday"]
+        enddate = str(endyear) + "-" + pygem_prms["time"]["endmonthday"]
     else:
-        assert True==False, "\n\nError: Select an option_wateryear that exists.\n"
+        assert True == False, "\n\nError: Select an option_wateryear that exists.\n"
     # Convert input format into proper datetime format
-    startdate = datetime(*[int(item) for item in startdate.split('-')])
-    enddate = datetime(*[int(item) for item in enddate.split('-')])
-    if pygem_prms['time']['timestep'] == 'monthly':
-        startdate = startdate.strftime('%Y-%m')
-        enddate = enddate.strftime('%Y-%m')
-    elif pygem_prms['time']['timestep'] == 'daily':
-        startdate = startdate.strftime('%Y-%m-%d')
-        enddate = enddate.strftime('%Y-%m-%d')
+    startdate = datetime(*[int(item) for item in startdate.split("-")])
+    enddate = datetime(*[int(item) for item in enddate.split("-")])
+    if pygem_prms["time"]["timestep"] == "monthly":
+        startdate = startdate.strftime("%Y-%m")
+        enddate = enddate.strftime("%Y-%m")
+    elif pygem_prms["time"]["timestep"] == "daily":
+        startdate = startdate.strftime("%Y-%m-%d")
+        enddate = enddate.strftime("%Y-%m-%d")
     # Generate dates_table using date_range function
-    if pygem_prms['time']['timestep'] == 'monthly':
+    if pygem_prms["time"]["timestep"] == "monthly":
         # Automatically generate dates from start date to end data using a monthly frequency (MS), which generates
         # monthly data using the 1st of each month'
-        dates_table = pd.DataFrame({'date' : pd.date_range(startdate, enddate, freq='MS', unit='s')})
+        dates_table = pd.DataFrame(
+            {"date": pd.date_range(startdate, enddate, freq="MS", unit="s")}
+        )
         # Select attributes of DateTimeIndex (dt.year, dt.month, and dt.daysinmonth)
-        dates_table['year'] = dates_table['date'].dt.year
-        dates_table['month'] = dates_table['date'].dt.month
-        dates_table['daysinmonth'] = dates_table['date'].dt.daysinmonth
-        dates_table['timestep'] = np.arange(len(dates_table['date']))
+        dates_table["year"] = dates_table["date"].dt.year
+        dates_table["month"] = dates_table["date"].dt.month
+        dates_table["daysinmonth"] = dates_table["date"].dt.daysinmonth
+        dates_table["timestep"] = np.arange(len(dates_table["date"]))
         # Set date as index
-        dates_table.set_index('timestep', inplace=True)
+        dates_table.set_index("timestep", inplace=True)
         # Remove leap year days if user selected this with option_leapyear
-        if pygem_prms['time']['option_leapyear'] == 0:
-            mask1 = (dates_table['daysinmonth'] == 29)
-            dates_table.loc[mask1,'daysinmonth'] = 28
-    elif pygem_prms['time']['timestep'] == 'daily':
+        if pygem_prms["time"]["option_leapyear"] == 0:
+            mask1 = dates_table["daysinmonth"] == 29
+            dates_table.loc[mask1, "daysinmonth"] = 28
+    elif pygem_prms["time"]["timestep"] == "daily":
         # Automatically generate daily (freq = 'D') dates
-        dates_table = pd.DataFrame({'date' : pd.date_range(startdate, enddate, freq='D')})
+        dates_table = pd.DataFrame(
+            {"date": pd.date_range(startdate, enddate, freq="D")}
+        )
         # Extract attributes for dates_table
-        dates_table['year'] = dates_table['date'].dt.year
-        dates_table['month'] = dates_table['date'].dt.month
-        dates_table['day'] = dates_table['date'].dt.day
-        dates_table['daysinmonth'] = dates_table['date'].dt.daysinmonth
+        dates_table["year"] = dates_table["date"].dt.year
+        dates_table["month"] = dates_table["date"].dt.month
+        dates_table["day"] = dates_table["date"].dt.day
+        dates_table["daysinmonth"] = dates_table["date"].dt.daysinmonth
         # Set date as index
-        dates_table.set_index('date', inplace=True)
+        dates_table.set_index("date", inplace=True)
         # Remove leap year days if user selected this with option_leapyear
-        if pygem_prms['time']['option_leapyear'] == 0:
+        if pygem_prms["time"]["option_leapyear"] == 0:
             # First, change 'daysinmonth' number
-            mask1 = dates_table['daysinmonth'] == 29
-            dates_table.loc[mask1,'daysinmonth'] = 28
+            mask1 = dates_table["daysinmonth"] == 29
+            dates_table.loc[mask1, "daysinmonth"] = 28
             # Next, remove the 29th days from the dates
-            mask2 = ((dates_table['month'] == 2) & (dates_table['day'] == 29))
+            mask2 = (dates_table["month"] == 2) & (dates_table["day"] == 29)
             dates_table.drop(dates_table[mask2].index, inplace=True)
     else:
-        print("\n\nError: Please select 'daily' or 'monthly' for gcm_timestep. Exiting model run now.\n")
+        print(
+            "\n\nError: Please select 'daily' or 'monthly' for gcm_timestep. Exiting model run now.\n"
+        )
         exit()
     # Add column for water year
     # Water year for northern hemisphere using USGS definition (October 1 - September 30th),
     # e.g., water year for 2000 is from October 1, 1999 - September 30, 2000
-    dates_table['wateryear'] = dates_table['year']
+    dates_table["wateryear"] = dates_table["year"]
     for step in range(dates_table.shape[0]):
-        if dates_table.loc[step, 'month'] >= 10:
-            dates_table.loc[step, 'wateryear'] = dates_table.loc[step, 'year'] + 1
+        if dates_table.loc[step, "month"] >= 10:
+            dates_table.loc[step, "wateryear"] = dates_table.loc[step, "year"] + 1
     # Add column for seasons
     # create a season dictionary to assist groupby functions
     seasondict = {}
     month_list = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
     season_list = []
     for i in range(len(month_list)):
-        if (month_list[i] >= pygem_prms['time']['summer_month_start'] and month_list[i] < pygem_prms['time']['winter_month_start']):
-            season_list.append('summer')
+        if (
+            month_list[i] >= pygem_prms["time"]["summer_month_start"]
+            and month_list[i] < pygem_prms["time"]["winter_month_start"]
+        ):
+            season_list.append("summer")
             seasondict[month_list[i]] = season_list[i]
         else:
-            season_list.append('winter')
+            season_list.append("winter")
             seasondict[month_list[i]] = season_list[i]
-    dates_table['season'] = dates_table['month'].apply(lambda x: seasondict[x])
+    dates_table["season"] = dates_table["month"].apply(lambda x: seasondict[x])
     return dates_table
 
 
@@ -139,12 +153,36 @@ def daysinmonth(year, month):
     -------
     integer of the days in the month
     """
-    if year%4 == 0:
+    if year % 4 == 0:
         daysinmonth_dict = {
-                1:31, 2:29, 3:31, 4:30, 5:31, 6:30, 7:31, 8:31, 9:30, 10:31, 11:30, 12:31}
+            1: 31,
+            2: 29,
+            3: 31,
+            4: 30,
+            5: 31,
+            6: 30,
+            7: 31,
+            8: 31,
+            9: 30,
+            10: 31,
+            11: 30,
+            12: 31,
+        }
     else:
         daysinmonth_dict = {
-                1:31, 2:28, 3:31, 4:30, 5:31, 6:30, 7:31, 8:31, 9:30, 10:31, 11:30, 12:31}
+            1: 31,
+            2: 28,
+            3: 31,
+            4: 30,
+            5: 31,
+            6: 30,
+            7: 31,
+            8: 31,
+            9: 30,
+            10: 31,
+            11: 30,
+            12: 31,
+        }
     return daysinmonth_dict[month]
 
 
@@ -154,25 +192,33 @@ def hypsometrystats(hyps_table, thickness_table):
     Output is a series of the glacier volume [km**3] and mean elevation values [m a.s.l.].
     """
     # Glacier volume [km**3]
-    glac_volume = (hyps_table * thickness_table/1000).sum(axis=1).values
+    glac_volume = (hyps_table * thickness_table / 1000).sum(axis=1).values
     # Mean glacier elevation
     glac_hyps_mean = np.zeros(glac_volume.shape)
-    glac_hyps_mean[glac_volume > 0] = ((hyps_table[glac_volume > 0].values *
-                                        hyps_table[glac_volume > 0].columns.values.astype(int)).sum(axis=1) /
-                                       hyps_table[glac_volume > 0].values.sum(axis=1))
+    glac_hyps_mean[glac_volume > 0] = (
+        hyps_table[glac_volume > 0].values
+        * hyps_table[glac_volume > 0].columns.values.astype(int)
+    ).sum(axis=1) / hyps_table[glac_volume > 0].values.sum(axis=1)
     # Median computations
-#    main_glac_hyps_cumsum = np.cumsum(hyps_table, axis=1)
-#    for glac in range(hyps_table.shape[0]):
-#        # Median glacier elevation
-#        # Computed as the elevation when the normalized cumulative sum of the glacier area exceeds 0.5 (50%)
-#        series_glac_hyps_cumsumnorm = main_glac_hyps_cumsum.loc[glac,:].copy() / glac_area.iloc[glac]
-#        series_glac_hyps_cumsumnorm_positions = (np.where(series_glac_hyps_cumsumnorm > 0.5))[0]
-#        glac_hyps_median = main_glac_hyps.columns.values[series_glac_hyps_cumsumnorm_positions[0]]
-#    NOTE THERE IS A 20 m (+/- 5 m) OFFSET BETWEEN THE 10 m PRODUCT FROM HUSS AND THE RGI INVENTORY """
+    #    main_glac_hyps_cumsum = np.cumsum(hyps_table, axis=1)
+    #    for glac in range(hyps_table.shape[0]):
+    #        # Median glacier elevation
+    #        # Computed as the elevation when the normalized cumulative sum of the glacier area exceeds 0.5 (50%)
+    #        series_glac_hyps_cumsumnorm = main_glac_hyps_cumsum.loc[glac,:].copy() / glac_area.iloc[glac]
+    #        series_glac_hyps_cumsumnorm_positions = (np.where(series_glac_hyps_cumsumnorm > 0.5))[0]
+    #        glac_hyps_median = main_glac_hyps.columns.values[series_glac_hyps_cumsumnorm_positions[0]]
+    #    NOTE THERE IS A 20 m (+/- 5 m) OFFSET BETWEEN THE 10 m PRODUCT FROM HUSS AND THE RGI INVENTORY """
     return glac_volume, glac_hyps_mean
 
 
-def import_Husstable(rgi_table, filepath, filedict, drop_col_names, indexname=pygem_prms['rgi']['indexname'], option_shift_elevbins_20m=True):
+def import_Husstable(
+    rgi_table,
+    filepath,
+    filedict,
+    drop_col_names,
+    indexname=pygem_prms["rgi"]["indexname"],
+    option_shift_elevbins_20m=True,
+):
     """Use the dictionary specified by the user to extract the desired variable.
     The files must be in the proper units (ice thickness [m], area [km2], width [km]) and should be pre-processed.
 
@@ -182,27 +228,29 @@ def import_Husstable(rgi_table, filepath, filedict, drop_col_names, indexname=py
     Line Profiling: Loading in the table takes the most time (~2.3 s)
     """
     rgi_regionsO1 = sorted(list(rgi_table.O1Region.unique()))
-    glac_no = [x.split('-')[1] for x in rgi_table.RGIId.values]
+    glac_no = [x.split("-")[1] for x in rgi_table.RGIId.values]
     glac_no_byregion = {}
     for region in rgi_regionsO1:
         glac_no_byregion[region] = []
     for i in glac_no:
-        region = int(i.split('.')[0])
-        glac_no_only = i.split('.')[1]
+        region = int(i.split(".")[0])
+        glac_no_only = i.split(".")[1]
         glac_no_byregion[int(region)].append(glac_no_only)
 
     # Load data for each region
     for count, region in enumerate(rgi_regionsO1):
         # Select regional data for indexing
         glac_no = sorted(glac_no_byregion[region])
-        rgi_table_region = rgi_table.iloc[np.where(rgi_table.O1Region.values == region)[0]]
+        rgi_table_region = rgi_table.iloc[
+            np.where(rgi_table.O1Region.values == region)[0]
+        ]
 
         # Load table
         ds = pd.read_csv(filepath + filedict[region])
 
         # Select glaciers based on 01Index value from main_glac_rgi table
         #  as long as Huss tables have all rows associated with rgi attribute table, then this shortcut works
-        glac_table = ds.iloc[rgi_table_region['O1Index'].values]
+        glac_table = ds.iloc[rgi_table_region["O1Index"].values]
         # Merge multiple regions
         if count == 0:
             glac_table_all = glac_table
@@ -229,11 +277,11 @@ def import_Husstable(rgi_table, filepath, filedict, drop_col_names, indexname=py
     # drop columns that are not elevation bins
     glac_table_copy.drop(drop_col_names, axis=1, inplace=True)
     # change NAN from -99 to 0
-    glac_table_copy[glac_table_copy==-99] = 0.
+    glac_table_copy[glac_table_copy == -99] = 0.0
     # Shift Huss bins by 20 m since the elevation bins appear to be 20 m higher than they should be
     if option_shift_elevbins_20m:
         colnames = glac_table_copy.columns.tolist()[:-2]
-        glac_table_copy = glac_table_copy.iloc[:,2:]
+        glac_table_copy = glac_table_copy.iloc[:, 2:]
         glac_table_copy.columns = colnames
     return glac_table_copy
 
@@ -270,16 +318,23 @@ def import_Husstable(rgi_table, filepath, filedict, drop_col_names, indexname=py
 #     return main_glac_calmassbal
 
 
-def selectglaciersrgitable(glac_no=None, rgi_regionsO1=None, rgi_regionsO2='all', rgi_glac_number='all',
-                           rgi_fp=pygem_prms['root'] + pygem_prms['rgi']['rgi_relpath'],
-                           rgi_cols_drop=pygem_prms['rgi']['rgi_cols_drop'],
-                           rgi_O1Id_colname=pygem_prms['rgi']['rgi_O1Id_colname'],
-                           rgi_glacno_float_colname=pygem_prms['rgi']['rgi_glacno_float_colname'],
-                           indexname=pygem_prms['rgi']['indexname'],
-                           include_landterm=True,include_laketerm=True,include_tidewater=True,
-                           glac_no_skip=pygem_prms['setup']['glac_no_skip'],
-                           min_glac_area_km2=0,
-                           debug=False):
+def selectglaciersrgitable(
+    glac_no=None,
+    rgi_regionsO1=None,
+    rgi_regionsO2="all",
+    rgi_glac_number="all",
+    rgi_fp=pygem_prms["root"] + pygem_prms["rgi"]["rgi_relpath"],
+    rgi_cols_drop=pygem_prms["rgi"]["rgi_cols_drop"],
+    rgi_O1Id_colname=pygem_prms["rgi"]["rgi_O1Id_colname"],
+    rgi_glacno_float_colname=pygem_prms["rgi"]["rgi_glacno_float_colname"],
+    indexname=pygem_prms["rgi"]["indexname"],
+    include_landterm=True,
+    include_laketerm=True,
+    include_tidewater=True,
+    glac_no_skip=pygem_prms["setup"]["glac_no_skip"],
+    min_glac_area_km2=0,
+    debug=False,
+):
     """
     Select all glaciers to be used in the model run according to the regions and glacier numbers defined by the RGI
     glacier inventory. This function returns the rgi table associated with all of these glaciers.
@@ -298,13 +353,13 @@ def selectglaciersrgitable(glac_no=None, rgi_regionsO1=None, rgi_regionsO2='all'
     """
     if glac_no is not None:
         glac_no_byregion = {}
-        rgi_regionsO1 = [int(i.split('.')[0]) for i in glac_no]
+        rgi_regionsO1 = [int(i.split(".")[0]) for i in glac_no]
         rgi_regionsO1 = list(set(rgi_regionsO1))
         for region in rgi_regionsO1:
             glac_no_byregion[region] = []
         for i in glac_no:
-            region = i.split('.')[0]
-            glac_no_only = i.split('.')[1]
+            region = i.split(".")[0]
+            glac_no_only = i.split(".")[1]
             glac_no_byregion[int(region)].append(glac_no_only)
 
         for region in rgi_regionsO1:
@@ -314,88 +369,118 @@ def selectglaciersrgitable(glac_no=None, rgi_regionsO1=None, rgi_regionsO2='all'
     rgi_regionsO1 = sorted(rgi_regionsO1)
     glacier_table = pd.DataFrame()
     for region in rgi_regionsO1:
-
         if glac_no is not None:
             rgi_glac_number = glac_no_byregion[region]
 
-#        if len(rgi_glac_number) < 50:
+        #        if len(rgi_glac_number) < 50:
 
         for i in os.listdir(rgi_fp):
-            if i.startswith(str(region).zfill(2)) and i.endswith('.csv'):
+            if i.startswith(str(region).zfill(2)) and i.endswith(".csv"):
                 rgi_fn = i
         try:
             csv_regionO1 = pd.read_csv(rgi_fp + rgi_fn)
         except:
-            csv_regionO1 = pd.read_csv(rgi_fp + rgi_fn, encoding='latin1')
+            csv_regionO1 = pd.read_csv(rgi_fp + rgi_fn, encoding="latin1")
 
         # Populate glacer_table with the glaciers of interest
-        if rgi_regionsO2 == 'all' and rgi_glac_number == 'all':
+        if rgi_regionsO2 == "all" and rgi_glac_number == "all":
             if debug:
-                print("All glaciers within region(s) %s are included in this model run." % (region))
+                print(
+                    "All glaciers within region(s) %s are included in this model run."
+                    % (region)
+                )
             if glacier_table.empty:
                 glacier_table = csv_regionO1
             else:
                 glacier_table = pd.concat([glacier_table, csv_regionO1], axis=0)
-        elif rgi_regionsO2 != 'all' and rgi_glac_number == 'all':
+        elif rgi_regionsO2 != "all" and rgi_glac_number == "all":
             if debug:
-                print("All glaciers within subregion(s) %s in region %s are included in this model run." %
-                    (rgi_regionsO2, region))
+                print(
+                    "All glaciers within subregion(s) %s in region %s are included in this model run."
+                    % (rgi_regionsO2, region)
+                )
             for regionO2 in rgi_regionsO2:
                 if glacier_table.empty:
-                    glacier_table = csv_regionO1.loc[csv_regionO1['O2Region'] == regionO2]
+                    glacier_table = csv_regionO1.loc[
+                        csv_regionO1["O2Region"] == regionO2
+                    ]
                 else:
-                    glacier_table = (pd.concat([glacier_table, csv_regionO1.loc[csv_regionO1['O2Region'] ==
-                                                                                regionO2]], axis=0))
+                    glacier_table = pd.concat(
+                        [
+                            glacier_table,
+                            csv_regionO1.loc[csv_regionO1["O2Region"] == regionO2],
+                        ],
+                        axis=0,
+                    )
         else:
             if len(rgi_glac_number) < 20:
-                print("%s glaciers in region %s are included in this model run: %s" % (len(rgi_glac_number), region,
-                                                                                       rgi_glac_number))
+                print(
+                    "%s glaciers in region %s are included in this model run: %s"
+                    % (len(rgi_glac_number), region, rgi_glac_number)
+                )
             else:
-                print("%s glaciers in region %s are included in this model run: %s and more" %
-                      (len(rgi_glac_number), region, rgi_glac_number[0:50]))
+                print(
+                    "%s glaciers in region %s are included in this model run: %s and more"
+                    % (len(rgi_glac_number), region, rgi_glac_number[0:50])
+                )
 
-            rgiid_subset = ['RGI60-' + str(region).zfill(2) + '.' + x for x in rgi_glac_number]
+            rgiid_subset = [
+                "RGI60-" + str(region).zfill(2) + "." + x for x in rgi_glac_number
+            ]
             rgiid_all = list(csv_regionO1.RGIId.values)
             rgi_idx = [rgiid_all.index(x) for x in rgiid_subset if x in rgiid_all]
             if glacier_table.empty:
                 glacier_table = csv_regionO1.loc[rgi_idx]
             else:
-                glacier_table = (pd.concat([glacier_table, csv_regionO1.loc[rgi_idx]],
-                                           axis=0))
+                glacier_table = pd.concat(
+                    [glacier_table, csv_regionO1.loc[rgi_idx]], axis=0
+                )
 
     glacier_table = glacier_table.copy()
     # reset the index so that it is in sequential order (0, 1, 2, etc.)
     glacier_table.reset_index(inplace=True)
     # drop connectivity 2 for Greenland and Antarctica
-    glacier_table = glacier_table.loc[glacier_table['Connect'].isin([0,1])]
+    glacier_table = glacier_table.loc[glacier_table["Connect"].isin([0, 1])]
     glacier_table.reset_index(drop=True, inplace=True)
     # change old index to 'O1Index' to be easier to recall what it is
-    glacier_table.rename(columns={'index': 'O1Index'}, inplace=True)
+    glacier_table.rename(columns={"index": "O1Index"}, inplace=True)
     # Record the reference date
-    glacier_table['RefDate'] = glacier_table['BgnDate']
+    glacier_table["RefDate"] = glacier_table["BgnDate"]
     # if there is an end date, then roughly average the year
-    enddate_idx = glacier_table.loc[(glacier_table['EndDate'] > 0), 'EndDate'].index.values
-    glacier_table.loc[enddate_idx,'RefDate'] = (
-            np.mean((glacier_table.loc[enddate_idx,['BgnDate', 'EndDate']].values / 10**4).astype(int),
-                    axis=1).astype(int) * 10**4 + 9999)
+    enddate_idx = glacier_table.loc[
+        (glacier_table["EndDate"] > 0), "EndDate"
+    ].index.values
+    glacier_table.loc[enddate_idx, "RefDate"] = (
+        np.mean(
+            (
+                glacier_table.loc[enddate_idx, ["BgnDate", "EndDate"]].values / 10**4
+            ).astype(int),
+            axis=1,
+        ).astype(int)
+        * 10**4
+        + 9999
+    )
     # drop columns of data that is not being used
     glacier_table.drop(rgi_cols_drop, axis=1, inplace=True)
     # add column with the O1 glacier numbers
     glacier_table[rgi_O1Id_colname] = (
-            glacier_table['RGIId'].str.split('.').apply(pd.Series).loc[:,1].astype(int))
-    glacier_table['rgino_str'] = [x.split('-')[1] for x in glacier_table.RGIId.values]
-#    glacier_table[rgi_glacno_float_colname] = (np.array([np.str.split(glacier_table['RGIId'][x],'-')[1]
-#                                                    for x in range(glacier_table.shape[0])]).astype(float))
-    glacier_table[rgi_glacno_float_colname] = (np.array([x.split('-')[1] for x in glacier_table['RGIId']]
-#            [np.str.split(glacier_table['RGIId'][x],'-')[1]
-#                                                    for x in range(glacier_table.shape[0])]
-            ).astype(float))
+        glacier_table["RGIId"].str.split(".").apply(pd.Series).loc[:, 1].astype(int)
+    )
+    glacier_table["rgino_str"] = [x.split("-")[1] for x in glacier_table.RGIId.values]
+    #    glacier_table[rgi_glacno_float_colname] = (np.array([np.str.split(glacier_table['RGIId'][x],'-')[1]
+    #                                                    for x in range(glacier_table.shape[0])]).astype(float))
+    glacier_table[rgi_glacno_float_colname] = np.array(
+        [x.split("-")[1] for x in glacier_table["RGIId"]]
+        #            [np.str.split(glacier_table['RGIId'][x],'-')[1]
+        #                                                    for x in range(glacier_table.shape[0])]
+    ).astype(float)
     # set index name
     glacier_table.index.name = indexname
     # Longitude between 0-360deg (no negative)
-    glacier_table['CenLon_360'] = glacier_table['CenLon']
-    glacier_table.loc[glacier_table['CenLon'] < 0, 'CenLon_360'] = (
-            360 + glacier_table.loc[glacier_table['CenLon'] < 0, 'CenLon_360'])
+    glacier_table["CenLon_360"] = glacier_table["CenLon"]
+    glacier_table.loc[glacier_table["CenLon"] < 0, "CenLon_360"] = (
+        360 + glacier_table.loc[glacier_table["CenLon"] < 0, "CenLon_360"]
+    )
     # Subset glaciers based on their terminus type
     termtype_values = []
     if include_landterm:
@@ -410,25 +495,30 @@ def selectglaciersrgitable(glac_no=None, rgi_regionsO1=None, rgi_regionsO2='all'
         termtype_values.append(5)
     if include_laketerm:
         termtype_values.append(2)
-    glacier_table = glacier_table.loc[glacier_table['TermType'].isin(termtype_values)]
+    glacier_table = glacier_table.loc[glacier_table["TermType"].isin(termtype_values)]
     glacier_table.reset_index(inplace=True, drop=True)
     # Glacier number with no trailing zeros
-    glacier_table['glacno'] = [str(int(x.split('-')[1].split('.')[0])) + '.' + x.split('-')[1].split('.')[1]
-                               for x in glacier_table.RGIId]
+    glacier_table["glacno"] = [
+        str(int(x.split("-")[1].split(".")[0])) + "." + x.split("-")[1].split(".")[1]
+        for x in glacier_table.RGIId
+    ]
 
     # Remove glaciers below threshold
-    glacier_table = glacier_table.loc[glacier_table['Area'] > min_glac_area_km2,:]
+    glacier_table = glacier_table.loc[glacier_table["Area"] > min_glac_area_km2, :]
     glacier_table.reset_index(inplace=True, drop=True)
 
     # Remove glaciers that are meant to be skipped
     if glac_no_skip is not None:
-        glac_no_all = list(glacier_table['glacno'])
+        glac_no_all = list(glacier_table["glacno"])
         glac_no_unique = [x for x in glac_no_all if x not in glac_no_skip]
         unique_idx = [glac_no_all.index(x) for x in glac_no_unique]
-        glacier_table = glacier_table.loc[unique_idx,:]
+        glacier_table = glacier_table.loc[unique_idx, :]
         glacier_table.reset_index(inplace=True, drop=True)
 
-    print("This study is focusing on %s glaciers in region %s" % (glacier_table.shape[0], rgi_regionsO1))
+    print(
+        "This study is focusing on %s glaciers in region %s"
+        % (glacier_table.shape[0], rgi_regionsO1)
+    )
 
     return glacier_table
 
@@ -468,8 +558,8 @@ def split_list(lst, n=1, option_ordered=1, group_thousands=False):
     if option_ordered == 1:
         if n > len(lst):
             n = len(lst)
-        n_perlist_low = int(len(lst)/n)
-        n_perlist_high = int(np.ceil(len(lst)/n))
+        n_perlist_low = int(len(lst) / n)
+        n_perlist_high = int(np.ceil(len(lst) / n))
         lst_copy = lst.copy()
         count = 0
         lst_batches = []
@@ -491,7 +581,7 @@ def split_list(lst, n=1, option_ordered=1, group_thousands=False):
         lst_batches = [[] for x in np.arange(n)]
         nbatch = 0
         for count, x in enumerate(lst):
-            if count%n == 0:
+            if count % n == 0:
                 nbatch = 0
 
             lst_batches[nbatch].append(x)
@@ -508,7 +598,9 @@ def split_list(lst, n=1, option_ordered=1, group_thousands=False):
         lst_batches_th = []
         # keep the number of batches, but move items around to not have sets of RGIXX.YY ids in more than one batch
         for s in sets:
-            merged = [item for sublist in lst_batches for item in sublist if item[:5]==s]
+            merged = [
+                item for sublist in lst_batches for item in sublist if item[:5] == s
+            ]
             lst_batches_th.append(merged)
         # ensure that number of batches doesn't exceed original number
         while len(lst_batches_th) > n:
