@@ -7,12 +7,19 @@ Distrubted under the MIT lisence
 
 NASA Operation IceBridge data and processing class
 """
-import re, os, glob, json, pickle, datetime, warnings, sys
+import datetime
+import glob
+import json
+import re
+import warnings
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from scipy import signal, stats
-import matplotlib.pyplot as plt
+from scipy import stats
+
 from pygem.setup.config import ConfigManager
+
 # instantiate ConfigManager
 config_manager = ConfigManager()
 # read the config
@@ -33,7 +40,7 @@ class oib:
         self.bin_edges = None
         self.bin_centers = None
         self.bin_area = None
-    
+
     def _get_diffs(self):
         return self.oib_diffs
     def _get_dbldiffs(self):
@@ -63,7 +70,7 @@ class oib:
             raise IndexError(f'No matching RGI7Id for {self.rgi6id}')
         elif len(rgi7id)>1:
             raise IndexError(f'More than one matching RGI7Id for {self.rgi6id}')
-        
+
 
     def _rgi7torgi6id(self, debug=False):
         """
@@ -138,7 +145,7 @@ class oib:
         if debug:
             print(f'OIB survey dates:\n{", ".join([str(dt.year)+"-"+str(dt.month)+"-"+str(dt.day) for dt in list(self.oib_diffs.keys())])}')
         # get bin centers
-        self.bin_centers = (np.asarray(self.oib_dict[ssn][list(self.oib_dict[ssn].keys())[0]]['bin_vals']['bin_start_vec']) + 
+        self.bin_centers = (np.asarray(self.oib_dict[ssn][list(self.oib_dict[ssn].keys())[0]]['bin_vals']['bin_start_vec']) +
                     np.asarray(self.oib_dict[ssn][list(self.oib_dict[ssn].keys())[0]]['bin_vals']['bin_stop_vec'])) / 2
         self.bin_area = self.oib_dict['aad_dict']['hist_bin_areas_m2']
         # bin_edges = oib_dict[ssn][list(oib_dict[ssn].keys())[0]]['bin_vals']['bin_start_vec']

@@ -1,12 +1,14 @@
 import pathlib
+
 import pytest
 import yaml
+
 from pygem.setup.config import ConfigManager
 
 
 class TestConfigManager:
     """Tests for the ConfigManager class."""
-    
+
     @pytest.fixture(autouse=True)
     def setup(self, tmp_path):
         """Setup a ConfigManager instance for each test."""
@@ -15,7 +17,7 @@ class TestConfigManager:
             base_dir=tmp_path,
             overwrite=True
         )
-    
+
     def test_config_created(self, tmp_path):
         config_path = pathlib.Path(tmp_path) / 'config.yaml'
         assert config_path.is_file()
@@ -43,7 +45,7 @@ class TestConfigManager:
         wrong type.
         """
         with pytest.raises(
-            TypeError, 
+            TypeError,
             match=f"Invalid type for '{key.replace('.', '\\.')}':"
                   f" expected.*{expected_type}.*, not.*{invalid_type}.*"
         ):
@@ -59,7 +61,7 @@ class TestConfigManager:
         expected_type = "str"
 
         with pytest.raises(
-            TypeError, 
+            TypeError,
             match=f"Invalid type for elements in '{key.replace('.', '\\.')}':"
                   f" expected all elements to be .*{expected_type}.*, but got.*{invalid_value}.*"
         ):
@@ -94,7 +96,7 @@ class TestConfigManager:
         assert config["user"]["email"] == "drounce@cmu.edu"
         assert config["setup"]["include_landterm"] == True
         assert config["rgi"]["rgi_cols_drop"] == ["GLIMSId", "BgnDate", "EndDate", "Status", "Linkages", "Name"]
-        
+
         self.config_manager.update_config(updates)
         config = self.config_manager.read_config()
 

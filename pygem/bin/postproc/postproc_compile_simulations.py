@@ -8,20 +8,21 @@ Distrubted under the MIT lisence
 compile individual glacier simulations to the regional level
 """
 # imports
-import os
-import glob
-import sys
-import time
 import argparse
-import xarray as xr
-import numpy as np
-import pygem
-from datetime import datetime
+import glob
 import multiprocessing
+import os
+import time
+from datetime import datetime
+
+import numpy as np
+import xarray as xr
+
+import pygem
 
 # pygem imports
-import pygem
 from pygem.setup.config import ConfigManager
+
 # instantiate ConfigManager
 config_manager = ConfigManager()
 # read the config
@@ -64,8 +65,8 @@ def run(args):
     base_dir = simpath + "/" + str(reg).zfill(2) + "/"
 
     # get all glaciers in region to see which fraction ran successfully
-    main_glac_rgi_all = modelsetup.selectglaciersrgitable(rgi_regionsO1=[reg], 
-                                                        rgi_regionsO2='all', rgi_glac_number='all', 
+    main_glac_rgi_all = modelsetup.selectglaciersrgitable(rgi_regionsO1=[reg],
+                                                        rgi_regionsO2='all', rgi_glac_number='all',
                                                         glac_no=None,
                                                         debug=True)
 
@@ -85,7 +86,7 @@ def run(args):
 
     # make sure batch sublists are sorted properly and that each goes from NN001 to N(N+1)000
     glacno_list_batches = sorted(glacno_list_batches, key=lambda x:x[0])
-    for i in range(len(glacno_list_batches) - 1): 
+    for i in range(len(glacno_list_batches) - 1):
         glacno_list_batches[i].append(glacno_list_batches[i+1][0])
         glacno_list_batches[i+1].pop(0)
 
@@ -150,12 +151,12 @@ def run(args):
 
         # annual vars
         reg_glac_allgcms_area_annual = None
-        reg_glac_allgcms_mass_annual = None    
+        reg_glac_allgcms_mass_annual = None
 
         ### LEVEL II ###
         # for each batch, loop through GCM(s) and realization(s)
         for gcm in gcms:
-            # get list of glacier simulation files 
+            # get list of glacier simulation files
             sim_dir = base_dir + gcm  + '/' + scenario + '/stats/'
 
             ### LEVEL III ###
@@ -186,7 +187,7 @@ def run(args):
 
                 # annual vars
                 reg_glac_gcm_area_annual = None
-                reg_glac_gcm_mass_annual = None    
+                reg_glac_gcm_mass_annual = None
 
 
                 ### LEVEL IV ###
@@ -240,7 +241,7 @@ def run(args):
                         glac_area_annual = np.full((1,year_values.shape[0]), np.nan)
                         glac_mass_annual = np.full((1,year_values.shape[0]), np.nan)
 
-                    
+
                     # append each glacier output to master regional set of arrays
                     if reg_glac_gcm_mass_annual is None:
                         # monthly vars
@@ -255,7 +256,7 @@ def run(args):
                         reg_glac_gcm_mass_monthly = glac_mass_monthly
                         # annual vars
                         reg_glac_gcm_area_annual = glac_area_annual
-                        reg_glac_gcm_mass_annual = glac_mass_annual    
+                        reg_glac_gcm_mass_annual = glac_mass_annual
                     # otherwise concatenate existing arrays
                     else:
                         # monthly vars
@@ -270,7 +271,7 @@ def run(args):
                         reg_glac_gcm_mass_monthly = np.concatenate((reg_glac_gcm_mass_monthly, glac_mass_monthly), axis=0)
                         # annual vars
                         reg_glac_gcm_area_annual = np.concatenate((reg_glac_gcm_area_annual, glac_area_annual), axis=0)
-                        reg_glac_gcm_mass_annual = np.concatenate((reg_glac_gcm_mass_annual, glac_mass_annual), axis=0)  
+                        reg_glac_gcm_mass_annual = np.concatenate((reg_glac_gcm_mass_annual, glac_mass_annual), axis=0)
 
                 # aggregate gcms
                 if reg_glac_allgcms_runoff_monthly is None:
@@ -302,7 +303,7 @@ def run(args):
                     reg_glac_allgcms_area_annual  = np.concatenate((reg_glac_allgcms_area_annual, reg_glac_gcm_area_annual[np.newaxis,:,:]), axis=0)
                     reg_glac_allgcms_mass_annual  = np.concatenate((reg_glac_allgcms_mass_annual, reg_glac_gcm_mass_annual[np.newaxis,:,:]), axis=0)
 
-                            
+
         #===== CREATE NETCDF FILES=====
 
         # get common attributes
@@ -331,7 +332,7 @@ def run(args):
                         lon=(["glacier"], cenlon_list),
                         lat=(["glacier"], cenlat_list),
                         time=tvals,
-                ) 
+                )
                 coord_order = ["realization","glacier","time"]
             else:
                 coords_dict=dict(
@@ -340,7 +341,7 @@ def run(args):
                         lon=(["glacier"], cenlon_list),
                         lat=(["glacier"], cenlat_list),
                         time=tvals,
-                ) 
+                )
                 coord_order = ["model","glacier","time"]
 
             #glac_runoff_monthly
@@ -477,7 +478,7 @@ def run(args):
                 ds.glac_prec_monthly.attrs['temporal_resolution'] = 'monthly'
                 ds.glac_prec_monthly.attrs['comment'] = 'only the liquid precipitation, solid precipitation excluded'
                 ds.glac_prec_monthly.attrs['grid_mapping'] = 'crs'
-    
+
             #glac_mass_monthly
             elif var=='glac_mass_monthly':
                 ds = xr.Dataset(
@@ -525,7 +526,7 @@ def run(args):
                 ds.glac_mass_annual.attrs['temporal_resolution'] = 'annual'
                 ds.glac_mass_annual.attrs['comment'] = 'mass of ice based on area and ice thickness at start of the year'
                 ds.glac_mass_annual.attrs['grid_mapping'] = 'crs'
-        
+
             # crs attributes - same for all vars
             ds.crs.attrs['grid_mapping_name'] = 'latitude_longitude'
             ds.crs.attrs['longitude_of_prime_meridian'] = 0.0
@@ -533,7 +534,7 @@ def run(args):
             ds.crs.attrs['inverse_flattening'] = 298.257223563
             ds.crs.attrs['proj4text'] = '+proj=longlat +datum=WGS84 +no_defs'
             ds.crs.attrs['crs_wkt'] = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]]'
-            
+
             # time attributes - different for monthly v annual
             ds.time.attrs['long_name'] = 'time'
             if 'annual' in var:
@@ -542,7 +543,7 @@ def run(args):
             elif 'monthly' in var:
                 ds.time.attrs['range'] = str(time_values[0]) + ' - ' + str(time_values[-1])
                 ds.time.attrs['comment'] = 'start of the month'
-            
+
             ds.RGIId.attrs['long_name'] = 'Randolph Glacier Inventory Id'
             ds.RGIId.attrs['comment'] = 'RGIv6.0 (https://nsidc.org/data/nsidc-0770/versions/6)'
             ds.RGIId.attrs['cf_role'] = 'timeseries_id'
@@ -551,20 +552,20 @@ def run(args):
                 ds.Climate_Model.attrs['long_name'] = f'{gcms[0]} realization'
             else:
                 ds.Climate_Model.attrs['long_name'] = 'General Circulation Model'
-            
+
             ds.lon.attrs['standard_name'] = 'longitude'
             ds.lon.attrs['long_name'] = 'longitude of glacier center'
             ds.lon.attrs['units'] = 'degrees_east'
-            
+
             ds.lat.attrs['standard_name'] = 'latitude'
             ds.lat.attrs['long_name'] = 'latitude of glacier center'
             ds.lat.attrs['units'] = 'degrees_north'
-            
+
             # save batch
             vn_fp = f'{comppath}/glacier_stats/{var}/{str(reg).zfill(2)}/'
             if not os.path.exists(vn_fp):
                 os.makedirs(vn_fp, exist_ok=True)
-                
+
             if realizations[0]:
                 ds_fn = f'R{str(reg).zfill(2)}_{var}_{gcms[0]}_{scenario}_Batch-{str(batch_start)}-{str(batch_end)}_{calibration}_ba{bias_adj}_{nsets}_{gcm_startyear}_{gcm_endyear}_all.nc'.replace('__','_')
             else:
@@ -574,8 +575,8 @@ def run(args):
 
         loop_end = time.time()
         print(f'Batch {nbatch} runtime:\t{np.round(loop_end - loop_start,2)} seconds')
-            
-            
+
+
     ### MERGE BATCHES FOR ANNUAL VARS ###
     vns = ['glac_mass_annual', 'glac_area_annual']
 
@@ -590,14 +591,14 @@ def run(args):
             else:
                 fn_merge_list = glob.glob(f'{vn_fp}/R{str(reg).zfill(2)}_{vn}_{scenario}_Batch-*_{calibration}_ba{bias_adj}_{nsets}_{gcm_startyear}_{gcm_endyear}_all.nc'.replace('__','_'))
             fn_merge_list_start = [int(f.split('-')[-2]) for f in fn_merge_list]
-        
+
             if len(fn_merge_list) > 0:
                 fn_merge_list = [x for _,x in sorted(zip(fn_merge_list_start,fn_merge_list))]
-            
+
                 ds = None
                 for fn in fn_merge_list:
                     ds_batch = xr.open_dataset(fn)
-                    
+
                     if ds is None:
                         ds = ds_batch
                     else:
@@ -605,9 +606,9 @@ def run(args):
                 # save
                 ds_fn = fn.split('Batch')[0][:-1] + f'_{calibration}_ba{bias_adj}_{nsets}_{gcm_startyear}_{gcm_endyear}_all.nc'
                 ds.to_netcdf(ds_fn)
-                
+
                 ds_batch.close()
-                
+
                 for fn in fn_merge_list:
                     os.remove(fn)
 
@@ -622,7 +623,7 @@ def main():
     requiredNamed = parser.add_argument_group('required named arguments')
     requiredNamed.add_argument('-rgi_region01', type=int, default=None, required=True, nargs='+',
                         help='Randoph Glacier Inventory region (can take multiple, e.g. "1 2 3")')
-    requiredNamed.add_argument('-gcm_name', type=str, default=None, required=True, nargs='+', 
+    requiredNamed.add_argument('-gcm_name', type=str, default=None, required=True, nargs='+',
                         help='GCM name for which to compile simulations (can take multiple, ex. "ERA5" or "CESM2")')
     parser.add_argument('-scenario', action='store', type=str, default=None, nargs='+',
                         help='rcp or ssp scenario used for model run (can take multiple, ex. "ssp245 ssp585")')
@@ -632,13 +633,13 @@ def main():
                         help='start year for the model run')
     parser.add_argument('-gcm_endyear', action='store', type=int, default=pygem_prms['climate']['gcm_endyear'],
                         help='start year for the model run')
-    parser.add_argument('-sim_path', type=str, default=pygem_prms['root'] + '/Output/simulations/', 
+    parser.add_argument('-sim_path', type=str, default=pygem_prms['root'] + '/Output/simulations/',
                         help='PyGEM simulations filepath')
     parser.add_argument('-option_calibration', action='store', type=str, default=pygem_prms['calib']['option_calibration'],
                         help='calibration option ("emulator", "MCMC", "HH2015", "HH2015mod", "None")')
     parser.add_argument('-option_bias_adjustment', action='store', type=int, default=pygem_prms['sim']['option_bias_adjustment'],
                         help='Bias adjustment option (options: 0, "1", "2", "3".\n0: no adjustment\n1: new prec scheme and temp building on HH2015\n2: HH2015 methods\n3: quantile delta mapping)')
-    parser.add_argument('-vars',type=str, help='comm delimited list of PyGEM variables to compile (can take multiple, ex. "monthly_mass annual_area")', 
+    parser.add_argument('-vars',type=str, help='comm delimited list of PyGEM variables to compile (can take multiple, ex. "monthly_mass annual_area")',
                         choices=['glac_runoff_monthly','offglac_runoff_monthly','glac_acc_monthly','glac_melt_monthly','glac_refreeze_monthly','glac_frontalablation_monthly','glac_massbaltotal_monthly','glac_prec_monthly','glac_mass_monthly','glac_mass_annual','glac_area_annual'],
                         nargs='+')
     parser.add_argument('-ncores', action='store', type=int, default=1,
@@ -673,7 +674,7 @@ def main():
             scenarios = [scenarios]
         if set(['ERA5', 'ERA-Interim', 'COAWST']) & set(gcms):
             raise ValueError(f'Cannot compile present-day and future data simulataneously.  A scenario was specified, which does not exist for one of the specified GCMs.\nGCMs: {gcms}\nScenarios: {scenarios}')
-    else:            
+    else:
         scenarios = ['']
         if set(gcms) - set(['ERA5', 'ERA-Interim', 'COAWST']):
             raise ValueError(f'Must specify a scenario for future GCM runs\nGCMs: {gcms}\nscenarios: {scenarios}')
@@ -711,7 +712,7 @@ def main():
     # parallel processing
     print('Processing with ' + str(num_cores) + ' cores...')
     with multiprocessing.Pool(num_cores) as p:
-        p.map(run, list_packed_vars)     
+        p.map(run, list_packed_vars)
 
     end = time.time()
     print(f'Total runtime: {np.round(end - start,2)} seconds')

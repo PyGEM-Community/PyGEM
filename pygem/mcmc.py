@@ -7,14 +7,15 @@ Distrubted under the MIT lisence
 
 Markov chain Monte Carlo methods
 """
-import sys
 import copy
-import torch
-import numpy as np
-from tqdm import tqdm
+
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
+import numpy as np
+import torch
+from tqdm import tqdm
+
 from pygem.setup.config import ConfigManager
+
 # instantiate ConfigManager
 config_manager = ConfigManager()
 # read the config
@@ -54,7 +55,7 @@ def log_normal_density(x, **kwargs):
     k = mu.shape[-1]
 
     return torch.tensor([
-                        -k/2.*torch.log(torch.tensor(2*np.pi)) - 
+                        -k/2.*torch.log(torch.tensor(2*np.pi)) -
                         torch.log(sigma).nansum() -
                         0.5*(((x-mu)/sigma)**2).nansum()
                         ])
@@ -93,16 +94,16 @@ def log_truncated_normal(x, **kwargs):
     standard_x = (x - mu) / sigma
     standard_a = (lo - mu) / sigma
     standard_b = (hi - mu) / sigma
-    
+
     # PDF of the standard normal distribution
     pdf = torch.exp(-0.5 * standard_x**2) / np.sqrt(2 * torch.pi)
-    
+
     # CDF of the standard normal distribution using the error function
     cdf_upper = 0.5 * (1 + torch.erf(standard_b / np.sqrt(2)))
     cdf_lower = 0.5 * (1 + torch.erf(standard_a / np.sqrt(2)))
-    
+
     normalization = cdf_upper - cdf_lower
-    
+
     return torch.log(pdf) - torch.log(normalization)
 
 # mapper dictionary - maps to appropriate log probability density function for given distribution `type`
@@ -127,7 +128,7 @@ class mbPosterior:
         # get mean and std for each parameter type
         self.means = torch.tensor([params['mu'] for params in self.priors.values()])
         self.stds = torch.tensor([params['sigma'] for params in self.priors.values()])
-    
+
     # check priors. remove any subkeys that have a `None` value, and ensure that we have a mean and standard deviation for and gamma distributions
     def check_priors(self):
         for k in list(self.priors.keys()):
@@ -153,7 +154,7 @@ class mbPosterior:
     def update_modelprms(self, m):
         for i, k in enumerate(['tbias','kp','ddfsnow']):
             self.mb_args[1][k] = float(m[i])
-        self.mb_args[1]['ddfice'] = self.mb_args[1]['ddfsnow'] / pygem_prms['sim']['params']['ddfsnow_iceratio'] 
+        self.mb_args[1]['ddfice'] = self.mb_args[1]['ddfsnow'] / pygem_prms['sim']['params']['ddfsnow_iceratio']
 
     # get mb_pred
     def get_mb_pred(self, m):
@@ -183,7 +184,7 @@ class mbPosterior:
         for i, pred in enumerate(self.preds):
             log_likehood+=log_normal_density(self.obs[i][0], **{'mu': pred, 'sigma': self.obs[i][1]})
         return log_likehood
-    
+
     # get log potential (sum up as any declared potential functions)
     def log_potential(self, m):
         log_potential = 0
@@ -233,7 +234,7 @@ class Metropolis:
             n_rms.append(count)
         self.n_rm = max(n_rms)
         return
-    
+
     def rm_stuck_samples(self):
         """
         remove stuck samples at the beginning of the chain
@@ -325,7 +326,7 @@ class Metropolis:
                 self.preds_primes, \
                 torch.vstack(self.steps), \
                 self.acceptance
-    
+
 ### some other useful functions ###
 
 def effective_n(x):

@@ -7,6 +7,7 @@ Distrubted under the MIT lisence
 """
 import os
 import shutil
+
 import ruamel.yaml
 
 __all__ = ["ConfigManager"]
@@ -28,7 +29,7 @@ class ConfigManager:
         self.source_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.yaml")
         self.overwrite = overwrite
         self._ensure_config()
-    
+
     def _ensure_config(self):
         """Ensure the configuration file exists, creating or overwriting it if necessary"""
         if not os.path.isfile(self.config_path) or self.overwrite:
@@ -40,7 +41,7 @@ class ConfigManager:
         os.makedirs(self.base_dir, exist_ok=True)
         shutil.copy(self.source_config_path, self.config_path)
         print(f"Copied default configuration to {self.config_path}")
-        
+
     def read_config(self, validate=True):
         """Read the configuration file and return its contents as a dictionary while preserving formatting.
         Parameters:
@@ -65,15 +66,15 @@ class ConfigManager:
         ryaml.preserve_quotes = True
         with open(self.config_path, 'w') as file:
             ryaml.dump(config, file)
-    
+
     def update_config(self, updates):
         """Update multiple keys in the YAML configuration file while preserving quotes and original types.
-        
+
         Parameters:
         updates (dict): Key-Value pairs to be updated
         """
         config = self.read_config(validate=False)
-        
+
         for key, value in updates.items():
             if key not in self.EXPECTED_TYPES:
                 raise KeyError(f"Unrecognized configuration key: {key}")
@@ -83,13 +84,13 @@ class ConfigManager:
                 d = d[sub_key]
 
             d[keys[-1]] = value
-        
+
         self._validate_config(config)
         self._write_config(config)
-    
+
     def _validate_config(self, config):
         """Validate the configuration dictionary against expected types and required keys.
-        
+
         Parameters:
         config (dict): The configuration dictionary to be validated.
         """
@@ -110,7 +111,7 @@ class ConfigManager:
                 elem_type = self.LIST_ELEMENT_TYPES[key]
                 if not all(isinstance(item, elem_type) for item in sub_data):
                     raise TypeError(f"Invalid type for elements in '{key}': expected all elements to be {elem_type}, but got {sub_data}")
-    
+
 
     # expected config types
     EXPECTED_TYPES = {

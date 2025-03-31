@@ -10,27 +10,23 @@ derive monthly glacierwide mass for PyGEM simulation using annual glacier mass a
 # Built-in libraries
 import argparse
 import collections
-import copy
-import inspect
+import glob
 import multiprocessing
 import os
-import glob
-import sys
 import time
-import json
-# External libraries
-import pandas as pd
-import pickle
+
 import numpy as np
+
+# External libraries
 import xarray as xr
+
 # pygem imports
-import pygem
 from pygem.setup.config import ConfigManager
+
 # instantiate ConfigManager
 config_manager = ConfigManager()
 # read the config
 pygem_prms = config_manager.read_config()
-import pygem.pygem_modelsetup as modelsetup
 
 
 # ----- FUNCTIONS -----
@@ -95,7 +91,7 @@ def update_xrdataset(input_ds, glac_mass_monthly):
     ----------
     xrdataset : xarray Dataset
         existing xarray dataset
-    newdata : ndarray 
+    newdata : ndarray
         new data array
     description: str
         describing new data field
@@ -145,7 +141,7 @@ def update_xrdataset(input_ds, glac_mass_monthly):
         encoding[vn] = {'_FillValue': None,
                         'zlib':True,
                         'complevel':9
-                        }    
+                        }
 
     output_ds_all['glac_mass_monthly'].values = (
             glac_mass_monthly
@@ -169,8 +165,8 @@ def run(simpath):
 
             # calculate monthly mass - pygem glac_massbaltotal_monthly is in units of m3, so convert to mass using density of ice
             glac_mass_monthly = get_monthly_mass(
-                                                statsds.glac_mass_annual.values, 
-                                                statsds.glac_massbaltotal_monthly.values * pygem_prms['constants']['density_ice'], 
+                                                statsds.glac_mass_annual.values,
+                                                statsds.glac_massbaltotal_monthly.values * pygem_prms['constants']['density_ice'],
                                                 )
             statsds.close()
 
@@ -185,7 +181,7 @@ def run(simpath):
 
             # close datasets
             output_ds_stats.close()
-        
+
         except:
             pass
     else:
@@ -219,6 +215,6 @@ def main():
             p.map(run,simpath)
 
     print('Total processing time:', time.time()-time_start, 's')
-    
+
 if __name__ == "__main__":
     main()

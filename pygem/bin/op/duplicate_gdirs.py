@@ -10,8 +10,10 @@ duplicate OGGM glacier directories
 import argparse
 import os
 import shutil
+
 # pygem imports
 from pygem.setup.config import ConfigManager
+
 # instantiate ConfigManager
 config_manager = ConfigManager()
 # read the config
@@ -32,7 +34,7 @@ def main():
         reg,id = glac_num.split('.')
         reg = reg.zfill(2)
         thous = id[:2]
-        
+
         root = pygem_prms['root'] + '/' + pygem_prms['oggm']['oggm_gdir_relpath']
         sfix = '/per_glacier/' + f'RGI60-{reg}/' + f'RGI60-{reg}.{thous}/'
 

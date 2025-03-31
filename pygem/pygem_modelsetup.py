@@ -9,18 +9,22 @@ List of functions used to set up different aspects of the model
 """
 # Built-in libaries
 import os
+from datetime import datetime
+
+import numpy as np
+
 # External libraries
 import pandas as pd
-import numpy as np
-from datetime import datetime
+
 from pygem.setup.config import ConfigManager
+
 # instantiate ConfigManager
 config_manager = ConfigManager()
 # read the config
 pygem_prms = config_manager.read_config()
 
 
-def datesmodelrun(startyear=pygem_prms['climate']['ref_startyear'], endyear=pygem_prms['climate']['ref_endyear'], 
+def datesmodelrun(startyear=pygem_prms['climate']['ref_startyear'], endyear=pygem_prms['climate']['ref_endyear'],
                   spinupyears=pygem_prms['climate']['ref_spinupyears'], option_wateryear=pygem_prms['climate']['ref_wateryear']):
     """
     Create table of year, month, day, water year, season and number of days in the month.
@@ -267,7 +271,7 @@ def import_Husstable(rgi_table, filepath, filedict, drop_col_names, indexname=py
 
 
 def selectglaciersrgitable(glac_no=None, rgi_regionsO1=None, rgi_regionsO2='all', rgi_glac_number='all',
-                           rgi_fp=pygem_prms['root'] + pygem_prms['rgi']['rgi_relpath'], 
+                           rgi_fp=pygem_prms['root'] + pygem_prms['rgi']['rgi_relpath'],
                            rgi_cols_drop=pygem_prms['rgi']['rgi_cols_drop'],
                            rgi_O1Id_colname=pygem_prms['rgi']['rgi_O1Id_colname'],
                            rgi_glacno_float_colname=pygem_prms['rgi']['rgi_glacno_float_colname'],
@@ -323,7 +327,7 @@ def selectglaciersrgitable(glac_no=None, rgi_regionsO1=None, rgi_regionsO2='all'
             csv_regionO1 = pd.read_csv(rgi_fp + rgi_fn)
         except:
             csv_regionO1 = pd.read_csv(rgi_fp + rgi_fn, encoding='latin1')
-        
+
         # Populate glacer_table with the glaciers of interest
         if rgi_regionsO2 == 'all' and rgi_glac_number == 'all':
             if debug:
@@ -349,8 +353,8 @@ def selectglaciersrgitable(glac_no=None, rgi_regionsO1=None, rgi_regionsO2='all'
             else:
                 print("%s glaciers in region %s are included in this model run: %s and more" %
                       (len(rgi_glac_number), region, rgi_glac_number[0:50]))
-                
-            rgiid_subset = ['RGI60-' + str(region).zfill(2) + '.' + x for x in rgi_glac_number] 
+
+            rgiid_subset = ['RGI60-' + str(region).zfill(2) + '.' + x for x in rgi_glac_number]
             rgiid_all = list(csv_regionO1.RGIId.values)
             rgi_idx = [rgiid_all.index(x) for x in rgiid_subset if x in rgiid_all]
             if glacier_table.empty:
@@ -358,7 +362,7 @@ def selectglaciersrgitable(glac_no=None, rgi_regionsO1=None, rgi_regionsO2='all'
             else:
                 glacier_table = (pd.concat([glacier_table, csv_regionO1.loc[rgi_idx]],
                                            axis=0))
-                    
+
     glacier_table = glacier_table.copy()
     # reset the index so that it is in sequential order (0, 1, 2, etc.)
     glacier_table.reset_index(inplace=True)
@@ -411,7 +415,7 @@ def selectglaciersrgitable(glac_no=None, rgi_regionsO1=None, rgi_regionsO2='all'
     # Glacier number with no trailing zeros
     glacier_table['glacno'] = [str(int(x.split('-')[1].split('.')[0])) + '.' + x.split('-')[1].split('.')[1]
                                for x in glacier_table.RGIId]
-    
+
     # Remove glaciers below threshold
     glacier_table = glacier_table.loc[glacier_table['Area'] > min_glac_area_km2,:]
     glacier_table.reset_index(inplace=True, drop=True)
@@ -447,14 +451,14 @@ def selectglaciersrgitable(glac_no=None, rgi_regionsO1=None, rgi_regionsO2='all'
 def split_list(lst, n=1, option_ordered=1, group_thousands=False):
     """
     Split list into batches for the supercomputer.
-    
+
     Parameters
     ----------
     lst : list
         List that you want to split into separate batches
     n : int
         Number of batches to split glaciers into.
-    
+
     Returns
     -------
     lst_batches : list
@@ -479,19 +483,19 @@ def split_list(lst, n=1, option_ordered=1, group_thousands=False):
                 lst_subset = lst_copy[0:n_perlist_low]
                 lst_batches.append(lst_subset)
                 [lst_copy.remove(i) for i in lst_subset]
-        
+
     else:
         if n > len(lst):
             n = len(lst)
-    
+
         lst_batches = [[] for x in np.arange(n)]
         nbatch = 0
         for count, x in enumerate(lst):
             if count%n == 0:
                 nbatch = 0
-    
+
             lst_batches[nbatch].append(x)
-            
+
             nbatch += 1
 
     if group_thousands:
@@ -513,7 +517,7 @@ def split_list(lst, n=1, option_ordered=1, group_thousands=False):
             sorted = lengths.argsort()
             idx0 = sorted[0]
             idx1 = sorted[1]
-            
+
             lst_batches_th[idx1].extend(lst_batches_th[idx0])
             del lst_batches_th[idx0]
 

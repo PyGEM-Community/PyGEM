@@ -7,32 +7,33 @@ Distrubted under the MIT lisence
 """
 # Built-in libraries
 import argparse
-import collections
-import copy
-import inspect
 import multiprocessing
 import os
-import glob
-import sys
 import time
 from functools import partial
+
 import matplotlib.pyplot as plt
+
 # External libraries
 import numpy as np
 import xarray as xr
+
 # oggm
-from oggm import workflow, tasks, cfg
+from oggm import tasks, workflow
 from oggm.sandbox import distribute_2d
+
 # pygem imports
 from pygem.setup.config import ConfigManager
+
 # instantiate ConfigManager
 config_manager = ConfigManager()
 # read the config
 pygem_prms = config_manager.read_config()
-import pygem
 import pygem.pygem_modelsetup as modelsetup
-from pygem.oggm_compat import single_flowline_glacier_directory
-from pygem.oggm_compat import single_flowline_glacier_directory_with_calving
+from pygem.oggm_compat import (
+    single_flowline_glacier_directory,
+    single_flowline_glacier_directory_with_calving,
+)
 
 
 def getparser():
@@ -54,8 +55,8 @@ def getparser():
 def pygem_to_oggm(pygem_simpath, oggm_diag=None, debug=False):
     """
     take PyGEM model output and temporarily store it in a way that OGGM distribute_2d expects
-    this will be a netcdf file named fl_diagnostics.nc within the glacier directory - which contains 
-    the following coordinates: 
+    this will be a netcdf file named fl_diagnostics.nc within the glacier directory - which contains
+    the following coordinates:
     dis_along_flowline (dis_along_flowline): float64, along-flowline distance in m
     time (time): float64, model time in years
     and the following data variables:
@@ -76,7 +77,7 @@ def pygem_to_oggm(pygem_simpath, oggm_diag=None, debug=False):
     diag_ds.coords['dis_along_flowline'] = distance_along_flowline
     diag_ds['area_m2'] = (('time', 'dis_along_flowline'), area)
     diag_ds['area_m2'].attrs['description'] = 'Section area'
-    diag_ds['area_m2'].attrs['unit'] = 'm 2'    
+    diag_ds['area_m2'].attrs['unit'] = 'm 2'
     diag_ds['thickness_m'] = (('time', 'dis_along_flowline'), thick * np.nan)
     diag_ds['thickness_m'].attrs['description'] = 'Section thickness'
     diag_ds['thickness_m'].attrs['unit'] = 'm'
@@ -113,9 +114,9 @@ def run(simpath, debug=False):
         glac_no = pygem_fn_split[0]
         glacier_rgi_table = modelsetup.selectglaciersrgitable(glac_no=[glac_no]).loc[0, :]
         glacier_str = '{0:0.5f}'.format(glacier_rgi_table['RGIId_float'])
-        # ===== Load glacier data: area (km2), ice thickness (m), width (km) =====        
+        # ===== Load glacier data: area (km2), ice thickness (m), width (km) =====
         try:
-            if not glacier_rgi_table['TermType'] in [1,5] or not pygem_prms['setup']['include_calving']:
+            if glacier_rgi_table['TermType'] not in [1,5] or not pygem_prms['setup']['include_calving']:
                 gdir = single_flowline_glacier_directory(glacier_str)
                 gdir.is_tidewater = False
             else:
@@ -141,7 +142,7 @@ def run(simpath, debug=False):
         # distribute simulation to 2d
         ds = workflow.execute_entity_task(
         distribute_2d.distribute_thickness_from_simulation,
-        gdir, 
+        gdir,
         fl_diag=pygem_fl_diag,
         concat_input_filesuffix='_spinup_historical',  # concatenate with the historical spinup
         output_filesuffix=f'_pygem_{f_suffix}',  # filesuffix added to the output filename gridded_simulation.nc, if empty input_filesuffix is used
@@ -171,6 +172,6 @@ def main():
         p.map(run_with_debug, args.simpath)
 
     print('Total processing time:', time.time()-time_start, 's')
-    
+
 if __name__ == "__main__":
     main()

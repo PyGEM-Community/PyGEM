@@ -8,19 +8,23 @@ Distrubted under the MIT lisence
 script to check for failed glaciers for a given simulation and export a pickle file containing a list of said glacier numbers to be reprocessed
 """
 # imports
-import os
-import glob
-import sys
-import json
 import argparse
+import glob
+import json
+import os
+import sys
+
 import numpy as np
+
 # pygem imports
 from pygem.setup.config import ConfigManager
+
 # instantiate ConfigManager
 config_manager = ConfigManager()
 # read the config
 pygem_prms = config_manager.read_config()
 import pygem.pygem_modelsetup as modelsetup
+
 
 def run(reg, simpath, gcm, scenario, calib_opt, bias_adj, gcm_startyear, gcm_endyear):
 
@@ -29,14 +33,14 @@ def run(reg, simpath, gcm, scenario, calib_opt, bias_adj, gcm_startyear, gcm_end
 
 
     # get all glaciers in region to see which fraction ran successfully
-    main_glac_rgi_all = modelsetup.selectglaciersrgitable(rgi_regionsO1=[reg], 
-                                                        rgi_regionsO2='all', rgi_glac_number='all', 
+    main_glac_rgi_all = modelsetup.selectglaciersrgitable(rgi_regionsO1=[reg],
+                                                        rgi_regionsO2='all', rgi_glac_number='all',
                                                         glac_no=None,
                                                         debug=True)
 
     glacno_list_all = list(main_glac_rgi_all['rgino_str'].values)
 
-    # get list of glacier simulation files 
+    # get list of glacier simulation files
     if scenario:
         sim_dir = base_dir + gcm  + '/' + scenario + '/stats/'
     else:
@@ -64,7 +68,7 @@ def run(reg, simpath, gcm, scenario, calib_opt, bias_adj, gcm_startyear, gcm_end
     # loop through each glacier in batch list
     for i, glacno in enumerate(glacno_list_all):
         # gat glacier string and file name
-        glacier_str = '{0:0.5f}'.format(float(glacno))  
+        glacier_str = '{0:0.5f}'.format(float(glacno))
 
         if glacier_str not in glacno_ran:
             failed_glacnos.append(glacier_str)
@@ -80,7 +84,7 @@ def main():
     requiredNamed = parser.add_argument_group('required named arguments')
     requiredNamed.add_argument('-rgi_region01', type=int, default=pygem_prms['setup']['rgi_region01'],
                         help='Randoph Glacier Inventory region (can take multiple, e.g. `-run_region01 1 2 3`)', nargs='+')
-    parser.add_argument('-gcm_name', type=str, default=None, 
+    parser.add_argument('-gcm_name', type=str, default=None,
                         help='GCM name to compile results from (ex. ERA5 or CESM2)')
     parser.add_argument('-scenario', action='store', type=str, default=None,
                         help='rcp or ssp scenario used for model run (ex. rcp26 or ssp585)')
@@ -128,5 +132,5 @@ def main():
                 print(f'Failed glaciers for RGI region R{str(reg).zfill(2)} {args.gcm_name} {str(scenario).replace('None','')} {args.gcm_startyear}-{args.gcm_endyear}:')
                 print(failed_glacs)
 
-        else: 
+        else:
             print(f'No glaciers failed from R{region}, for {gcm_name} {scenario.replace('None','')}')

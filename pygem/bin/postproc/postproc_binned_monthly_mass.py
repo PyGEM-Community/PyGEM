@@ -10,18 +10,18 @@ derive binned monthly ice thickness and mass from PyGEM simulation
 # Built-in libraries
 import argparse
 import collections
-import copy
-import inspect
+import glob
 import multiprocessing
 import os
-import glob
-import sys
 import time
+
 # External libraries
 import numpy as np
 import xarray as xr
+
 # pygem imports
 from pygem.setup.config import ConfigManager
+
 # instantiate ConfigManager
 config_manager = ConfigManager()
 # read the config
@@ -50,19 +50,19 @@ def get_binned_monthly(dotb_monthly, m_annual, h_annual):
     from annual climatic mass balance and annual ice thickness products
 
     to determine monthlyt thickness and mass, we must account for flux divergence
-    this is not so straight-forward, as PyGEM accounts for ice dynamics at the 
+    this is not so straight-forward, as PyGEM accounts for ice dynamics at the
     end of each model year and not on a monthly timestep.
-    here, monthly thickness and mass is determined assuming 
+    here, monthly thickness and mass is determined assuming
     the flux divergence is constant throughout the year.
-    
-    annual flux divergence is first estimated by combining the annual binned change in ice 
-    thickness and the annual binned mass balance. then, assume flux divergence is constant 
+
+    annual flux divergence is first estimated by combining the annual binned change in ice
+    thickness and the annual binned mass balance. then, assume flux divergence is constant
     throughout the year (divide annual by 12 to get monthly flux divergence).
 
-    monthly binned flux divergence can then be combined with 
+    monthly binned flux divergence can then be combined with
     monthly binned climatic mass balance to get monthly binned change in ice thickness
 
-    
+
     Parameters
     ----------
     dotb_monthly : float
@@ -108,11 +108,11 @@ def get_binned_monthly(dotb_monthly, m_annual, h_annual):
 
     # get binned monthly thickness = running thickness change + initial thickness
     running_delta_h_monthly = np.cumsum(delta_h_monthly, axis=-1)
-    h_monthly =  running_delta_h_monthly + h_annual[:,:,0][:,:,np.newaxis] 
+    h_monthly =  running_delta_h_monthly + h_annual[:,:,0][:,:,np.newaxis]
 
     # convert to mass per unit area
     m_spec_monthly = h_monthly * pygem_prms['constants']['density_ice']
-    
+
     ### get monthly mass ###
     # note, binned monthly thickness and mass is currently per unit area
     # obtaining binned monthly mass requires knowledge of binned glacier area
@@ -124,9 +124,9 @@ def get_binned_monthly(dotb_monthly, m_annual, h_annual):
     # now get area: use numpy divide where denominator is greater than 0 to avoid divide error
     # note, indexing of [:,:,1:] so that annual area array has same shape as flux_div_annual
     a_annual = np.divide(
-            v_annual[:,:,1:], 
-            h_annual[:,:,1:], 
-            out=np.full(h_annual[:,:,1:].shape, np.nan), 
+            v_annual[:,:,1:],
+            h_annual[:,:,1:],
+            out=np.full(h_annual[:,:,1:].shape, np.nan),
             where=h_annual[:,:,1:]>0)
 
     # tile to get monthly area, assuming area is constant thoughout the year
@@ -146,7 +146,7 @@ def update_xrdataset(input_ds, h_monthly, m_spec_monthly, m_monthly):
     ----------
     xrdataset : xarray Dataset
         existing xarray dataset
-    newdata : ndarray 
+    newdata : ndarray
         new data array
     description: str
         describing new data field
@@ -210,13 +210,13 @@ def update_xrdataset(input_ds, h_monthly, m_spec_monthly, m_monthly):
         encoding[vn] = {'_FillValue': None,
                         'zlib':True,
                         'complevel':9
-                        }    
+                        }
 
     output_ds_all['bin_thick_monthly'].values = (
             h_monthly
             )
     output_ds_all['bin_mass_spec_monthly'].values = (
-            m_spec_monthly 
+            m_spec_monthly
             )
     output_ds_all['bin_mass_monthly'].values = (
             m_monthly
@@ -244,7 +244,7 @@ def run(simpath):
 
         # calculate monthly thickness and mass
         h_monthly, m_spec_monthly, m_monthly = get_binned_monthly(
-                                                    binned_ds.bin_massbalclim_monthly.values, 
+                                                    binned_ds.bin_massbalclim_monthly.values,
                                                     binned_ds.bin_mass_annual.values,
                                                     binned_ds.bin_thick_annual.values
                                                     )
@@ -271,7 +271,7 @@ def main():
     if args.simpath:
         # filter out non-file paths
         simpath = [p for p in args.simpath if os.path.isfile(p)]
-    
+
     elif args.binned_simdir:
         # get list of sims
         simpath = glob.glob(args.binned_simdir+'*.nc')
@@ -288,6 +288,6 @@ def main():
             p.map(run,simpath)
 
     print('Total processing time:', time.time()-time_start, 's')
-    
+
 if __name__ == "__main__":
     main()

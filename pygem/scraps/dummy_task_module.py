@@ -1,7 +1,8 @@
 import logging
+
+import xarray as xr
 from oggm import cfg
 from oggm.utils import entity_task
-import xarray as xr
 
 # Module logger
 log = logging.getLogger(__name__)

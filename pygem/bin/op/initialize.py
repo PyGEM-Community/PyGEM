@@ -7,11 +7,14 @@ Distrubted under the MIT lisence
 
 initialization script (ensure config.yaml and get sample datasets)
 """
-import requests
-import zipfile
-import os,sys
+import os
 import shutil
+import zipfile
+
+import requests
+
 from pygem.setup.config import ConfigManager
+
 # instantiate ConfigManager
 config_manager = ConfigManager(overwrite=True)
 # read the config
@@ -21,14 +24,14 @@ def print_file_tree(start_path, indent=""):
     # Loop through all files and directories in the current directory
     for item in os.listdir(start_path):
         path = os.path.join(start_path, item)
-        
+
         # Print the current item with indentation
         print(indent + "|-- " + item)
-        
+
         # Recursively call this function if the item is a directory
         if os.path.isdir(path):
             print_file_tree(path, indent + "    ")
-            
+
 def get_confirm_token(response):
     """Extract confirmation token for Google Drive large file download."""
     for key, value in response.cookies.items():
@@ -56,11 +59,11 @@ def get_unique_folder_name(dir):
 def download_and_unzip_from_google_drive(file_id, output_dir):
     """
     Download a ZIP file from Google Drive and extract its contents.
-    
+
     Args:
         file_id (str): The Google Drive file ID.
         output_dir (str): The directory to save and extract the contents of the ZIP file.
-    
+
     Returns:
         int: 1 if the ZIP file was successfully downloaded and extracted, 0 otherwise.
     """
@@ -100,7 +103,7 @@ def download_and_unzip_from_google_drive(file_id, output_dir):
 
     except (requests.RequestException, zipfile.BadZipFile, Exception) as e:
         return None  # Failure
-    
+
 def main():
     # Define the base directory
     basedir = os.path.join(os.path.expanduser('~'), 'PyGEM')
@@ -110,7 +113,7 @@ def main():
     out = download_and_unzip_from_google_drive(file_id, basedir)
 
     if out:
-        print(f"Downloaded PyGEM sample dataset:")
+        print("Downloaded PyGEM sample dataset:")
         print(os.path.abspath(out))
         try:
             print_file_tree(out)
@@ -118,13 +121,13 @@ def main():
             pass
 
     else:
-        print(f'Error downloading PyGEM sample dataset.')
+        print('Error downloading PyGEM sample dataset.')
 
     # update root path in config.yaml
     try:
         config_manager.update_config(updates={'root':f'{out}/sample_data'})
     except:
         pass
-    
+
 if __name__ == "__main__":
     main()

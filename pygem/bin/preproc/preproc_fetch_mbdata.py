@@ -10,21 +10,18 @@ Fetch filled Hugonnet reference mass balance data
 # Built-in libraries
 import argparse
 import os
+
 # External libraries
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.ticker import MultipleLocator
-from scipy.stats import median_abs_deviation
 # oggm
 from oggm import utils
+
 # pygem imports
 from pygem.setup.config import ConfigManager
+
 # instantiate ConfigManager
 config_manager = ConfigManager()
 # read the config
 pygem_prms = config_manager.read_config()
-import pygem.pygem_modelsetup as modelsetup
 
 
 def run(fp='', debug=False, overwrite=False):
@@ -63,7 +60,7 @@ def run(fp='', debug=False, overwrite=False):
 
     if os.path.isfile(fp) and not overwrite:
         raise FileExistsError(f'The filled global geodetic mass balance file already exists, pass `-o` to overwrite, or pass a different file name: {fp}')
-    
+
     mbdf_subset.to_csv(fp, index=False)
     if debug:
         print(f'Filled global geodetic mass balance data saved to: {fp}')
