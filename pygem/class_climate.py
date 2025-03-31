@@ -12,10 +12,11 @@ import os
 import pandas as pd
 import numpy as np
 import xarray as xr
-# Local libraries
-import pygem.setup.config as config
-# Read the config
-pygem_prms = config.read_config()  # This reads the configuration file
+from pygem.setup.config import ConfigManager
+# instantiate ConfigManager
+config_manager = ConfigManager()
+# read the config
+pygem_prms = config_manager.read_config()
 
 class GCM():
     """

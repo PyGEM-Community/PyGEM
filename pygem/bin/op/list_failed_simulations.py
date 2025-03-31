@@ -15,11 +15,11 @@ import json
 import argparse
 import numpy as np
 # pygem imports
-import pygem.setup.config as config
-# check for config
-config.ensure_config()
+from pygem.setup.config import ConfigManager
+# instantiate ConfigManager
+config_manager = ConfigManager()
 # read the config
-pygem_prms = config.read_config()
+pygem_prms = config_manager.read_config()
 import pygem.pygem_modelsetup as modelsetup
 
 def run(reg, simpath, gcm, scenario, calib_opt, bias_adj, gcm_startyear, gcm_endyear):

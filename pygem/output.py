@@ -17,20 +17,54 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 import xarray as xr
-import os, types, json, cftime, collections
-import pygem.setup.config as config
-# Read the config
-pygem_prms = config.read_config()  # This reads the configuration file
+import os, types, json, cftime, collections, warnings
+import pygem
+from pygem.setup.config import ConfigManager
+# instantiate ConfigManager
+config_manager = ConfigManager()
+# read the config
+pygem_prms = config_manager.read_config()
 
-### single glacier output parent class ###
+__all__ = ["single_glacier", "glacierwide_stats", "binned_stats", "set_fn", "get_fn",
+            "set_modelprms", "create_xr_ds", "get_xr_ds", "save_xr_ds", "calc_stats_array"]
+
 @dataclass
 class single_glacier:
     """
     Single glacier output dataset class for the Python Glacier Evolution Model.
+    This serves as the parent class to both `output.glacierwide_stats` and `output.binned_stats`.
+
+    Attributes
+    ----------
+    glacier_rgi_table : pd.DataFrame
+        DataFrame containing metadata and characteristics of the glacier from the Randolph Glacier Inventory.
+    dates_table : pd.DataFrame
+        DataFrame containing the time series of dates associated with the model output.
+    gcm_name : str
+        Name of the General Circulation Model (GCM) used for climate forcing.
+    scenario : str
+        Emission or climate scenario under which the simulation is run.
+    realization : str
+        Specific realization or ensemble member of the GCM simulation.
+    nsims : int
+        Number of simulation runs performed.
+    modelprms : dict
+        Dictionary containing model parameters used in the simulation.
+    ref_startyear : int
+        Start year of the reference period for model calibration or comparison.
+    ref_endyear : int
+        End year of the reference period for model calibration or comparison.
+    gcm_startyear : int
+        Start year of the GCM forcing data used in the simulation.
+    gcm_endyear : int
+        End year of the GCM forcing data used in the simulation.
+    option_calibration : str
+        Model calibration method.
+    option_bias_adjustment : int
+        Bias adjustment method applied to the climate input data
     """
     glacier_rgi_table : pd.DataFrame
     dates_table : pd.DataFrame
-    pygem_version : float
     gcm_name : str
     scenario : str
     realization : str
@@ -44,47 +78,77 @@ class single_glacier:
     option_bias_adjustment: str
 
     def __post_init__(self):
+        """
+        Initializes additional attributes after the dataclass fields are set.
+
+        This method:
+        - Retrieves and stores the PyGEM version.
+        - Extracts field names in RGI glacier table.
+        - Formats the glacier RGI ID as a string with five decimal places.
+        - Extracts and zero-pads the primary region code from the RGI table.
+        - Defines the output directory path for storing simulation results.
+        - Calls setup functions to initialize and store filenames, time values, model parameters, and dictionaries.
+        """
+        self.pygem_version = pygem.__version__
         self.glac_values = np.array([self.glacier_rgi_table.name])
         self.glacier_str = '{0:0.5f}'.format(self.glacier_rgi_table['RGIId_float'])
         self.reg_str  = str(self.glacier_rgi_table.O1Region).zfill(2)
         self.outdir = pygem_prms['root'] + '/Output/simulations/'
         self.set_fn()
-        self.set_time_vals()
-        self.model_params_record()
-        self.init_dicts()
+        self._set_time_vals()
+        self._model_params_record()
+        self._init_dicts()
 
-    # set output dataset filename
-    def set_fn(self):
-        self.outfn = self.glacier_str + '_' + self.gcm_name + '_'
-        if self.scenario:
-            self.outfn += f'{self.scenario}_'
-        if self.realization:
-            self.outfn += f'{self.realization}_'
-        if self.option_calibration:
-            self.outfn += f'{self.option_calibration}_'
+    def set_fn(self, outfn=None):
+        """Set the dataset output file name.
+        Parameters
+        ----------
+        outfn : str
+            Output filename string.
+        """
+        if outfn:
+            self.outfn = outfn
         else:
-            self.outfn += f'kp{self.modelprms["kp"]}_ddfsnow{self.modelprms["ddfsnow"]}_tbias{self.modelprms["tbias"]}_'
-        if self.gcm_name not in ['ERA-Interim', 'ERA5', 'COAWST']:
-            self.outfn += f'ba{self.option_bias_adjustment}_'
-        else:
-            self.outfn += 'ba0_'
-        if self.option_calibration:
-            self.outfn += 'SETS_'
-        self.outfn += f'{self.gcm_startyear}_'
-        self.outfn += f'{self.gcm_endyear}_'
+            self.outfn = self.glacier_str + '_' + self.gcm_name + '_'
+            if self.scenario:
+                self.outfn += f'{self.scenario}_'
+            if self.realization:
+                self.outfn += f'{self.realization}_'
+            if self.option_calibration:
+                self.outfn += f'{self.option_calibration}_'
+            else:
+                self.outfn += f'kp{self.modelprms["kp"]}_ddfsnow{self.modelprms["ddfsnow"]}_tbias{self.modelprms["tbias"]}_'
+            if self.gcm_name not in ['ERA-Interim', 'ERA5', 'COAWST']:
+                self.outfn += f'ba{self.option_bias_adjustment}_'
+            else:
+                self.outfn += 'ba0_'
+            if self.option_calibration:
+                self.outfn += 'SETS_'
+            self.outfn += f'{self.gcm_startyear}_'
+            self.outfn += f'{self.gcm_endyear}_'
 
-    # return output dataset filename
     def get_fn(self):
+        """Return the output dataset filename."""
         return self.outfn
 
-    # set modelprms
     def set_modelprms(self, modelprms):
+        """
+        Set the model parameters and update the dataset record.
+
+        Parameters
+        ----------
+        modelprms : dict
+            Dictionary containing model parameters used in the simulation.
+
+        This method updates the `modelprms` attribute with the provided dictionary and esnures that
+        the model parameter record is updated accordingly by calling `self._update_modelparams_record()`.
+        """
         self.modelprms = modelprms
         # update model_params_record
-        self.update_modelparams_record()
+        self._update_modelparams_record()
 
-    # set dataset time value coordiantes
-    def set_time_vals(self):
+    def _set_time_vals(self):
+        """Set output dataset time and year values from dates_table."""
         if pygem_prms['climate']['gcm_wateryear'] == 'hydro':
             self.year_type = 'water year'
             self.annual_columns = np.unique(self.dates_table['wateryear'].values)[0:int(self.dates_table.shape[0]/12)]
@@ -99,8 +163,8 @@ class single_glacier:
         self.year_values = self.annual_columns[pygem_prms['climate']['gcm_spinupyears']:self.annual_columns.shape[0]]
         self.year_values = np.concatenate((self.year_values, np.array([self.annual_columns[-1] + 1])))
 
-    # record all model parameters from run_simualtion and pygem_input
-    def model_params_record(self):
+    def _model_params_record(self):
+        """Build model parameters attribute dictionary to be saved to output dataset."""
         # get all locally defined variables from the pygem_prms, excluding imports, functions, and classes
         self.mdl_params_dict = {}
         # overwrite variables that are possibly different from pygem_input
@@ -115,15 +179,15 @@ class single_glacier:
         self.mdl_params_dict['option_bias_adjustment'] = self.option_bias_adjustment
         # record manually defined modelprms if calibration option is None
         if not self.option_calibration:
-            self.update_modelparams_record()
+            self._update_modelparams_record()
 
-    # update model_params_record
-    def update_modelparams_record(self):
+    def _update_modelparams_record(self):
+        """Update the values in the output dataset's model parameters dictionary."""
         for key, value in self.modelprms.items():
             self.mdl_params_dict[key] = value
 
-    # initialize boilerplate coordinate and attribute dictionaries - these will be the same for both glacier-wide and binned outputs
-    def init_dicts(self):
+    def _init_dicts(self):
+        """Initialize output coordinate and attribute dictionaries."""
         self.output_coords_dict = collections.OrderedDict()
         self.output_coords_dict['RGIId'] =  collections.OrderedDict([('glac', self.glac_values)])
         self.output_coords_dict['CenLon'] = collections.OrderedDict([('glac', self.glac_values)])
@@ -166,8 +230,8 @@ class single_glacier:
                                         'comment': 'value from RGIv6.0'}
                                 }
         
-    # create dataset
     def create_xr_ds(self):
+        """Create an xarrray dataset with placeholders for data arrays."""
         # Add variables to empty dataset and merge together
         count_vn = 0
         self.encoding = {}
@@ -208,14 +272,14 @@ class single_glacier:
                         'references': 'doi:10.1126/science.abo1324',
                         'model_parameters':json.dumps(self.mdl_params_dict)}
 
-    # return dataset
     def get_xr_ds(self):
+        """Return the xarray dataset."""
         return self.output_xr_ds
     
-    # save dataset
-    def save_xr_ds(self, netcdf_fn):
+    def save_xr_ds(self):
+        """Save the xarray dataset."""
         # export netcdf
-        self.output_xr_ds.to_netcdf(self.outdir + netcdf_fn, encoding=self.encoding) 
+        self.output_xr_ds.to_netcdf(self.outdir + self.outfn, encoding=self.encoding) 
         # close datasets
         self.output_xr_ds.close()
 
@@ -223,16 +287,27 @@ class single_glacier:
 @dataclass
 class glacierwide_stats(single_glacier):
     """
-    Single glacier-wide statistics dataset
+    Single glacier-wide statistics dataset.
+
+    This class extends `single_glacier` to store and manage glacier-wide statistical outputs.
     """
 
     def __post_init__(self):
-        super().__post_init__()         # call parent class __post_init__ (get glacier values, time stamps, and instantiate output dictionaries that will form netcdf file output)
-        self.set_outdir()
-        self.update_dicts()             # add required fields to output dictionary
+        """
+        Initializes additional attributes after the dataclass fields are set.
 
-    # set output directory
-    def set_outdir(self):
+        This method:
+        - Calls the parent class `__post_init__` to initialize glacier values, 
+          time stamps, and instantiate output dataset dictionarie.
+        - Sets the output directory specific to glacier-wide statistics.
+        - Updates the output dictionaries with required fields.
+        """
+        super().__post_init__()
+        self._set_outdir()
+        self._update_dicts()
+
+    def _set_outdir(self):
+        """Set the output directory path. Create if it does not already exist."""
         self.outdir += self.reg_str + '/' + self.gcm_name + '/'
         if self.gcm_name not in ['ERA-Interim', 'ERA5', 'COAWST']:
             self.outdir += self.scenario + '/'
@@ -240,8 +315,8 @@ class glacierwide_stats(single_glacier):
         # Create filepath if it does not exist
         os.makedirs(self.outdir, exist_ok=True)
 
-    # update coordinate and attribute dictionaries
-    def update_dicts(self):
+    def _update_dicts(self):
+        """Update coordinate and attribute dictionaries specific to glacierwide_stats outputs"""
         self.output_coords_dict['glac_runoff_monthly'] = collections.OrderedDict([('glac', self.glac_values), 
                                                                             ('time', self.time_values)]) 
         self.output_attrs_dict['glac_runoff_monthly'] = {
@@ -284,6 +359,8 @@ class glacierwide_stats(single_glacier):
                                                         'units': 'm3',
                                                         'temporal_resolution': 'monthly',
                                                         'comment': 'off-glacier runoff from area where glacier no longer exists'}
+        
+        # if nsims > 1, store median-absolute deviation metrics
         if self.nsims > 1:
             self.output_coords_dict['glac_runoff_monthly_mad'] = collections.OrderedDict([('glac', self.glac_values), 
                                                                                     ('time',  self.time_values)])
@@ -327,7 +404,8 @@ class glacierwide_stats(single_glacier):
                                                         'units': 'm3',
                                                         'temporal_resolution': 'monthly',
                                                         'comment': 'off-glacier runoff from area where glacier no longer exists'}
-            
+        
+        # optionally store extra variables
         if pygem_prms['sim']['out']['export_extra_vars']:
             self.output_coords_dict['glac_prec_monthly'] = collections.OrderedDict([('glac', self.glac_values), 
                                                                             ('time',  self.time_values)])
@@ -422,6 +500,7 @@ class glacierwide_stats(single_glacier):
                                                         'temporal_resolution': 'monthly',
                                                         'comment': 'snow remaining accounting for new accumulation, melt, and refreeze'}
 
+            # if nsims > 1, store median-absolute deviation metrics
             if self.nsims > 1:
                 self.output_coords_dict['glac_prec_monthly_mad'] = collections.OrderedDict([('glac', self.glac_values), 
                                                                                     ('time',  self.time_values)])
@@ -521,19 +600,39 @@ class glacierwide_stats(single_glacier):
 @dataclass
 class binned_stats(single_glacier):
     """
-    Single glacier binned dataset
-    """
+    Single glacier binned dataset.
+
+    This class extends `single_glacier` to store and manage binned glacier output data.
+    
+    Attributes
+    ----------
     nbins : int
+        Number of bins used to segment the glacier dataset.
     binned_components : bool
+        Flag indicating whether additional binned components are included in the dataset.
+    """
+
+    nbins: int
+    binned_components: bool
 
     def __post_init__(self):
-        super().__post_init__()                         # call parent class __post_init__ (get glacier values, time stamps, and instantiate output dictionaries that will form netcdf file output)
-        self.bin_values = np.arange(self.nbins)         # bin indices
-        self.set_outdir()
-        self.update_dicts()                             # add required fields to output dictionary
+        """
+        Initializes additional attributes after the dataclass fields are set.
 
-    # set output directory
-    def set_outdir(self):
+        This method:
+        - Calls the parent class `__post_init__` to initialize glacier values, 
+          time stamps, and instantiate output dataset dictionaries.
+        - Creates an array of bin indices based on the number of bins.
+        - Sets the output directory specific to binned statistics.
+        - Updates the output dictionaries with required fields.
+        """
+        super().__post_init__()
+        self.bin_values = np.arange(self.nbins)
+        self._set_outdir()
+        self._update_dicts()
+
+    def _set_outdir(self):
+        """Set the output directory path. Create if it does not already exist."""
         self.outdir += self.reg_str + '/' + self.gcm_name + '/'
         if self.gcm_name not in ['ERA-Interim', 'ERA5', 'COAWST']:
             self.outdir += self.scenario + '/'
@@ -541,8 +640,8 @@ class binned_stats(single_glacier):
         # Create filepath if it does not exist
         os.makedirs(self.outdir, exist_ok=True)
 
-    # update coordinate and attribute dictionaries
-    def update_dicts(self):
+    def _update_dicts(self):
+        """Update coordinate and attribute dictionaries specific to glacierwide_stats outputs"""
         self.output_coords_dict['bin_distance'] = collections.OrderedDict([('glac', self.glac_values), ('bin', self.bin_values)])
         self.output_attrs_dict['bin_distance'] = {
                                                         'long_name': 'distance downglacier',
@@ -587,6 +686,8 @@ class binned_stats(single_glacier):
                                                         'units': 'm',
                                                         'temporal_resolution': 'monthly',
                                                         'comment': 'monthly climatic mass balance from the PyGEM mass balance module'}
+        
+        # optionally store binned mass balance components
         if self.binned_components:
             self.output_coords_dict['bin_accumulation_monthly'] = (
                     collections.OrderedDict([('glac', self.glac_values), ('bin', self.bin_values), ('time',  self.time_values)]))
@@ -609,7 +710,8 @@ class binned_stats(single_glacier):
                                                             'units': 'm',
                                                             'temporal_resolution': 'monthly',
                                                             'comment': 'monthly refreeze from the PyGEM mass balance module'}
-        
+            
+        # if nsims > 1, store median-absolute deviation metrics
         if self.nsims > 1:
             self.output_coords_dict['bin_mass_annual_mad'] = (
             collections.OrderedDict([('glac', self.glac_values), ('bin', self.bin_values), ('year', self.year_values)]))
@@ -632,75 +734,41 @@ class binned_stats(single_glacier):
                                                     'units': 'm',
                                                     'temporal_resolution': 'annual',
                                                     'comment': 'climatic mass balance is computed before dynamics so can theoretically exceed ice thickness'}
-                
-
-### compiled regional output parent class ###
-@dataclass
-class compiled_regional:
-    """
-    Compiled regional output dataset for the Python Glacier Evolution Model.
-    """
-
-@dataclass
-class regional_annual_mass(compiled_regional):
-    """
-    compiled regional annual mass
-    """
-
-@dataclass
-class regional_annual_area(compiled_regional):
-    """
-    compiled regional annual area
-    """
-
-@dataclass
-class regional_monthly_runoff(compiled_regional):
-    """
-    compiled regional monthly runoff
-    """
-
-@dataclass
-class regional_monthly_massbal(compiled_regional):
-    """
-    compiled regional monthly climatic mass balance
-    """
 
 
 def calc_stats_array(data, stats_cns=pygem_prms['sim']['out']['sim_stats']):
     """
-    Calculate stats for a given variable
+    Calculate stats for a given variable.
 
     Parameters
     ----------
-    vn : str
-        variable name
-    ds : xarray dataset
-        dataset of output with all ensemble simulations
+    data : np.array
+        2D array with ensemble simulations (shape: [n_samples, n_ensembles])
+    stats_cns : list, optional
+        List of statistics to compute (e.g., ['mean', 'std', 'median'])
 
     Returns
     -------
-    stats : np.array
-        Statistics related to a given variable
+    stats : np.array, or None
+        Statistics related to a given variable.
     """
-    stats = None
-    if 'mean' in stats_cns:
-        if stats is None:
-            stats = np.nanmean(data,axis=1)[:,np.newaxis]
-    if 'std' in stats_cns:
-        stats = np.append(stats, np.nanstd(data,axis=1)[:,np.newaxis], axis=1)
-    if '2.5%' in stats_cns:
-        stats = np.append(stats, np.nanpercentile(data, 2.5, axis=1)[:,np.newaxis], axis=1)
-    if '25%' in stats_cns:
-        stats = np.append(stats, np.nanpercentile(data, 25, axis=1)[:,np.newaxis], axis=1)
-    if 'median' in stats_cns:
-        if stats is None:
-            stats = np.nanmedian(data, axis=1)[:,np.newaxis]
-        else:
-            stats = np.append(stats, np.nanmedian(data, axis=1)[:,np.newaxis], axis=1)
-    if '75%' in stats_cns:
-        stats = np.append(stats, np.nanpercentile(data, 75, axis=1)[:,np.newaxis], axis=1)
-    if '97.5%' in stats_cns:
-        stats = np.append(stats, np.nanpercentile(data, 97.5, axis=1)[:,np.newaxis], axis=1)
-    if 'mad' in stats_cns:
-        stats = np.append(stats, median_abs_deviation(data, axis=1, nan_policy='omit')[:,np.newaxis], axis=1)
-    return stats
+    
+    # dictionary of functions to call for each stat in `stats_cns`
+    stat_funcs = {
+        'mean': lambda x: np.nanmean(x, axis=1),
+        'std': lambda x: np.nanstd(x, axis=1),
+        '2.5%': lambda x: np.nanpercentile(x, 2.5, axis=1),
+        '25%': lambda x: np.nanpercentile(x, 25, axis=1),
+        'median': lambda x: np.nanmedian(x, axis=1),
+        '75%': lambda x: np.nanpercentile(x, 75, axis=1),
+        '97.5%': lambda x: np.nanpercentile(x, 97.5, axis=1),
+        'mad': lambda x: median_abs_deviation(x, axis=1, nan_policy='omit')
+    }
+    
+    # calculate statustics for each stat in `stats_cns`
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)  # Suppress All-NaN Slice Warnings
+        stats_list = [stat_funcs[stat](data) for stat in stats_cns if stat in stat_funcs]
+    
+    # stack stats_list to numpy array
+    return np.column_stack(stats_list) if stats_list else None

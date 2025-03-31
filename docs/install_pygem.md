@@ -1,30 +1,35 @@
 (install_pygem_target)=
-# Installing PyGEM
-The Python Glacier Evolution Model has been packaged using Poetry and is hosted on the Python Package Index ([PyPI](https://pypi.org/project/pygem/)), such that all dependencies should install seamlessly. It is recommended that users create a [Anaconda](https://anaconda.org/) environment from which to install the model dependencies and core code.
+# Installation
+The Python Glacier Evolution Model has been packaged using Poetry and is hosted on the Python Package Index ([PyPI](https://pypi.org/project/pygem/)), to ensure that all dependencies install seamlessly. It is recommended that users create a [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/index.html) environment from which to install the model dependencies and core code. If you do not yet have conda installed, see [conda's documentation](https://docs.conda.io/projects/conda/en/latest/user-guide/install) for instructions.
 
-### Setup Conda Environment
-Anaconda is a Python dependency management tool. An Anaconda (conda) environment is essentially a directory that contains a specific collection of installed packages. The use of environments reduces issues caused by package dependencies. It is recommended that users first create conda environment from which to install PyGEM and its dependencies (if you do not yet have conda installed, see [conda's documentation](https://docs.conda.io/projects/conda/en/latest/user-guide/install) for instructions).  We recommend a conda environment with python >=3.10, <3.13.
+Next, choose your preferred PyGEM installation option:<br>
+- [**stable**](stable_install_target): this is the latest version that has been officially released to PyPI, with a fixed version number (e.g. v1.0.1). It is intended for general use.
+- [**development**](dev_install_target): this is the development version of PyGEM hosted on [GitHub](https://github.com/PyGEM-Community/PyGEM/tree/dev). It might contain new features and bug fixes, but is also likely to continue to change until a new release is made. This is the recommended option if you want to work with the latest changes to the code. Note, this installation options require [git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) software to be installed on your computer.
 
-A new conda environment can be created from the command line such as:
-```
-conda create --name <environment_name> python=3.12
-```
+**Copyright note**: PyGEM's installation instructions are modified from that of [OGGM](https://docs.oggm.org/en/stable/installing-oggm.html)
 
-### PyPI installation
-Ensure you've activated your PyGEM environment
-```
-conda activate <environment_name>
-```
+(stable_install_target)=
+## Stable install
+The simplest **stable** installation method is to use an environment file. Right-click and save PyGEM's recommended environment file from [this link](https://raw.githubusercontent.com/PyGEM-Community/PyGEM/refs/heads/master/docs/pygem_environment.yml).
 
-Next, install PyGEM via [PyPI](https://pypi.org/project/pygem/):
-```
-pip install pygem
+From the folder where you saved the file, run `conda env create -f pygem_environment.yml`.
+```{note}
+By default the environment will be named `pygem`. A different name can be specified in the environment file.
 ```
 
-This will install all PyGEM dependencies within your conda environment, and set up PyGEM command line tools to run core model scripts.
+(dev_install_target)=
+## Development install
+Install the [development version](https://github.com/PyGEM-Community/PyGEM/tree/dev) of PyGEM in your conda environment using pip:
+```
+pip uninstall pygem
+pip install git+https://github.com/PyGEM-Community/pygem/@dev
+```
 
-### Setup
-Following installation, an initialization script should to be executed.
+If you intend to access and make your own edits to the model's source code, see the [contribution guide](contributing_pygem_target).
+
+(setup_target)=
+# Setup
+Following installation, an initialization script should be executed.
 
 The initialization script accomplishes two things:
 1. Initializes the PyGEM configuration file *~/PyGEM/config.yaml*. If this file already exists, an overwrite prompt will appear.
@@ -35,5 +40,5 @@ Run the initialization script by entering the following in the terminal:
 initialize
 ```
 
-### Demonstration Notebooks
-A series of accompanying Jupyter notebooks have been produces for demonstrating the functionality of PyGEM. These can be acquired and installed from [GitHub](https://github.com/PyGEM-Community/PyGEM-notebooks).
+# Demonstration Notebooks
+A series of accompanying Jupyter notebooks has been produced for demonstrating the functionality of PyGEM. These are hosted in the [PyGEM-notebooks repository](https://github.com/PyGEM-Community/PyGEM-notebooks).

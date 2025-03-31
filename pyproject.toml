@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pygem"
-version = "1.0.1"
+version = "1.0.2"
 description = "Python Glacier Evolution Model (PyGEM)"
 authors = ["David Rounce <drounce@cmu.edu>,Brandon Tober <btober@cmu.edu>"]
 license = "MIT License"
@@ -35,6 +35,9 @@ arviz = "^0.20.0"
 oggm = "^1.6.2"
 ruamel-yaml = "^0.18.10"
 ruff = ">=0.9.6"
+pytest = ">=8.3.4"
+pytest-cov = ">=6.0.0"
+nbmake = ">=1.5.5"
 
 [tool.poetry.scripts]
 initialize = "pygem.bin.op.initialize:main"
@@ -84,3 +87,8 @@ ignore = [
     "E722",  # Using bare `except`
     "F841",  # Local variable assigned to but never used
 ]
+
+[tool.coverage.report]
+omit = ["pygem/tests/*"]
+show_missing = true
+skip_empty = true

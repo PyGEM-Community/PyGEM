@@ -14,10 +14,11 @@ import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
-# Local libraries
-import pygem.setup.config as config
-# Read the config
-pygem_prms = config.read_config()  # This reads the configuration file
+from pygem.setup.config import ConfigManager
+# instantiate ConfigManager
+config_manager = ConfigManager()
+# read the config
+pygem_prms = config_manager.read_config()
 
 torch.set_default_dtype(torch.float64)
 plt.rcParams["font.family"] = "arial"

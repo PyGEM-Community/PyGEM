@@ -8,12 +8,17 @@
 
 import os
 import sys
+import tomllib
 sys.path.insert(0, os.path.abspath('../pygem/'))
+
+# source pyproject.toml to get release
+with open("../pyproject.toml", "rb") as f:
+    pyproject = tomllib.load(f)
 
 project = 'PyGEM'
 copyright = '2023, David Rounce'
 author = 'David Rounce'
-release = '1.0.1'
+release = pyproject["tool"]["poetry"]["version"]
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

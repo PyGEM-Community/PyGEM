@@ -10,10 +10,11 @@ import numpy as np
 # Local libraries
 from oggm.core.massbalance import MassBalanceModel
 from pygem.utils._funcs import annualweightedmean_array
-# Local libraries
-import pygem.setup.config as config
-# Read the config
-pygem_prms = config.read_config()  # This reads the configuration file
+from pygem.setup.config import ConfigManager
+# instantiate ConfigManager
+config_manager = ConfigManager()
+# read the config
+pygem_prms = config_manager.read_config()
 
 #%%
 class PyGEMMassBalance(MassBalanceModel):
