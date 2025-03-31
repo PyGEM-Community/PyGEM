@@ -37,12 +37,6 @@ __all__ = [
     "single_glacier",
     "glacierwide_stats",
     "binned_stats",
-    "set_fn",
-    "get_fn",
-    "set_modelprms",
-    "create_xr_ds",
-    "get_xr_ds",
-    "save_xr_ds",
     "calc_stats_array",
 ]
 
