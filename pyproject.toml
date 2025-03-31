@@ -57,7 +57,7 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
-line-length = 79
+line-length = 88  # Default
 
 [tool.ruff.lint]
 select = [
