@@ -749,10 +749,11 @@ def calc_stats_array(data, stats_cns=pygem_prms['sim']['out']['sim_stats']):
 
     Returns
     -------
-    stats : np.array
+    stats : np.array, or None
         Statistics related to a given variable.
     """
     
+    # dictionary of functions to call for each stat in `stats_cns`
     stat_funcs = {
         'mean': lambda x: np.nanmean(x, axis=1),
         'std': lambda x: np.nanstd(x, axis=1),
@@ -764,9 +765,10 @@ def calc_stats_array(data, stats_cns=pygem_prms['sim']['out']['sim_stats']):
         'mad': lambda x: median_abs_deviation(x, axis=1, nan_policy='omit')
     }
     
-    # aggregate model bin thicknesses as desired
+    # calculate statustics for each stat in `stats_cns`
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)  # Suppress All-NaN Slice Warnings
         stats_list = [stat_funcs[stat](data) for stat in stats_cns if stat in stat_funcs]
-
+    
+    # stack stats_list to numpy array
     return np.column_stack(stats_list) if stats_list else None
