@@ -105,7 +105,7 @@ def single_flowline_glacier_directory(rgi_id, reset=pygem_prms['oggm']['overwrit
     if not os.path.isfile(gdir.get_filepath('mb_calib_pygem')):
         workflow.execute_entity_task(mbdata.mb_df_to_gdir, gdir)
     # debris thickness and melt enhancement factors
-    if not os.path.isfile(gdir.get_filepath('debris_ed')) or os.path.isfile(gdir.get_filepath('debris_hd')):
+    if not os.path.isfile(gdir.get_filepath('debris_ed')) or not os.path.isfile(gdir.get_filepath('debris_hd')):
         workflow.execute_entity_task(debris.debris_to_gdir, gdir)
         workflow.execute_entity_task(debris.debris_binned, gdir)
 
