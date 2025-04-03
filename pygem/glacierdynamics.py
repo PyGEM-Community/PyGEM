@@ -82,7 +82,7 @@ class MassRedistributionCurveModel(FlowlineModel):
             mb_model=mb_model,
             y0=y0,
             inplace=inplace,
-            mb_elev_feedback="annual",
+            mb_elev_feedback='annual',
             **kwargs,
         )
         self.option_areaconstant = option_areaconstant
@@ -102,11 +102,11 @@ class MassRedistributionCurveModel(FlowlineModel):
 
         # HERE IS THE STUFF TO RECORD FOR EACH FLOWLINE!
         if self.is_tidewater:
-            self.calving_k = cfg.PARAMS["calving_k"]
+            self.calving_k = cfg.PARAMS['calving_k']
         self.calving_m3_since_y0 = 0.0  # total calving since time y0
 
         assert len(flowlines) == 1, (
-            "MassRedistributionCurveModel is not set up for multiple flowlines"
+            'MassRedistributionCurveModel is not set up for multiple flowlines'
         )
 
     def run_until(self, y1, run_single_year=False):
@@ -134,12 +134,12 @@ class MassRedistributionCurveModel(FlowlineModel):
         if self.check_for_boundaries:
             if self.fls[-1].thick[-1] > 10:
                 raise RuntimeError(
-                    "Glacier exceeds domain boundaries, at year: {}".format(self.yr)
+                    'Glacier exceeds domain boundaries, at year: {}'.format(self.yr)
                 )
         # Check for NaNs
         for fl in self.fls:
             if np.any(~np.isfinite(fl.thick)):
-                raise FloatingPointError("NaN in numerical solution.")
+                raise FloatingPointError('NaN in numerical solution.')
 
     def run_until_and_store(
         self, y1, run_path=None, diag_path=None, store_monthly_step=None
@@ -177,27 +177,27 @@ class MassRedistributionCurveModel(FlowlineModel):
 
         if int(y1) != y1:
             raise InvalidParamsError(
-                "run_until_and_store only accepts integer year dates."
+                'run_until_and_store only accepts integer year dates.'
             )
 
         if not self.mb_model.hemisphere:
             raise InvalidParamsError(
-                "run_until_and_store needs a "
-                "mass-balance model with an unambiguous "
-                "hemisphere."
+                'run_until_and_store needs a '
+                'mass-balance model with an unambiguous '
+                'hemisphere.'
             )
         # time
         yearly_time = np.arange(np.floor(self.yr), np.floor(y1) + 1)
 
         if store_monthly_step is None:
-            store_monthly_step = self.mb_step == "monthly"
+            store_monthly_step = self.mb_step == 'monthly'
 
         if store_monthly_step:
             monthly_time = utils.monthly_timeseries(self.yr, y1)
         else:
             monthly_time = np.arange(np.floor(self.yr), np.floor(y1) + 1)
 
-        sm = cfg.PARAMS["hydro_month_" + self.mb_model.hemisphere]
+        sm = cfg.PARAMS['hydro_month_' + self.mb_model.hemisphere]
 
         yrs, months = utils.floatyear_to_date(monthly_time)
         cyrs, cmonths = utils.hydrodate_to_calendardate(yrs, months, start_month=sm)
@@ -218,70 +218,70 @@ class MassRedistributionCurveModel(FlowlineModel):
         diag_ds = xr.Dataset()
 
         # Global attributes
-        diag_ds.attrs["description"] = "OGGM model output"
-        diag_ds.attrs["oggm_version"] = __version__
-        diag_ds.attrs["calendar"] = "365-day no leap"
-        diag_ds.attrs["creation_date"] = strftime("%Y-%m-%d %H:%M:%S", gmtime())
-        diag_ds.attrs["hemisphere"] = self.mb_model.hemisphere
-        diag_ds.attrs["water_level"] = self.water_level
+        diag_ds.attrs['description'] = 'OGGM model output'
+        diag_ds.attrs['oggm_version'] = __version__
+        diag_ds.attrs['calendar'] = '365-day no leap'
+        diag_ds.attrs['creation_date'] = strftime('%Y-%m-%d %H:%M:%S', gmtime())
+        diag_ds.attrs['hemisphere'] = self.mb_model.hemisphere
+        diag_ds.attrs['water_level'] = self.water_level
 
         # Coordinates
-        diag_ds.coords["time"] = ("time", monthly_time)
-        diag_ds.coords["hydro_year"] = ("time", yrs)
-        diag_ds.coords["hydro_month"] = ("time", months)
-        diag_ds.coords["calendar_year"] = ("time", cyrs)
-        diag_ds.coords["calendar_month"] = ("time", cmonths)
+        diag_ds.coords['time'] = ('time', monthly_time)
+        diag_ds.coords['hydro_year'] = ('time', yrs)
+        diag_ds.coords['hydro_month'] = ('time', months)
+        diag_ds.coords['calendar_year'] = ('time', cyrs)
+        diag_ds.coords['calendar_month'] = ('time', cmonths)
 
-        diag_ds["time"].attrs["description"] = "Floating hydrological year"
-        diag_ds["hydro_year"].attrs["description"] = "Hydrological year"
-        diag_ds["hydro_month"].attrs["description"] = "Hydrological month"
-        diag_ds["calendar_year"].attrs["description"] = "Calendar year"
-        diag_ds["calendar_month"].attrs["description"] = "Calendar month"
+        diag_ds['time'].attrs['description'] = 'Floating hydrological year'
+        diag_ds['hydro_year'].attrs['description'] = 'Hydrological year'
+        diag_ds['hydro_month'].attrs['description'] = 'Hydrological month'
+        diag_ds['calendar_year'].attrs['description'] = 'Calendar year'
+        diag_ds['calendar_month'].attrs['description'] = 'Calendar month'
 
         # Variables and attributes
-        diag_ds["volume_m3"] = ("time", np.zeros(nm) * np.nan)
-        diag_ds["volume_m3"].attrs["description"] = "Total glacier volume"
-        diag_ds["volume_m3"].attrs["unit"] = "m 3"
-        diag_ds["volume_bsl_m3"] = ("time", np.zeros(nm) * np.nan)
-        diag_ds["volume_bsl_m3"].attrs["description"] = "Glacier volume below sea-level"
-        diag_ds["volume_bsl_m3"].attrs["unit"] = "m 3"
-        diag_ds["volume_bwl_m3"] = ("time", np.zeros(nm) * np.nan)
-        diag_ds["volume_bwl_m3"].attrs["description"] = "Glacier volume below "
-        diag_ds["volume_bwl_m3"].attrs["unit"] = "m 3"
+        diag_ds['volume_m3'] = ('time', np.zeros(nm) * np.nan)
+        diag_ds['volume_m3'].attrs['description'] = 'Total glacier volume'
+        diag_ds['volume_m3'].attrs['unit'] = 'm 3'
+        diag_ds['volume_bsl_m3'] = ('time', np.zeros(nm) * np.nan)
+        diag_ds['volume_bsl_m3'].attrs['description'] = 'Glacier volume below sea-level'
+        diag_ds['volume_bsl_m3'].attrs['unit'] = 'm 3'
+        diag_ds['volume_bwl_m3'] = ('time', np.zeros(nm) * np.nan)
+        diag_ds['volume_bwl_m3'].attrs['description'] = 'Glacier volume below '
+        diag_ds['volume_bwl_m3'].attrs['unit'] = 'm 3'
 
-        diag_ds["area_m2"] = ("time", np.zeros(nm) * np.nan)
-        diag_ds["area_m2"].attrs["description"] = "Total glacier area"
-        diag_ds["area_m2"].attrs["unit"] = "m 2"
-        diag_ds["length_m"] = ("time", np.zeros(nm) * np.nan)
-        diag_ds["length_m"].attrs["description"] = "Glacier length"
-        diag_ds["length_m"].attrs["unit"] = "m 3"
-        diag_ds["ela_m"] = ("time", np.zeros(nm) * np.nan)
-        diag_ds["ela_m"].attrs["description"] = (
-            "Annual Equilibrium Line Altitude  (ELA)"
+        diag_ds['area_m2'] = ('time', np.zeros(nm) * np.nan)
+        diag_ds['area_m2'].attrs['description'] = 'Total glacier area'
+        diag_ds['area_m2'].attrs['unit'] = 'm 2'
+        diag_ds['length_m'] = ('time', np.zeros(nm) * np.nan)
+        diag_ds['length_m'].attrs['description'] = 'Glacier length'
+        diag_ds['length_m'].attrs['unit'] = 'm 3'
+        diag_ds['ela_m'] = ('time', np.zeros(nm) * np.nan)
+        diag_ds['ela_m'].attrs['description'] = (
+            'Annual Equilibrium Line Altitude  (ELA)'
         )
-        diag_ds["ela_m"].attrs["unit"] = "m a.s.l"
+        diag_ds['ela_m'].attrs['unit'] = 'm a.s.l'
         if self.is_tidewater:
-            diag_ds["calving_m3"] = ("time", np.zeros(nm) * np.nan)
-            diag_ds["calving_m3"].attrs["description"] = (
-                "Total accumulated calving flux"
+            diag_ds['calving_m3'] = ('time', np.zeros(nm) * np.nan)
+            diag_ds['calving_m3'].attrs['description'] = (
+                'Total accumulated calving flux'
             )
-            diag_ds["calving_m3"].attrs["unit"] = "m 3"
-            diag_ds["calving_rate_myr"] = ("time", np.zeros(nm) * np.nan)
-            diag_ds["calving_rate_myr"].attrs["description"] = "Calving rate"
-            diag_ds["calving_rate_myr"].attrs["unit"] = "m yr-1"
+            diag_ds['calving_m3'].attrs['unit'] = 'm 3'
+            diag_ds['calving_rate_myr'] = ('time', np.zeros(nm) * np.nan)
+            diag_ds['calving_rate_myr'].attrs['description'] = 'Calving rate'
+            diag_ds['calving_rate_myr'].attrs['unit'] = 'm yr-1'
 
         # Run
         j = 0
         for i, (yr, mo) in enumerate(zip(yearly_time[:-1], months[:-1])):
             # Record initial parameters
             if i == 0:
-                diag_ds["volume_m3"].data[i] = self.volume_m3
-                diag_ds["area_m2"].data[i] = self.area_m2
-                diag_ds["length_m"].data[i] = self.length_m
+                diag_ds['volume_m3'].data[i] = self.volume_m3
+                diag_ds['area_m2'].data[i] = self.area_m2
+                diag_ds['length_m'].data[i] = self.length_m
 
                 if self.is_tidewater:
-                    diag_ds["volume_bsl_m3"].data[i] = self.volume_bsl_m3
-                    diag_ds["volume_bwl_m3"].data[i] = self.volume_bwl_m3
+                    diag_ds['volume_bsl_m3'].data[i] = self.volume_bsl_m3
+                    diag_ds['volume_bwl_m3'].data[i] = self.volume_bwl_m3
 
             self.run_until(yr, run_single_year=True)
             # Model run
@@ -296,47 +296,47 @@ class MassRedistributionCurveModel(FlowlineModel):
                             pass
                 j += 1
             # Diagnostics
-            diag_ds["volume_m3"].data[i + 1] = self.volume_m3
-            diag_ds["area_m2"].data[i + 1] = self.area_m2
-            diag_ds["length_m"].data[i + 1] = self.length_m
+            diag_ds['volume_m3'].data[i + 1] = self.volume_m3
+            diag_ds['area_m2'].data[i + 1] = self.area_m2
+            diag_ds['length_m'].data[i + 1] = self.length_m
 
             if self.is_tidewater:
-                diag_ds["calving_m3"].data[i + 1] = self.calving_m3_since_y0
-                diag_ds["calving_rate_myr"].data[i + 1] = self.calving_rate_myr
-                diag_ds["volume_bsl_m3"].data[i + 1] = self.volume_bsl_m3
-                diag_ds["volume_bwl_m3"].data[i + 1] = self.volume_bwl_m3
+                diag_ds['calving_m3'].data[i + 1] = self.calving_m3_since_y0
+                diag_ds['calving_rate_myr'].data[i + 1] = self.calving_rate_myr
+                diag_ds['volume_bsl_m3'].data[i + 1] = self.volume_bsl_m3
+                diag_ds['volume_bwl_m3'].data[i + 1] = self.volume_bwl_m3
 
         # to datasets
         run_ds = []
         for s, w, b in zip(sects, widths, bucket):
             ds = xr.Dataset()
-            ds.attrs["description"] = "OGGM model output"
-            ds.attrs["oggm_version"] = __version__
-            ds.attrs["calendar"] = "365-day no leap"
-            ds.attrs["creation_date"] = strftime("%Y-%m-%d %H:%M:%S", gmtime())
-            ds.coords["time"] = yearly_time
-            ds["time"].attrs["description"] = "Floating hydrological year"
+            ds.attrs['description'] = 'OGGM model output'
+            ds.attrs['oggm_version'] = __version__
+            ds.attrs['calendar'] = '365-day no leap'
+            ds.attrs['creation_date'] = strftime('%Y-%m-%d %H:%M:%S', gmtime())
+            ds.coords['time'] = yearly_time
+            ds['time'].attrs['description'] = 'Floating hydrological year'
             varcoords = OrderedDict(
-                time=("time", yearly_time), year=("time", yearly_time)
+                time=('time', yearly_time), year=('time', yearly_time)
             )
-            ds["ts_section"] = xr.DataArray(s, dims=("time", "x"), coords=varcoords)
-            ds["ts_width_m"] = xr.DataArray(w, dims=("time", "x"), coords=varcoords)
+            ds['ts_section'] = xr.DataArray(s, dims=('time', 'x'), coords=varcoords)
+            ds['ts_width_m'] = xr.DataArray(w, dims=('time', 'x'), coords=varcoords)
             if self.is_tidewater:
-                ds["ts_calving_bucket_m3"] = xr.DataArray(
-                    b, dims=("time",), coords=varcoords
+                ds['ts_calving_bucket_m3'] = xr.DataArray(
+                    b, dims=('time',), coords=varcoords
                 )
             run_ds.append(ds)
 
         # write output?
         if run_path is not None:
             encode = {
-                "ts_section": {"zlib": True, "complevel": 5},
-                "ts_width_m": {"zlib": True, "complevel": 5},
+                'ts_section': {'zlib': True, 'complevel': 5},
+                'ts_width_m': {'zlib': True, 'complevel': 5},
             }
             for i, ds in enumerate(run_ds):
-                ds.to_netcdf(run_path, "a", group="fl_{}".format(i), encoding=encode)
+                ds.to_netcdf(run_path, 'a', group='fl_{}'.format(i), encoding=encode)
             # Add other diagnostics
-            diag_ds.to_netcdf(run_path, "a")
+            diag_ds.to_netcdf(run_path, 'a')
 
         if diag_path is not None:
             diag_ds.to_netcdf(diag_path)
@@ -347,7 +347,7 @@ class MassRedistributionCurveModel(FlowlineModel):
         """Update geometry for a given year"""
 
         if debug:
-            print("year:", year)
+            print('year:', year)
 
         # Loop over flowlines
         for fl_id, fl in enumerate(self.fls):
@@ -377,10 +377,10 @@ class MassRedistributionCurveModel(FlowlineModel):
                         heights, fls=self.fls, fl_id=fl_id, year=year, debug=False
                     )
                     if debug:
-                        print("fa_m3_init:", fa_m3)
+                        print('fa_m3_init:', fa_m3)
                         vol_init = (self.fls[fl_id].section * fl.dx_meter).sum()
-                        print("  volume init:", np.round(vol_init))
-                        print("  volume final:", np.round(vol_init - fa_m3))
+                        print('  volume init:', np.round(vol_init))
+                        print('  volume final:', np.round(vol_init - fa_m3))
                     # First, remove volume lost to frontal ablation
                     #  changes to _t0 not _t1, since t1 will be done in the mass redistribution
 
@@ -389,7 +389,7 @@ class MassRedistributionCurveModel(FlowlineModel):
                     )[0]
                     while fa_m3 > 0 and len(glac_idx_bsl) > 0:
                         if debug:
-                            print("fa_m3_remaining:", fa_m3)
+                            print('fa_m3_remaining:', fa_m3)
 
                         # OGGM code
                         #                        glac_idx_bsl = np.where((thick_t0 > 0) & (fl.bed_h < self.water_level))[0]
@@ -397,7 +397,7 @@ class MassRedistributionCurveModel(FlowlineModel):
 
                         if debug:
                             print(
-                                "before:",
+                                'before:',
                                 np.round(self.fls[fl_id].section[last_idx], 0),
                                 np.round(self.fls[fl_id].thick[last_idx], 0),
                                 np.round(heights[last_idx], 0),
@@ -412,8 +412,8 @@ class MassRedistributionCurveModel(FlowlineModel):
                                 last_idx, int(12 * (year + 1) - 1)
                             ] = (
                                 vol_last
-                                * pygem_prms["constants"]["density_ice"]
-                                / pygem_prms["constants"]["density_water"]
+                                * pygem_prms['constants']['density_ice']
+                                / pygem_prms['constants']['density_water']
                             )
                             # Update ice thickness and section area
                             section_t0[last_idx] = 0
@@ -433,8 +433,8 @@ class MassRedistributionCurveModel(FlowlineModel):
                                 last_idx, int(12 * (year + 1) - 1)
                             ] = (
                                 fa_m3
-                                * pygem_prms["constants"]["density_ice"]
-                                / pygem_prms["constants"]["density_water"]
+                                * pygem_prms['constants']['density_ice']
+                                / pygem_prms['constants']['density_water']
                             )
                             # Frontal ablation bucket now empty
                             fa_m3 = 0
@@ -447,13 +447,13 @@ class MassRedistributionCurveModel(FlowlineModel):
 
                         if debug:
                             print(
-                                "after:",
+                                'after:',
                                 np.round(self.fls[fl_id].section[last_idx], 0),
                                 np.round(self.fls[fl_id].thick[last_idx], 0),
                                 np.round(heights[last_idx], 0),
                             )
                             print(
-                                "  vol final:",
+                                '  vol final:',
                                 (self.fls[fl_id].section * fl.dx_meter).sum(),
                             )
 
@@ -470,7 +470,7 @@ class MassRedistributionCurveModel(FlowlineModel):
                     )
                     sec_in_year = (
                         self.mb_model.dates_table.loc[
-                            12 * year : 12 * (year + 1) - 1, "daysinmonth"
+                            12 * year : 12 * (year + 1) - 1, 'daysinmonth'
                         ].values.sum()
                         * 24
                         * 3600
@@ -539,8 +539,8 @@ class MassRedistributionCurveModel(FlowlineModel):
         fl = fls[fl_id]
         np.testing.assert_allclose(heights, fl.surface_h)
         glacier_area_t0 = fl.widths_m * fl.dx_meter
-        fl_widths_m = getattr(fl, "widths_m", None)
-        fl_section = getattr(fl, "section", None)
+        fl_widths_m = getattr(fl, 'widths_m', None)
+        fl_section = getattr(fl, 'section', None)
         # Ice thickness (average)
         if fl_section is not None and fl_widths_m is not None:
             icethickness_t0 = np.zeros(fl_section.shape)
@@ -575,15 +575,15 @@ class MassRedistributionCurveModel(FlowlineModel):
                     # Volume [m3] and bed elevation [masl] of each bin
                     if debug:
                         print(
-                            "\nyear:",
+                            '\nyear:',
                             year,
-                            "\n  sea level:",
+                            '\n  sea level:',
                             self.water_level,
-                            "bed elev:",
+                            'bed elev:',
                             np.round(fl.bed_h[last_above_wl], 2),
                         )
-                        print("  estimate frontal ablation")
-                        print(" min elevation:", fl.surface_h[last_above_wl])
+                        print('  estimate frontal ablation')
+                        print(' min elevation:', fl.surface_h[last_above_wl])
 
                     # --- The rest is for calving only ---
                     self.calving_rate_myr = 0.0
@@ -603,7 +603,7 @@ class MassRedistributionCurveModel(FlowlineModel):
                     )[0]
                     q_calving_max = np.sum(section[glac_idx_bsl]) * fl.dx_meter
 
-                    if q_calving > q_calving_max + pygem_prms["constants"]["tolerance"]:
+                    if q_calving > q_calving_max + pygem_prms['constants']['tolerance']:
                         q_calving = q_calving_max
 
                     # Add to the bucket and the diagnostics
@@ -670,8 +670,8 @@ class MassRedistributionCurveModel(FlowlineModel):
             glacier_volumechange = -1 * glacier_volumechange
 
         if debug:
-            print("\nDebugging Mass Redistribution Huss function\n")
-            print("glacier volume change:", glacier_volumechange)
+            print('\nDebugging Mass Redistribution Huss function\n')
+            print('glacier volume change:', glacier_volumechange)
 
         # If volume loss is more than the glacier volume, melt everything and stop here
         glacier_volume_total = (self.fls[0].section * self.fls[0].dx_meter).sum()
@@ -699,11 +699,11 @@ class MassRedistributionCurveModel(FlowlineModel):
         )
         if debug:
             print(
-                "\nmax icethickness change:",
+                '\nmax icethickness change:',
                 np.round(icethickness_change.max(), 3),
-                "\nmin icethickness change:",
+                '\nmin icethickness change:',
                 np.round(icethickness_change.min(), 3),
-                "\nvolume remaining:",
+                '\nvolume remaining:',
                 glacier_volumechange_remaining,
             )
             nloop = 0
@@ -712,7 +712,7 @@ class MassRedistributionCurveModel(FlowlineModel):
         #  if glacier retreats (ice thickness == 0), volume change needs to be redistributed over glacier again
         while glacier_volumechange_remaining < 0:
             if debug:
-                print("\n\nGlacier retreating (loop " + str(nloop) + "):")
+                print('\n\nGlacier retreating (loop ' + str(nloop) + '):')
 
             section_t0_retreated = self.fls[0].section.copy()
             thick_t0_retreated = self.fls[0].thick.copy()
@@ -750,13 +750,13 @@ class MassRedistributionCurveModel(FlowlineModel):
                 glacier_volumechange_remaining = 0
 
             if debug:
-                print("ice thickness change:", icethickness_change)
+                print('ice thickness change:', icethickness_change)
                 print(
-                    "\nmax icethickness change:",
+                    '\nmax icethickness change:',
                     np.round(icethickness_change.max(), 3),
-                    "\nmin icethickness change:",
+                    '\nmin icethickness change:',
                     np.round(icethickness_change.min(), 3),
-                    "\nvolume remaining:",
+                    '\nvolume remaining:',
                     glacier_volumechange_remaining,
                 )
                 nloop += 1
@@ -769,10 +769,10 @@ class MassRedistributionCurveModel(FlowlineModel):
         #       i.e., increase the ice thickness and width
         #    3. Repeat adding a new bin and redistributing the mass until no addiitonal volume is left
         while (
-            icethickness_change > pygem_prms["sim"]["icethickness_advancethreshold"]
+            icethickness_change > pygem_prms['sim']['icethickness_advancethreshold']
         ).any() == True:
             if debug:
-                print("advancing glacier")
+                print('advancing glacier')
 
             # Record glacier area and ice thickness before advance corrections applied
             section_t0_raw = self.fls[0].section.copy()
@@ -781,14 +781,14 @@ class MassRedistributionCurveModel(FlowlineModel):
             glacier_area_t0_raw = width_t0_raw * self.fls[0].dx_meter
 
             if debug:
-                print("\n\nthickness t0:", thick_t0_raw)
-                print("glacier area t0:", glacier_area_t0_raw)
-                print("width_t0_raw:", width_t0_raw, "\n\n")
+                print('\n\nthickness t0:', thick_t0_raw)
+                print('glacier area t0:', glacier_area_t0_raw)
+                print('width_t0_raw:', width_t0_raw, '\n\n')
 
             # Index bins that are advancing
             icethickness_change[
                 icethickness_change
-                <= pygem_prms["sim"]["icethickness_advancethreshold"]
+                <= pygem_prms['sim']['icethickness_advancethreshold']
             ] = 0
             glac_idx_advance = icethickness_change.nonzero()[0]
 
@@ -797,7 +797,7 @@ class MassRedistributionCurveModel(FlowlineModel):
                 glac_idx_advance
             ] - (
                 icethickness_change[glac_idx_advance]
-                - pygem_prms["sim"]["icethickness_advancethreshold"]
+                - pygem_prms['sim']['icethickness_advancethreshold']
             )
             glacier_area_t1 = self.fls[0].widths_m.copy() * self.fls[0].dx_meter
 
@@ -809,7 +809,7 @@ class MassRedistributionCurveModel(FlowlineModel):
             ).sum()
 
             if debug:
-                print("advance volume [m3]:", advance_volume)
+                print('advance volume [m3]:', advance_volume)
 
             # Set the cross sectional area of the next bin
             advance_section = advance_volume / self.fls[0].dx_meter
@@ -834,9 +834,9 @@ class MassRedistributionCurveModel(FlowlineModel):
                     print(self.fls[0].surface_h[glac_idx_t0])
                     print(
                         glac_idx_t0_term,
-                        "height:",
+                        'height:',
                         self.fls[0].surface_h[glac_idx_t0_term],
-                        "thickness:",
+                        'thickness:',
                         self.fls[0].thick[glac_idx_t0_term],
                     )
                     print(
@@ -845,7 +845,7 @@ class MassRedistributionCurveModel(FlowlineModel):
                             > self.fls[0].surface_h[glac_idx_t0_term]
                         )[0]
                     )
-                    print("advance section:", advance_section)
+                    print('advance section:', advance_section)
 
                 thick_prior = np.copy(self.fls[0].thick)
                 section_updated = np.copy(self.fls[0].section)
@@ -874,12 +874,12 @@ class MassRedistributionCurveModel(FlowlineModel):
                     )
 
                     print(
-                        "surface_h:",
+                        'surface_h:',
                         self.fls[0].surface_h[glac_idx_t0],
-                        "\nmax term elev:",
+                        '\nmax term elev:',
                         elev_term,
                     )
-                    print("icethickness_change:", icethickness_change)
+                    print('icethickness_change:', icethickness_change)
 
                 if self.fls[0].surface_h[glac_idx_t0_term] > elev_term:
                     # Record parameters to calculate advance_volume if necessary
@@ -893,9 +893,9 @@ class MassRedistributionCurveModel(FlowlineModel):
                     )
 
                     if debug:
-                        print("thick_reduction:", thick_reduction)
+                        print('thick_reduction:', thick_reduction)
                         print(
-                            "----\nprior to correction:",
+                            '----\nprior to correction:',
                             self.fls[0].thick[glac_idx_t0_term],
                             self.fls[0].section[glac_idx_t0_term],
                         )
@@ -916,13 +916,13 @@ class MassRedistributionCurveModel(FlowlineModel):
 
                     if debug:
                         print(
-                            "post correction:",
+                            'post correction:',
                             self.fls[0].thick[glac_idx_t0_term],
                             self.fls[0].section[glac_idx_t0_term],
                         )
-                        print("surface_h:", self.fls[0].surface_h[glac_idx_t0])
-                        print("advance_volume:", advance_volume)
-                        print("icethickness_change:", icethickness_change)
+                        print('surface_h:', self.fls[0].surface_h[glac_idx_t0])
+                        print('advance_volume:', advance_volume)
+                        print('icethickness_change:', icethickness_change)
 
                 # Set icethickness change of terminus to 0 to avoid while loop issues
                 icethickness_change[glac_idx_t0_term] = 0
@@ -944,7 +944,7 @@ class MassRedistributionCurveModel(FlowlineModel):
                     (heights[glac_idx_t0] - heights[glac_idx_t0].min())
                     / (heights[glac_idx_t0].max() - heights[glac_idx_t0].min())
                     * 100
-                    < pygem_prms["sim"]["terminus_percentage"]
+                    < pygem_prms['sim']['terminus_percentage']
                 ]
                 # For glaciers with so few bands that the terminus is not identified (ex. <= 4 bands for 20% threshold),
                 #  then use the information from all the bands
@@ -952,7 +952,7 @@ class MassRedistributionCurveModel(FlowlineModel):
                     glac_idx_terminus = glac_idx_t0.copy()
 
                 if debug:
-                    print("glacier index terminus:", glac_idx_terminus)
+                    print('glacier index terminus:', glac_idx_terminus)
 
                 # Average area of glacier terminus [m2]
                 #  exclude the bin at the terminus, since this bin may need to be filled first
@@ -973,7 +973,7 @@ class MassRedistributionCurveModel(FlowlineModel):
                             - heights[glac_idx_initial].min()
                         )
                         * 100
-                        < pygem_prms["sim"]["terminus_percentage"]
+                        < pygem_prms['sim']['terminus_percentage']
                     ]
                     if glac_idx_terminus_initial.shape[0] <= 1:
                         glac_idx_terminus_initial = glac_idx_initial.copy()
@@ -1074,7 +1074,7 @@ class MassRedistributionCurveModel(FlowlineModel):
         """
 
         if debug:
-            print("\nDebugging mass redistribution curve Huss\n")
+            print('\nDebugging mass redistribution curve Huss\n')
 
         # Apply Huss redistribution if there are at least 3 elevation bands; otherwise, use the mass balance
         # Glacier area used to select parameters
@@ -1118,7 +1118,7 @@ class MassRedistributionCurveModel(FlowlineModel):
                 glacier_volumechange / (glacier_area_t0 * icethicknesschange_norm).sum()
             )
             if debug:
-                print("fs_huss:", fs_huss)
+                print('fs_huss:', fs_huss)
             # Volume change [m3 ice]
             bin_volumechange = icethicknesschange_norm * fs_huss * glacier_area_t0
 
@@ -1127,7 +1127,7 @@ class MassRedistributionCurveModel(FlowlineModel):
             bin_volumechange = massbalclim_annual * glacier_area_t0
 
         if debug:
-            print("-----\n")
+            print('-----\n')
             vol_before = section_t0 * self.fls[0].dx_meter
 
         # Update cross sectional area (updating thickness does not conserve mass in OGGM!)
@@ -1140,9 +1140,9 @@ class MassRedistributionCurveModel(FlowlineModel):
         vol_after = self.fls[0].section * self.fls[0].dx_meter
 
         if debug:
-            print("vol_chg_wanted:", bin_volumechange.sum())
-            print("vol_chg:", (vol_after.sum() - vol_before.sum()))
-            print("\n-----")
+            print('vol_chg_wanted:', bin_volumechange.sum())
+            print('vol_chg:', (vol_after.sum() - vol_before.sum()))
+            print('\n-----')
 
         # Compute the remaining volume change
         bin_volumechange_remaining = bin_volumechange - (
@@ -1151,7 +1151,7 @@ class MassRedistributionCurveModel(FlowlineModel):
         )
         # remove values below tolerance to avoid rounding errors
         bin_volumechange_remaining[
-            abs(bin_volumechange_remaining) < pygem_prms["constants"]["tolerance"]
+            abs(bin_volumechange_remaining) < pygem_prms['constants']['tolerance']
         ] = 0
         # Glacier volume change remaining - if less than zero, then needed for retreat
         glacier_volumechange_remaining = bin_volumechange_remaining.sum()

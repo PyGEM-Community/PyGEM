@@ -35,30 +35,30 @@ def getparser():
     Use argparse to add arguments from the command line
     """
     parser = argparse.ArgumentParser(
-        description="process monthly ice thickness for PyGEM simulation"
+        description='process monthly ice thickness for PyGEM simulation'
     )
     # add arguments
     parser.add_argument(
-        "-simpath",
-        action="store",
+        '-simpath',
+        action='store',
         type=str,
-        nargs="+",
+        nargs='+',
         default=None,
-        help="path to PyGEM binned simulation (can take multiple)",
+        help='path to PyGEM binned simulation (can take multiple)',
     )
     parser.add_argument(
-        "-binned_simdir",
-        action="store",
+        '-binned_simdir',
+        action='store',
         type=str,
         default=None,
-        help="directory with binned simulations for which to process monthly thickness",
+        help='directory with binned simulations for which to process monthly thickness',
     )
     parser.add_argument(
-        "-ncores",
-        action="store",
+        '-ncores',
+        action='store',
         type=int,
         default=1,
-        help="number of simultaneous processes (cores) to use",
+        help='number of simultaneous processes (cores) to use',
     )
 
     return parser
@@ -107,10 +107,10 @@ def get_binned_monthly(dotb_monthly, m_annual, h_annual):
     ### get monthly ice thickness ###
     # convert mass balance from m w.e. yr^-1 to m ice yr^-1
     dotb_monthly = dotb_monthly * (
-        pygem_prms["constants"]["density_water"]
-        / pygem_prms["constants"]["density_ice"]
+        pygem_prms['constants']['density_water']
+        / pygem_prms['constants']['density_ice']
     )
-    assert dotb_monthly.shape[2] % 12 == 0, "Number of months is not a multiple of 12!"
+    assert dotb_monthly.shape[2] % 12 == 0, 'Number of months is not a multiple of 12!'
 
     # obtain annual mass balance rate, sum monthly for each year
     dotb_annual = dotb_monthly.reshape(
@@ -136,7 +136,7 @@ def get_binned_monthly(dotb_monthly, m_annual, h_annual):
     h_monthly = running_delta_h_monthly + h_annual[:, :, 0][:, :, np.newaxis]
 
     # convert to mass per unit area
-    m_spec_monthly = h_monthly * pygem_prms["constants"]["density_ice"]
+    m_spec_monthly = h_monthly * pygem_prms['constants']['density_ice']
 
     ### get monthly mass ###
     # note, binned monthly thickness and mass is currently per unit area
@@ -145,7 +145,7 @@ def get_binned_monthly(dotb_monthly, m_annual, h_annual):
     # so we'll resort to using the annual binned glacier mass and thickness in order to get to binned glacier area
     ########################
     # first convert m_annual to bin_voluma_annual
-    v_annual = m_annual / pygem_prms["constants"]["density_ice"]
+    v_annual = m_annual / pygem_prms['constants']['density_ice']
     # now get area: use numpy divide where denominator is greater than 0 to avoid divide error
     # note, indexing of [:,:,1:] so that annual area array has same shape as flux_div_annual
     a_annual = np.divide(
@@ -188,35 +188,35 @@ def update_xrdataset(input_ds, h_monthly, m_spec_monthly, m_monthly):
     bin_values = input_ds.bin.values
 
     output_coords_dict = collections.OrderedDict()
-    output_coords_dict["bin_thick_monthly"] = collections.OrderedDict(
-        [("glac", glac_values), ("bin", bin_values), ("time", time_values)]
+    output_coords_dict['bin_thick_monthly'] = collections.OrderedDict(
+        [('glac', glac_values), ('bin', bin_values), ('time', time_values)]
     )
-    output_coords_dict["bin_mass_spec_monthly"] = collections.OrderedDict(
-        [("glac", glac_values), ("bin", bin_values), ("time", time_values)]
+    output_coords_dict['bin_mass_spec_monthly'] = collections.OrderedDict(
+        [('glac', glac_values), ('bin', bin_values), ('time', time_values)]
     )
-    output_coords_dict["bin_mass_monthly"] = collections.OrderedDict(
-        [("glac", glac_values), ("bin", bin_values), ("time", time_values)]
+    output_coords_dict['bin_mass_monthly'] = collections.OrderedDict(
+        [('glac', glac_values), ('bin', bin_values), ('time', time_values)]
     )
 
     # Attributes dictionary
     output_attrs_dict = {}
-    output_attrs_dict["bin_thick_monthly"] = {
-        "long_name": "binned monthly ice thickness",
-        "units": "m",
-        "temporal_resolution": "monthly",
-        "comment": "monthly ice thickness binned by surface elevation (assuming constant flux divergence throughout a given year)",
+    output_attrs_dict['bin_thick_monthly'] = {
+        'long_name': 'binned monthly ice thickness',
+        'units': 'm',
+        'temporal_resolution': 'monthly',
+        'comment': 'monthly ice thickness binned by surface elevation (assuming constant flux divergence throughout a given year)',
     }
-    output_attrs_dict["bin_mass_spec_monthly"] = {
-        "long_name": "binned monthly specific ice mass",
-        "units": "kg m^-2",
-        "temporal_resolution": "monthly",
-        "comment": "monthly ice mass per unit area binned by surface elevation (assuming constant flux divergence throughout a given year)",
+    output_attrs_dict['bin_mass_spec_monthly'] = {
+        'long_name': 'binned monthly specific ice mass',
+        'units': 'kg m^-2',
+        'temporal_resolution': 'monthly',
+        'comment': 'monthly ice mass per unit area binned by surface elevation (assuming constant flux divergence throughout a given year)',
     }
-    output_attrs_dict["bin_mass_monthly"] = {
-        "long_name": "binned monthly ice mass",
-        "units": "kg",
-        "temporal_resolution": "monthly",
-        "comment": "monthly ice mass binned by surface elevation (assuming constant flux divergence and area throughout a given year)",
+    output_attrs_dict['bin_mass_monthly'] = {
+        'long_name': 'binned monthly ice mass',
+        'units': 'kg',
+        'temporal_resolution': 'monthly',
+        'comment': 'monthly ice mass binned by surface elevation (assuming constant flux divergence and area throughout a given year)',
     }
 
     # Add variables to empty dataset and merge together
@@ -246,11 +246,11 @@ def update_xrdataset(input_ds, h_monthly, m_spec_monthly, m_monthly):
         except:
             pass
         # Encoding (specify _FillValue, offsets, etc.)
-        encoding[vn] = {"_FillValue": None, "zlib": True, "complevel": 9}
+        encoding[vn] = {'_FillValue': None, 'zlib': True, 'complevel': 9}
 
-    output_ds_all["bin_thick_monthly"].values = h_monthly
-    output_ds_all["bin_mass_spec_monthly"].values = m_spec_monthly
-    output_ds_all["bin_mass_monthly"].values = m_monthly
+    output_ds_all['bin_thick_monthly'].values = h_monthly
+    output_ds_all['bin_mass_spec_monthly'].values = m_spec_monthly
+    output_ds_all['bin_mass_monthly'].values = m_monthly
 
     return output_ds_all, encoding
 
@@ -289,7 +289,7 @@ def run(simpath):
 
         # append to existing binned netcdf
         output_ds_binned.to_netcdf(
-            simpath, mode="a", encoding=encoding_binned, engine="netcdf4"
+            simpath, mode='a', encoding=encoding_binned, engine='netcdf4'
         )
 
         # close datasets
@@ -308,7 +308,7 @@ def main():
 
     elif args.binned_simdir:
         # get list of sims
-        simpath = glob.glob(args.binned_simdir + "*.nc")
+        simpath = glob.glob(args.binned_simdir + '*.nc')
     if simpath:
         # number of cores for parallel processing
         if args.ncores > 1:
@@ -317,12 +317,12 @@ def main():
             ncores = 1
 
         # Parallel processing
-        print("Processing with " + str(ncores) + " cores...")
+        print('Processing with ' + str(ncores) + ' cores...')
         with multiprocessing.Pool(ncores) as p:
             p.map(run, simpath)
 
-    print("Total processing time:", time.time() - time_start, "s")
+    print('Total processing time:', time.time() - time_start, 's')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

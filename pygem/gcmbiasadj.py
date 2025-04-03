@@ -149,10 +149,10 @@ def temp_biasadj_HH2015(
     if gcm_startyear == ref_startyear:
         bc_temp = gcm_temp
     else:
-        if pygem_prms["climate"]["gcm_wateryear"] == "hydro":
-            dates_cn = "wateryear"
+        if pygem_prms['climate']['gcm_wateryear'] == 'hydro':
+            dates_cn = 'wateryear'
         else:
-            dates_cn = "year"
+            dates_cn = 'year'
         sim_idx_start = dates_table[dates_cn].to_list().index(gcm_startyear)
         bc_temp = gcm_temp[:, sim_idx_start:]
 
@@ -201,7 +201,7 @@ def temp_biasadj_HH2015(
             )
             < 1
         ), (
-            "Error with gcm temperature bias adjustment: mean ref and gcm temps differ by more than 1 degree"
+            'Error with gcm temperature bias adjustment: mean ref and gcm temps differ by more than 1 degree'
         )
     else:
         if debug:
@@ -279,10 +279,10 @@ def prec_biasadj_HH2015(
     if gcm_startyear == ref_startyear:
         bc_prec = gcm_prec
     else:
-        if pygem_prms["climate"]["gcm_wateryear"] == "hydro":
-            dates_cn = "wateryear"
+        if pygem_prms['climate']['gcm_wateryear'] == 'hydro':
+            dates_cn = 'wateryear'
         else:
-            dates_cn = "year"
+            dates_cn = 'year'
         sim_idx_start = dates_table[dates_cn].to_list().index(gcm_startyear)
         bc_prec = gcm_prec[:, sim_idx_start:]
 
@@ -302,13 +302,13 @@ def prec_biasadj_HH2015(
         axis=1
     )
     assert np.min(gcm_prec_biasadj_frac) > 0.5 and np.max(gcm_prec_biasadj_frac) < 2, (
-        "Error with gcm precipitation bias adjustment: total ref and gcm prec differ by more than factor of 2"
+        'Error with gcm precipitation bias adjustment: total ref and gcm prec differ by more than factor of 2'
     )
     assert gcm_prec_biasadj.max() <= 10, (
-        "gcm_prec_adj (precipitation bias adjustment) too high, needs to be modified"
+        'gcm_prec_adj (precipitation bias adjustment) too high, needs to be modified'
     )
     assert gcm_prec_biasadj.min() >= 0, (
-        "gcm_prec_adj is producing a negative precipitation value"
+        'gcm_prec_adj is producing a negative precipitation value'
     )
 
     return gcm_prec_biasadj, gcm_elev_biasadj
@@ -378,10 +378,10 @@ def prec_biasadj_opt1(
     if gcm_startyear == ref_startyear:
         bc_prec = gcm_prec
     else:
-        if pygem_prms["climate"]["gcm_wateryear"] == "hydro":
-            dates_cn = "wateryear"
+        if pygem_prms['climate']['gcm_wateryear'] == 'hydro':
+            dates_cn = 'wateryear'
         else:
-            dates_cn = "year"
+            dates_cn = 'year'
         sim_idx_start = dates_table[dates_cn].to_list().index(gcm_startyear)
         bc_prec = gcm_prec[:, sim_idx_start:]
 
@@ -458,13 +458,13 @@ def prec_biasadj_opt1(
         axis=1
     )
     assert np.min(gcm_prec_biasadj_frac) > 0.5 and np.max(gcm_prec_biasadj_frac) < 2, (
-        "Error with gcm precipitation bias adjustment: total ref and gcm prec differ by more than factor of 2"
+        'Error with gcm precipitation bias adjustment: total ref and gcm prec differ by more than factor of 2'
     )
     assert gcm_prec_biasadj.max() <= 10, (
-        "gcm_prec_adj (precipitation bias adjustment) too high, needs to be modified"
+        'gcm_prec_adj (precipitation bias adjustment) too high, needs to be modified'
     )
     assert gcm_prec_biasadj.min() >= 0, (
-        "gcm_prec_adj is producing a negative precipitation value"
+        'gcm_prec_adj is producing a negative precipitation value'
     )
 
     return gcm_prec_biasadj, gcm_elev_biasadj
@@ -534,10 +534,10 @@ def temp_biasadj_QDM(
     if gcm_startyear == ref_startyear:
         bc_temp = gcm_temp
     else:
-        if pygem_prms["climate"]["gcm_wateryear"] == "hydro":
-            dates_cn = "wateryear"
+        if pygem_prms['climate']['gcm_wateryear'] == 'hydro':
+            dates_cn = 'wateryear'
         else:
-            dates_cn = "year"
+            dates_cn = 'year'
         sim_idx_start = dates_table[dates_cn].to_list().index(gcm_startyear)
         bc_temp = gcm_temp[:, sim_idx_start:]
 
@@ -659,10 +659,10 @@ def prec_biasadj_QDM(
     if gcm_startyear == ref_startyear:
         bc_prec = gcm_prec
     else:
-        if pygem_prms["climate"]["gcm_wateryear"] == "hydro":
-            dates_cn = "wateryear"
+        if pygem_prms['climate']['gcm_wateryear'] == 'hydro':
+            dates_cn = 'wateryear'
         else:
-            dates_cn = "year"
+            dates_cn = 'year'
         sim_idx_start = dates_table[dates_cn].to_list().index(gcm_startyear)
         bc_prec = gcm_prec[:, sim_idx_start:]
 
@@ -744,10 +744,10 @@ def monthly_avg_array_rolled(
     #   create GCM subset for applying bias-correction (e.g., 2000-2100),
     #   that does not include the earlier reference years (e.g., 1981-2000)
     if gcm_startyear != ref_startyear:
-        if pygem_prms["climate"]["gcm_wateryear"] == "hydro":
-            dates_cn = "wateryear"
+        if pygem_prms['climate']['gcm_wateryear'] == 'hydro':
+            dates_cn = 'wateryear'
         else:
-            dates_cn = "year"
+            dates_cn = 'year'
         sim_idx_start = dates_table[dates_cn].to_list().index(gcm_startyear)
         gcm_array = gcm_array[:, sim_idx_start:]
 

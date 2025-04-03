@@ -28,15 +28,15 @@ pygem_prms = config_manager.read_config()
 
 
 class oib:
-    def __init__(self, rgi6id="", rgi7id=""):
+    def __init__(self, rgi6id='', rgi7id=''):
         self.oib_datpath = (
-            f"{pygem_prms['root']}/{pygem_prms['calib']['data']['oib']['oib_relpath']}"
+            f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["oib"]["oib_relpath"]}'
         )
-        self.rgi7_6_df = pd.read_csv(f"{self.oib_datpath}/../oibak_rgi6_rgi7_ids.csv")
-        self.rgi7_6_df["rgi7id"] = (
-            self.rgi7_6_df["rgi7id"].str.split("RGI2000-v7.0-G-").str[1]
+        self.rgi7_6_df = pd.read_csv(f'{self.oib_datpath}/../oibak_rgi6_rgi7_ids.csv')
+        self.rgi7_6_df['rgi7id'] = (
+            self.rgi7_6_df['rgi7id'].str.split('RGI2000-v7.0-G-').str[1]
         )
-        self.rgi7_6_df["rgi6id"] = self.rgi7_6_df["rgi6id"].str.split("RGI60-").str[1]
+        self.rgi7_6_df['rgi6id'] = self.rgi7_6_df['rgi6id'].str.split('RGI60-').str[1]
         self.rgi6id = rgi6id
         self.rgi7id = rgi7id
         self.name = None
@@ -71,20 +71,20 @@ class oib:
 
         """
         self.rgi6id = (
-            self.rgi6id.split(".")[0].zfill(2) + "." + self.rgi6id.split(".")[1]
+            self.rgi6id.split('.')[0].zfill(2) + '.' + self.rgi6id.split('.')[1]
         )
         # rgi7id = self.rgi7_6_df.loc[lambda self.rgi7_6_df: self.rgi7_6_df['rgi6id'] == rgi6id,'rgi7id'].tolist()
         rgi7id = self.rgi7_6_df.loc[
-            self.rgi7_6_df["rgi6id"] == self.rgi6id, "rgi7id"
+            self.rgi7_6_df['rgi6id'] == self.rgi6id, 'rgi7id'
         ].tolist()
         if len(rgi7id) == 1:
             self.rgi7id = rgi7id[0]
             if debug:
-                print(f"RGI6:{self.rgi6id} -> RGI7:{self.rgi7id}")
+                print(f'RGI6:{self.rgi6id} -> RGI7:{self.rgi7id}')
         elif len(rgi7id) == 0:
-            raise IndexError(f"No matching RGI7Id for {self.rgi6id}")
+            raise IndexError(f'No matching RGI7Id for {self.rgi6id}')
         elif len(rgi7id) > 1:
-            raise IndexError(f"More than one matching RGI7Id for {self.rgi6id}")
+            raise IndexError(f'More than one matching RGI7Id for {self.rgi6id}')
 
     def _rgi7torgi6id(self, debug=False):
         """
@@ -92,20 +92,20 @@ class oib:
 
         """
         self.rgi7id = (
-            self.rgi7id.split("-")[0].zfill(2) + "-" + self.rgi7id.split("-")[1]
+            self.rgi7id.split('-')[0].zfill(2) + '-' + self.rgi7id.split('-')[1]
         )
         # rgi6id = self.rgi7_6_df.loc[lambda self.rgi7_6_df: self.rgi7_6_df['rgi7id'] == rgi7id,'rgi6id'].tolist()
         rgi6id = self.rgi7_6_df.loc[
-            self.rgi7_6_df["rgi7id"] == self.rgi7id, "rgi6id"
+            self.rgi7_6_df['rgi7id'] == self.rgi7id, 'rgi6id'
         ].tolist()
         if len(rgi6id) == 1:
             self.rgi6id = rgi6id[0]
             if debug:
-                print(f"RGI7:{self.rgi7id} -> RGI6:{self.rgi6id}")
+                print(f'RGI7:{self.rgi7id} -> RGI6:{self.rgi6id}')
         elif len(rgi6id) == 0:
-            raise IndexError(f"No matching RGI6Id for {self.rgi7id}")
+            raise IndexError(f'No matching RGI6Id for {self.rgi7id}')
         elif len(rgi6id) > 1:
-            raise IndexError(f"More than one matching RGI6Id for {self.rgi7id}")
+            raise IndexError(f'More than one matching RGI6Id for {self.rgi7id}')
 
     def _date_check(self, dt_obj):
         """
@@ -122,15 +122,15 @@ class oib:
         """
         load Operation IceBridge data
         """
-        oib_fpath = glob.glob(f"{self.oib_datpath}/diffstats5_*{self.rgi7id}*.json")
+        oib_fpath = glob.glob(f'{self.oib_datpath}/diffstats5_*{self.rgi7id}*.json')
         if len(oib_fpath) == 0:
             return
         else:
             oib_fpath = oib_fpath[0]
         # load diffstats file
-        with open(oib_fpath, "rb") as f:
+        with open(oib_fpath, 'rb') as f:
             self.oib_dict = json.load(f)
-            self.name = split_by_uppercase(self.oib_dict["glacier_shortname"])
+            self.name = split_by_uppercase(self.oib_dict['glacier_shortname'])
 
     def _parsediffs(self, filter_count_pctl=10, debug=False):
         """
@@ -139,24 +139,24 @@ class oib:
         """
         # get seasons stored in oib diffs
         seasons = list(
-            set(self.oib_dict.keys()).intersection(["march", "may", "august"])
+            set(self.oib_dict.keys()).intersection(['march', 'may', 'august'])
         )
         for ssn in seasons:
             for yr in list(self.oib_dict[ssn].keys()):
                 # get survey date
-                doy_int = int(np.ceil(self.oib_dict[ssn][yr]["mean_doy"]))
-                dt_obj = datetime.datetime.strptime(f"{int(yr)}-{doy_int}", "%Y-%j")
+                doy_int = int(np.ceil(self.oib_dict[ssn][yr]['mean_doy']))
+                dt_obj = datetime.datetime.strptime(f'{int(yr)}-{doy_int}', '%Y-%j')
                 # get survey data and filter by pixel count
                 diffs = np.asarray(
-                    self.oib_dict[ssn][yr]["bin_vals"]["bin_median_diffs_vec"]
+                    self.oib_dict[ssn][yr]['bin_vals']['bin_median_diffs_vec']
                 )
-                counts = np.asarray(self.oib_dict[ssn][yr]["bin_vals"]["bin_count_vec"])
+                counts = np.asarray(self.oib_dict[ssn][yr]['bin_vals']['bin_count_vec'])
                 mask = _filter_on_pixel_count(counts, filter_count_pctl)
                 diffs[mask] = np.nan
                 # uncertainty represented by IQR
                 sigmas = np.asarray(
-                    self.oib_dict[ssn][yr]["bin_vals"][
-                        "bin_interquartile_range_diffs_vec"
+                    self.oib_dict[ssn][yr]['bin_vals'][
+                        'bin_interquartile_range_diffs_vec'
                     ]
                 )
                 sigmas[mask] = np.nan
@@ -167,22 +167,22 @@ class oib:
 
         if debug:
             print(
-                f"OIB survey dates:\n{', '.join([str(dt.year) + '-' + str(dt.month) + '-' + str(dt.day) for dt in list(self.oib_diffs.keys())])}"
+                f'OIB survey dates:\n{", ".join([str(dt.year) + "-" + str(dt.month) + "-" + str(dt.day) for dt in list(self.oib_diffs.keys())])}'
             )
         # get bin centers
         self.bin_centers = (
             np.asarray(
-                self.oib_dict[ssn][list(self.oib_dict[ssn].keys())[0]]["bin_vals"][
-                    "bin_start_vec"
+                self.oib_dict[ssn][list(self.oib_dict[ssn].keys())[0]]['bin_vals'][
+                    'bin_start_vec'
                 ]
             )
             + np.asarray(
-                self.oib_dict[ssn][list(self.oib_dict[ssn].keys())[0]]["bin_vals"][
-                    "bin_stop_vec"
+                self.oib_dict[ssn][list(self.oib_dict[ssn].keys())[0]]['bin_vals'][
+                    'bin_stop_vec'
                 ]
             )
         ) / 2
-        self.bin_area = self.oib_dict["aad_dict"]["hist_bin_areas_m2"]
+        self.bin_area = self.oib_dict['aad_dict']['hist_bin_areas_m2']
         # bin_edges = oib_dict[ssn][list(oib_dict[ssn].keys())[0]]['bin_vals']['bin_start_vec']
         # bin_edges.append(oib_dict[ssn][list(oib_dict[ssn].keys())[0]]['bin_vals']['bin_stop_vec'][-1])
         # bin_edges = np.asarray(bin_edges)
@@ -218,17 +218,17 @@ class oib:
                 for i in inds[::-1]:
                     plt.plot(
                         diffs[i],
-                        label=f"{survey_dates[i].year}:{survey_dates[i].month}:{survey_dates[i].day}",
+                        label=f'{survey_dates[i].year}:{survey_dates[i].month}:{survey_dates[i].day}',
                         c=cmap[i],
                     )
                 if idx:
-                    plt.axvline(idx, c="k", ls=":")
-                plt.legend(loc="upper right")
+                    plt.axvline(idx, c='k', ls=':')
+                plt.legend(loc='upper right')
                 plt.show()
 
         except Exception as err:
             if debug:
-                print(f"_filter_terminus_missing_ice error: {err}")
+                print(f'_filter_terminus_missing_ice error: {err}')
             mask = []
 
         # apply mask
@@ -241,7 +241,7 @@ class oib:
             # aggregate both model and obs to specified size m bins
             nbins = int(np.ceil((self.bin_centers[-1] - self.bin_centers[0]) // agg))
             with warnings.catch_warnings():
-                warnings.filterwarnings("ignore")
+                warnings.filterwarnings('ignore')
                 for i, (k, tup) in enumerate(self.oib_diffs.items()):
                     if i == 0:
                         y, self.bin_edges, _ = stats.binned_statistic(
@@ -278,9 +278,9 @@ class oib:
         # where dates is a tuple for each double differenced array in the format of (date1,date2),
         # where date1's cop30 differences were subtracted from date2's to get the dh values for that time span,
         # and the sigma was taken as the mean sigma from each date
-        self.dbl_diffs["dates"] = []
-        self.dbl_diffs["dh"] = []
-        self.dbl_diffs["sigma"] = []
+        self.dbl_diffs['dates'] = []
+        self.dbl_diffs['dh'] = []
+        self.dbl_diffs['sigma'] = []
         # loop through months
         for m in months:
             # filter and sort dates to include only those in the target month
@@ -295,47 +295,47 @@ class oib:
 
                 # Check if the pair is at least one full year apart
                 if year_diff >= 1:
-                    self.dbl_diffs["dates"].append((date1, date2))
-                    self.dbl_diffs["dh"].append(
+                    self.dbl_diffs['dates'].append((date1, date2))
+                    self.dbl_diffs['dh'].append(
                         self.oib_diffs[date2][0] - self.oib_diffs[date1][0]
                     )
                     # self.dbl_diffs['sigma'].append((self.oib_diffs[date2][1] + self.oib_diffs[date1][1]) / 2)
-                    self.dbl_diffs["sigma"].append(
+                    self.dbl_diffs['sigma'].append(
                         self.oib_diffs[date2][1] + self.oib_diffs[date1][1]
                     )
         # column stack dh and sigmas into single 2d array
-        if len(self.dbl_diffs["dh"]) > 0:
-            self.dbl_diffs["dh"] = np.column_stack(self.dbl_diffs["dh"])
-            self.dbl_diffs["sigma"] = np.column_stack(self.dbl_diffs["sigma"])
+        if len(self.dbl_diffs['dh']) > 0:
+            self.dbl_diffs['dh'] = np.column_stack(self.dbl_diffs['dh'])
+            self.dbl_diffs['sigma'] = np.column_stack(self.dbl_diffs['sigma'])
         else:
-            self.dbl_diffs["dh"] = np.nan
+            self.dbl_diffs['dh'] = np.nan
         # check if deltah is all nan
-        if np.isnan(self.dbl_diffs["dh"]).all():
-            self.dbl_diffs["dh"] = None
-            self.dbl_diffs["sigma"] = None
+        if np.isnan(self.dbl_diffs['dh']).all():
+            self.dbl_diffs['dh'] = None
+            self.dbl_diffs['sigma'] = None
 
     def _elevchange_to_masschange(
         self,
         ela,
-        density_ablation=pygem_prms["constants"]["density_ice"],
+        density_ablation=pygem_prms['constants']['density_ice'],
         density_accumulation=700,
     ):
         # convert elevation changes to mass change using piecewise density conversion
-        if self.dbl_diffs["dh"] is not None:
+        if self.dbl_diffs['dh'] is not None:
             # populate density conversion column corresponding to bin center elevation
             conversion_factor = np.ones(len(self.bin_centers))
             conversion_factor[np.where(self.bin_centers < ela)] = density_ablation
             conversion_factor[np.where(self.bin_centers >= ela)] = density_accumulation
             # get change in mass per unit area as (dz  * rho) [dmass / dm2]
-            self.dbl_diffs["dmda"] = (
-                self.dbl_diffs["dh"] * conversion_factor[:, np.newaxis]
+            self.dbl_diffs['dmda'] = (
+                self.dbl_diffs['dh'] * conversion_factor[:, np.newaxis]
             )
-            self.dbl_diffs["dmda_err"] = (
-                self.dbl_diffs["sigma"] * conversion_factor[:, np.newaxis]
+            self.dbl_diffs['dmda_err'] = (
+                self.dbl_diffs['sigma'] * conversion_factor[:, np.newaxis]
             )
         else:
-            self.dbl_diffs["dmda"] = None
-            self._dbl_diff["dmda_err"] = None
+            self.dbl_diffs['dmda'] = None
+            self._dbl_diff['dmda_err'] = None
 
 
 def _filter_on_pixel_count(arr, pctl=15):
@@ -350,4 +350,4 @@ def _filter_on_pixel_count(arr, pctl=15):
 
 def split_by_uppercase(text):
     # Add space before each uppercase letter (except at the start of the string)
-    return re.sub(r"(?<!^)(?=[A-Z])", " ", text)
+    return re.sub(r'(?<!^)(?=[A-Z])', ' ', text)

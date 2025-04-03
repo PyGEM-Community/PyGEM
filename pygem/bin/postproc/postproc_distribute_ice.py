@@ -42,24 +42,24 @@ def getparser():
     Use argparse to add arguments from the command line
     """
     parser = argparse.ArgumentParser(
-        description="distrube PyGEM simulated ice thickness to a 2D grid"
+        description='distrube PyGEM simulated ice thickness to a 2D grid'
     )
     # add arguments
     parser.add_argument(
-        "-simpath",
-        action="store",
+        '-simpath',
+        action='store',
         type=str,
-        nargs="+",
-        help="path to PyGEM binned simulation (can take multiple)",
+        nargs='+',
+        help='path to PyGEM binned simulation (can take multiple)',
     )
     parser.add_argument(
-        "-ncores",
-        action="store",
+        '-ncores',
+        action='store',
         type=int,
         default=1,
-        help="number of simultaneous processes (cores) to use",
+        help='number of simultaneous processes (cores) to use',
     )
-    parser.add_argument("-v", "--debug", action="store_true", help="Flag for debugging")
+    parser.add_argument('-v', '--debug', action='store_true', help='Flag for debugging')
     return parser
 
 
@@ -76,30 +76,30 @@ def pygem_to_oggm(pygem_simpath, oggm_diag=None, debug=False):
     area_m2(time, dis_along_flowline): float64
     thickness_m (time, dis_along_flowline): float64
     """
-    yr0, yr1 = pygem_simpath.split("_")[-3:-1]
+    yr0, yr1 = pygem_simpath.split('_')[-3:-1]
     pygem_ds = xr.open_dataset(pygem_simpath).sel(year=slice(yr0, yr1))
-    time = pygem_ds.coords["year"].values.flatten().astype(float)
-    distance_along_flowline = pygem_ds["bin_distance"].values.flatten().astype(float)
-    area = pygem_ds["bin_area_annual"].values[0].astype(float).T
-    thick = pygem_ds["bin_thick_annual"].values[0].astype(float).T
+    time = pygem_ds.coords['year'].values.flatten().astype(float)
+    distance_along_flowline = pygem_ds['bin_distance'].values.flatten().astype(float)
+    area = pygem_ds['bin_area_annual'].values[0].astype(float).T
+    thick = pygem_ds['bin_thick_annual'].values[0].astype(float).T
     vol = area * thick
 
     diag_ds = xr.Dataset()
-    diag_ds.coords["time"] = time
-    diag_ds.coords["dis_along_flowline"] = distance_along_flowline
-    diag_ds["area_m2"] = (("time", "dis_along_flowline"), area)
-    diag_ds["area_m2"].attrs["description"] = "Section area"
-    diag_ds["area_m2"].attrs["unit"] = "m 2"
-    diag_ds["thickness_m"] = (("time", "dis_along_flowline"), thick * np.nan)
-    diag_ds["thickness_m"].attrs["description"] = "Section thickness"
-    diag_ds["thickness_m"].attrs["unit"] = "m"
-    diag_ds["volume_m3"] = (("time", "dis_along_flowline"), vol)
-    diag_ds["volume_m3"].attrs["description"] = "Section volume"
-    diag_ds["volume_m3"].attrs["unit"] = "m 3"
+    diag_ds.coords['time'] = time
+    diag_ds.coords['dis_along_flowline'] = distance_along_flowline
+    diag_ds['area_m2'] = (('time', 'dis_along_flowline'), area)
+    diag_ds['area_m2'].attrs['description'] = 'Section area'
+    diag_ds['area_m2'].attrs['unit'] = 'm 2'
+    diag_ds['thickness_m'] = (('time', 'dis_along_flowline'), thick * np.nan)
+    diag_ds['thickness_m'].attrs['description'] = 'Section thickness'
+    diag_ds['thickness_m'].attrs['unit'] = 'm'
+    diag_ds['volume_m3'] = (('time', 'dis_along_flowline'), vol)
+    diag_ds['volume_m3'].attrs['description'] = 'Section volume'
+    diag_ds['volume_m3'].attrs['unit'] = 'm 3'
     # diag_ds.to_netcdf(oggm_diag, 'w', group='fl_0')
     if debug:
         # plot volume
-        vol = diag_ds.sum(dim=["dis_along_flowline"])["volume_m3"]
+        vol = diag_ds.sum(dim=['dis_along_flowline'])['volume_m3']
         f, ax = plt.subplots(1, figsize=(5, 5))
         (vol / vol[0]).plot(ax=ax)
         plt.show()
@@ -111,18 +111,18 @@ def plot_distributed_thickness(ds):
     f, (ax1, ax2) = plt.subplots(1, 2, figsize=(8, 4))
     vmax = (
         round(
-            np.nanmax(ds.simulated_thickness.sel(time=ds.coords["time"].values[0])) / 25
+            np.nanmax(ds.simulated_thickness.sel(time=ds.coords['time'].values[0])) / 25
         )
         * 25
     )
-    ds.simulated_thickness.sel(time=ds.coords["time"].values[0]).plot(
+    ds.simulated_thickness.sel(time=ds.coords['time'].values[0]).plot(
         ax=ax1, vmin=0, vmax=vmax, add_colorbar=False
     )
-    ds.simulated_thickness.sel(time=ds.coords["time"].values[-1]).plot(
+    ds.simulated_thickness.sel(time=ds.coords['time'].values[-1]).plot(
         ax=ax2, vmin=0, vmax=vmax
     )
-    ax1.axis("equal")
-    ax2.axis("equal")
+    ax1.axis('equal')
+    ax2.axis('equal')
     plt.tight_layout()
     plt.show()
 
@@ -130,18 +130,18 @@ def plot_distributed_thickness(ds):
 def run(simpath, debug=False):
     if os.path.isfile(simpath):
         pygem_path, pygem_fn = os.path.split(simpath)
-        pygem_fn_split = pygem_fn.split("_")
-        f_suffix = "_".join(pygem_fn_split[1:])[:-3]
+        pygem_fn_split = pygem_fn.split('_')
+        f_suffix = '_'.join(pygem_fn_split[1:])[:-3]
         glac_no = pygem_fn_split[0]
         glacier_rgi_table = modelsetup.selectglaciersrgitable(glac_no=[glac_no]).loc[
             0, :
         ]
-        glacier_str = "{0:0.5f}".format(glacier_rgi_table["RGIId_float"])
+        glacier_str = '{0:0.5f}'.format(glacier_rgi_table['RGIId_float'])
         # ===== Load glacier data: area (km2), ice thickness (m), width (km) =====
         try:
             if (
-                glacier_rgi_table["TermType"] not in [1, 5]
-                or not pygem_prms["setup"]["include_calving"]
+                glacier_rgi_table['TermType'] not in [1, 5]
+                or not pygem_prms['setup']['include_calving']
             ):
                 gdir = single_flowline_glacier_directory(glacier_str)
                 gdir.is_tidewater = False
@@ -170,12 +170,12 @@ def run(simpath, debug=False):
             distribute_2d.distribute_thickness_from_simulation,
             gdir,
             fl_diag=pygem_fl_diag,
-            concat_input_filesuffix="_spinup_historical",  # concatenate with the historical spinup
-            output_filesuffix=f"_pygem_{f_suffix}",  # filesuffix added to the output filename gridded_simulation.nc, if empty input_filesuffix is used
+            concat_input_filesuffix='_spinup_historical',  # concatenate with the historical spinup
+            output_filesuffix=f'_pygem_{f_suffix}',  # filesuffix added to the output filename gridded_simulation.nc, if empty input_filesuffix is used
         )[0]
         print(
-            "2D simulated ice thickness created: ",
-            gdir.get_filepath("gridded_simulation", filesuffix=f"_pygem_{f_suffix}"),
+            '2D simulated ice thickness created: ',
+            gdir.get_filepath('gridded_simulation', filesuffix=f'_pygem_{f_suffix}'),
         )
         if debug:
             plot_distributed_thickness(ds)
@@ -196,12 +196,12 @@ def main():
     # set up partial function with debug argument
     run_with_debug = partial(run, debug=args.debug)
     # parallel processing
-    print("Processing with " + str(ncores) + " cores...")
+    print('Processing with ' + str(ncores) + ' cores...')
     with multiprocessing.Pool(ncores) as p:
         p.map(run_with_debug, args.simpath)
 
-    print("Total processing time:", time.time() - time_start, "s")
+    print('Total processing time:', time.time() - time_start, 's')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

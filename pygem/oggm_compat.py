@@ -40,11 +40,11 @@ class CompatGlacDir:
 
 def single_flowline_glacier_directory(
     rgi_id,
-    reset=pygem_prms["oggm"]["overwrite_gdirs"],
-    prepro_border=pygem_prms["oggm"]["border"],
-    logging_level=pygem_prms["oggm"]["logging_level"],
-    has_internet=pygem_prms["oggm"]["has_internet"],
-    working_dir=f"{pygem_prms['root']}/{pygem_prms['oggm']['oggm_gdir_relpath']}",
+    reset=pygem_prms['oggm']['overwrite_gdirs'],
+    prepro_border=pygem_prms['oggm']['border'],
+    logging_level=pygem_prms['oggm']['logging_level'],
+    has_internet=pygem_prms['oggm']['has_internet'],
+    working_dir=f'{pygem_prms["root"]}/{pygem_prms["oggm"]["oggm_gdir_relpath"]}',
 ):
     """Prepare a GlacierDirectory for PyGEM (single flowline to start with)
 
@@ -64,66 +64,66 @@ def single_flowline_glacier_directory(
     a GlacierDirectory object
     """
     if type(rgi_id) != str:
-        raise ValueError("We expect rgi_id to be a string")
-    if rgi_id.startswith("RGI60-") == False:
-        rgi_id = "RGI60-" + rgi_id.split(".")[0].zfill(2) + "." + rgi_id.split(".")[1]
+        raise ValueError('We expect rgi_id to be a string')
+    if rgi_id.startswith('RGI60-') == False:
+        rgi_id = 'RGI60-' + rgi_id.split('.')[0].zfill(2) + '.' + rgi_id.split('.')[1]
     else:
-        raise ValueError("Check RGIId is correct")
+        raise ValueError('Check RGIId is correct')
 
     # Initialize OGGM and set up the default run parameters
     cfg.initialize(logging_level=logging_level)
     # Set multiprocessing to false; otherwise, causes daemonic error due to PyGEM's multiprocessing
     #  - avoids having multiple multiprocessing going on at the same time
-    cfg.PARAMS["use_multiprocessing"] = False
+    cfg.PARAMS['use_multiprocessing'] = False
 
     # Avoid erroneous glaciers (e.g., Centerlines too short or other issues)
-    cfg.PARAMS["continue_on_error"] = True
+    cfg.PARAMS['continue_on_error'] = True
 
     # Has internet
-    cfg.PARAMS["has_internet"] = has_internet
+    cfg.PARAMS['has_internet'] = has_internet
 
     # Set border boundary
-    cfg.PARAMS["border"] = prepro_border
+    cfg.PARAMS['border'] = prepro_border
     # Usually we recommend to set dl_verify to True - here it is quite slow
     # because of the huge files so we just turn it off.
     # Switch it on for real cases!
-    cfg.PARAMS["dl_verify"] = True
-    cfg.PARAMS["use_multiple_flowlines"] = False
+    cfg.PARAMS['dl_verify'] = True
+    cfg.PARAMS['use_multiple_flowlines'] = False
     # temporary directory for testing (deleted on computer restart)
-    cfg.PATHS["working_dir"] = working_dir
+    cfg.PATHS['working_dir'] = working_dir
 
     # check if gdir is already processed
     if not reset:
         try:
             gdir = utils.GlacierDirectory(rgi_id)
-            gdir.read_pickle("inversion_flowlines")
+            gdir.read_pickle('inversion_flowlines')
 
         except:
             reset = True
 
     if reset:
         # Start after the prepro task level
-        base_url = pygem_prms["oggm"]["base_url"]
+        base_url = pygem_prms['oggm']['base_url']
 
-        cfg.PARAMS["has_internet"] = pygem_prms["oggm"]["has_internet"]
+        cfg.PARAMS['has_internet'] = pygem_prms['oggm']['has_internet']
         gdir = workflow.init_glacier_directories(
             [rgi_id],
             from_prepro_level=2,
-            prepro_border=cfg.PARAMS["border"],
+            prepro_border=cfg.PARAMS['border'],
             prepro_base_url=base_url,
-            prepro_rgi_version="62",
+            prepro_rgi_version='62',
         )[0]
 
     # go through shop tasks to process auxiliary datasets to gdir if necessary
     # consensus glacier mass
-    if not os.path.isfile(gdir.get_filepath("consensus_mass")):
+    if not os.path.isfile(gdir.get_filepath('consensus_mass')):
         workflow.execute_entity_task(icethickness.consensus_gridded, gdir)
     # mass balance calibration data
-    if not os.path.isfile(gdir.get_filepath("mb_calib_pygem")):
+    if not os.path.isfile(gdir.get_filepath('mb_calib_pygem')):
         workflow.execute_entity_task(mbdata.mb_df_to_gdir, gdir)
     # debris thickness and melt enhancement factors
-    if not os.path.isfile(gdir.get_filepath("debris_ed")) or not os.path.isfile(
-        gdir.get_filepath("debris_hd")
+    if not os.path.isfile(gdir.get_filepath('debris_ed')) or not os.path.isfile(
+        gdir.get_filepath('debris_hd')
     ):
         workflow.execute_entity_task(debris.debris_to_gdir, gdir)
         workflow.execute_entity_task(debris.debris_binned, gdir)
@@ -133,13 +133,13 @@ def single_flowline_glacier_directory(
 
 def single_flowline_glacier_directory_with_calving(
     rgi_id,
-    reset=pygem_prms["oggm"]["overwrite_gdirs"],
-    prepro_border=pygem_prms["oggm"]["border"],
+    reset=pygem_prms['oggm']['overwrite_gdirs'],
+    prepro_border=pygem_prms['oggm']['border'],
     k_calving=1,
-    logging_level=pygem_prms["oggm"]["logging_level"],
-    has_internet=pygem_prms["oggm"]["has_internet"],
-    working_dir=pygem_prms["root"] + pygem_prms["oggm"]["oggm_gdir_relpath"],
-    facorrected=pygem_prms["setup"]["include_frontalablation"],
+    logging_level=pygem_prms['oggm']['logging_level'],
+    has_internet=pygem_prms['oggm']['has_internet'],
+    working_dir=pygem_prms['root'] + pygem_prms['oggm']['oggm_gdir_relpath'],
+    facorrected=pygem_prms['setup']['include_frontalablation'],
 ):
     """Prepare a GlacierDirectory for PyGEM (single flowline to start with)
 
@@ -160,68 +160,68 @@ def single_flowline_glacier_directory_with_calving(
     a GlacierDirectory object
     """
     if type(rgi_id) != str:
-        raise ValueError("We expect rgi_id to be a string")
-    if rgi_id.startswith("RGI60-") == False:
-        rgi_id = "RGI60-" + rgi_id.split(".")[0].zfill(2) + "." + rgi_id.split(".")[1]
+        raise ValueError('We expect rgi_id to be a string')
+    if rgi_id.startswith('RGI60-') == False:
+        rgi_id = 'RGI60-' + rgi_id.split('.')[0].zfill(2) + '.' + rgi_id.split('.')[1]
     else:
-        raise ValueError("Check RGIId is correct")
+        raise ValueError('Check RGIId is correct')
 
     # Initialize OGGM and set up the default run parameters
     cfg.initialize(logging_level=logging_level)
     # Set multiprocessing to false; otherwise, causes daemonic error due to PyGEM's multiprocessing
     #  - avoids having multiple multiprocessing going on at the same time
-    cfg.PARAMS["use_multiprocessing"] = False
+    cfg.PARAMS['use_multiprocessing'] = False
 
     # Avoid erroneous glaciers (e.g., Centerlines too short or other issues)
-    cfg.PARAMS["continue_on_error"] = True
+    cfg.PARAMS['continue_on_error'] = True
 
     # Has internet
-    cfg.PARAMS["has_internet"] = has_internet
+    cfg.PARAMS['has_internet'] = has_internet
 
     # Set border boundary
-    cfg.PARAMS["border"] = prepro_border
+    cfg.PARAMS['border'] = prepro_border
     # Usually we recommend to set dl_verify to True - here it is quite slow
     # because of the huge files so we just turn it off.
     # Switch it on for real cases!
-    cfg.PARAMS["dl_verify"] = True
-    cfg.PARAMS["use_multiple_flowlines"] = False
+    cfg.PARAMS['dl_verify'] = True
+    cfg.PARAMS['use_multiple_flowlines'] = False
     # temporary directory for testing (deleted on computer restart)
-    cfg.PATHS["working_dir"] = working_dir
+    cfg.PATHS['working_dir'] = working_dir
 
     # check if gdir is already processed
     if not reset:
         try:
             gdir = utils.GlacierDirectory(rgi_id)
-            gdir.read_pickle("inversion_flowlines")
+            gdir.read_pickle('inversion_flowlines')
 
         except:
             reset = True
 
     if reset:
         # Start after the prepro task level
-        base_url = pygem_prms["oggm"]["base_url"]
+        base_url = pygem_prms['oggm']['base_url']
 
-        cfg.PARAMS["has_internet"] = pygem_prms["oggm"]["has_internet"]
+        cfg.PARAMS['has_internet'] = pygem_prms['oggm']['has_internet']
         gdir = workflow.init_glacier_directories(
             [rgi_id],
             from_prepro_level=2,
-            prepro_border=cfg.PARAMS["border"],
+            prepro_border=cfg.PARAMS['border'],
             prepro_base_url=base_url,
-            prepro_rgi_version="62",
+            prepro_rgi_version='62',
         )[0]
 
         if not gdir.is_tidewater:
-            raise ValueError(f"{rgi_id} is not tidewater!")
+            raise ValueError(f'{rgi_id} is not tidewater!')
 
     # go through shop tasks to process auxiliary datasets to gdir if necessary
     # consensus glacier mass
-    if not os.path.isfile(gdir.get_filepath("consensus_mass")):
+    if not os.path.isfile(gdir.get_filepath('consensus_mass')):
         workflow.execute_entity_task(icethickness.consensus_gridded, gdir)
 
     # mass balance calibration data (note facorrected kwarg)
-    if not os.path.isfile(gdir.get_filepath("mb_calib_pygem")):
+    if not os.path.isfile(gdir.get_filepath('mb_calib_pygem')):
         workflow.execute_entity_task(
-            mbdata.mb_df_to_gdir, gdir, **{"facorrected": facorrected}
+            mbdata.mb_df_to_gdir, gdir, **{'facorrected': facorrected}
         )
 
     return gdir
@@ -263,13 +263,13 @@ def oggm_spinup(gdir):
         tasks.run_dynamic_spinup,
         gdir,
         spinup_start_yr=1979,  # When to start the spinup
-        minimise_for="area",  # what target to match at the RGI date
-        output_filesuffix="_dynamic_area",  # Where to write the output
+        minimise_for='area',  # what target to match at the RGI date
+        output_filesuffix='_dynamic_area',  # Where to write the output
         ye=2020,  # When the simulation should stop
         # first_guess_t_spinup = , could be passed as input argument for each step in the sampler based on prior tbias, current default first guess is -2
     )
     fmd_dynamic = flowline.FileModel(
-        gdir.get_filepath("model_geometry", filesuffix="_dynamic_area")
+        gdir.get_filepath('model_geometry', filesuffix='_dynamic_area')
     )
     fmd_dynamic.run_until(2000)
     return fmd_dynamic.fls  # flowlines after dynamic spinup at year 2000
@@ -289,8 +289,8 @@ def create_empty_glacier_directory(rgi_id):
     """
     # RGIId check
     if type(rgi_id) != str:
-        raise ValueError("We expect rgi_id to be a string")
-    assert rgi_id.startswith("RGI60-"), "Check RGIId starts with RGI60-"
+        raise ValueError('We expect rgi_id to be a string')
+    assert rgi_id.startswith('RGI60-'), 'Check RGIId starts with RGI60-'
 
     # Create empty directory
     gdir = CompatGlacDir(rgi_id)
@@ -311,7 +311,7 @@ def get_glacier_zwh(gdir):
     a dataframe with the requested data
     """
 
-    fls = gdir.read_pickle("model_flowlines")
+    fls = gdir.read_pickle('model_flowlines')
     z = np.array([])
     w = np.array([])
     h = np.array([])
@@ -327,10 +327,10 @@ def get_glacier_zwh(gdir):
 
     # Output
     df = pd.DataFrame()
-    df["z"] = z
-    df["w"] = w
-    df["h"] = h
-    df["dx"] = dx
+    df['z'] = z
+    df['w'] = w
+    df['h'] = h
+    df['dx'] = dx
 
     return df
 
@@ -369,14 +369,14 @@ class RandomLinearMassBalance(MassBalanceModel):
         self.valid_bounds = [-1e4, 2e4]  # in m
         self.grad = grad
         self.sigma_ela = sigma_ela
-        self.hemisphere = "nh"
+        self.hemisphere = 'nh'
         self.rng = np.random.RandomState(seed)
 
         # Decide on a reference ELA
-        grids_file = gdir.get_filepath("gridded_data")
+        grids_file = gdir.get_filepath('gridded_data')
         with netCDF4.Dataset(grids_file) as nc:
-            glacier_mask = nc.variables["glacier_mask"][:]
-            glacier_topo = nc.variables["topo_smoothed"][:]
+            glacier_mask = nc.variables['glacier_mask'][:]
+            glacier_topo = nc.variables['topo_smoothed'][:]
 
         self.orig_ela_h = np.percentile(glacier_topo[glacier_mask == 1], h_perc)
         self.ela_h_per_year = dict()  # empty dictionary
@@ -404,4 +404,4 @@ class RandomLinearMassBalance(MassBalanceModel):
         mb = (np.asarray(heights) - ela_h) * self.grad
 
         # Convert to units of [m s-1] (meters of ice per second)
-        return mb / SEC_IN_YEAR / cfg.PARAMS["ice_density"]
+        return mb / SEC_IN_YEAR / cfg.PARAMS['ice_density']

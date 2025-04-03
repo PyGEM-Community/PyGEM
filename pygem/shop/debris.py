@@ -34,19 +34,19 @@ To-do list:
 log = logging.getLogger(__name__)
 
 # Add the new name "hd" to the list of things that the GlacierDirectory understands
-if "debris_hd" not in cfg.BASENAMES:
-    cfg.BASENAMES["debris_hd"] = ("debris_hd.tif", "Raster of debris thickness data")
-if "debris_ed" not in cfg.BASENAMES:
-    cfg.BASENAMES["debris_ed"] = (
-        "debris_ed.tif",
-        "Raster of debris enhancement factor data",
+if 'debris_hd' not in cfg.BASENAMES:
+    cfg.BASENAMES['debris_hd'] = ('debris_hd.tif', 'Raster of debris thickness data')
+if 'debris_ed' not in cfg.BASENAMES:
+    cfg.BASENAMES['debris_ed'] = (
+        'debris_ed.tif',
+        'Raster of debris enhancement factor data',
     )
 
 
-@entity_task(log, writes=["debris_hd", "debris_ed"])
+@entity_task(log, writes=['debris_hd', 'debris_ed'])
 def debris_to_gdir(
     gdir,
-    debris_dir=f"{pygem_prms['root']}/{pygem_prms['mb']['debris_relpath']}",
+    debris_dir=f'{pygem_prms["root"]}/{pygem_prms["mb"]["debris_relpath"]}',
     add_to_gridded=True,
     hd_max=5,
     hd_min=0,
@@ -65,98 +65,98 @@ def debris_to_gdir(
         where to write the data
     """
 
-    assert os.path.exists(debris_dir), "Error: debris directory does not exist."
+    assert os.path.exists(debris_dir), 'Error: debris directory does not exist.'
 
-    hd_dir = debris_dir + "hd_tifs/" + gdir.rgi_region + "/"
-    ed_dir = debris_dir + "ed_tifs/" + gdir.rgi_region + "/"
+    hd_dir = debris_dir + 'hd_tifs/' + gdir.rgi_region + '/'
+    ed_dir = debris_dir + 'ed_tifs/' + gdir.rgi_region + '/'
 
     glac_str_nolead = (
-        str(int(gdir.rgi_region)) + "." + gdir.rgi_id.split("-")[1].split(".")[1]
+        str(int(gdir.rgi_region)) + '.' + gdir.rgi_id.split('-')[1].split('.')[1]
     )
 
     # If debris thickness data exists, then write to glacier directory
-    if os.path.exists(hd_dir + glac_str_nolead + "_hdts_m.tif"):
-        hd_fn = hd_dir + glac_str_nolead + "_hdts_m.tif"
-    elif os.path.exists(hd_dir + glac_str_nolead + "_hdts_m_extrap.tif"):
-        hd_fn = hd_dir + glac_str_nolead + "_hdts_m_extrap.tif"
+    if os.path.exists(hd_dir + glac_str_nolead + '_hdts_m.tif'):
+        hd_fn = hd_dir + glac_str_nolead + '_hdts_m.tif'
+    elif os.path.exists(hd_dir + glac_str_nolead + '_hdts_m_extrap.tif'):
+        hd_fn = hd_dir + glac_str_nolead + '_hdts_m_extrap.tif'
     else:
         hd_fn = None
 
     if hd_fn is not None:
-        rasterio_to_gdir(gdir, hd_fn, "debris_hd", resampling="bilinear")
+        rasterio_to_gdir(gdir, hd_fn, 'debris_hd', resampling='bilinear')
     if add_to_gridded and hd_fn is not None:
-        output_fn = gdir.get_filepath("debris_hd")
+        output_fn = gdir.get_filepath('debris_hd')
 
         # append the debris data to the gridded dataset
         with rasterio.open(output_fn) as src:
-            grids_file = gdir.get_filepath("gridded_data")
-            with ncDataset(grids_file, "a") as nc:
+            grids_file = gdir.get_filepath('gridded_data')
+            with ncDataset(grids_file, 'a') as nc:
                 # Mask values
-                glacier_mask = nc["glacier_mask"][:]
+                glacier_mask = nc['glacier_mask'][:]
                 data = src.read(1) * glacier_mask
                 data[data > hd_max] = 0
                 data[data < hd_min] = 0
 
                 # Write data
-                vn = "debris_hd"
+                vn = 'debris_hd'
                 if vn in nc.variables:
                     v = nc.variables[vn]
                 else:
                     v = nc.createVariable(
                         vn,
-                        "f8",
+                        'f8',
                         (
-                            "y",
-                            "x",
+                            'y',
+                            'x',
                         ),
                         zlib=True,
                     )
-                v.units = "m"
-                v.long_name = "Debris thicknness"
+                v.units = 'm'
+                v.long_name = 'Debris thicknness'
                 v[:] = data
 
     # If debris enhancement factor data exists, then write to glacier directory
-    if os.path.exists(ed_dir + glac_str_nolead + "_meltfactor.tif"):
-        ed_fn = ed_dir + glac_str_nolead + "_meltfactor.tif"
-    elif os.path.exists(ed_dir + glac_str_nolead + "_meltfactor_extrap.tif"):
-        ed_fn = ed_dir + glac_str_nolead + "_meltfactor_extrap.tif"
+    if os.path.exists(ed_dir + glac_str_nolead + '_meltfactor.tif'):
+        ed_fn = ed_dir + glac_str_nolead + '_meltfactor.tif'
+    elif os.path.exists(ed_dir + glac_str_nolead + '_meltfactor_extrap.tif'):
+        ed_fn = ed_dir + glac_str_nolead + '_meltfactor_extrap.tif'
     else:
         ed_fn = None
 
     if ed_fn is not None:
-        rasterio_to_gdir(gdir, ed_fn, "debris_ed", resampling="bilinear")
+        rasterio_to_gdir(gdir, ed_fn, 'debris_ed', resampling='bilinear')
     if add_to_gridded and ed_fn is not None:
-        output_fn = gdir.get_filepath("debris_ed")
+        output_fn = gdir.get_filepath('debris_ed')
         # append the debris data to the gridded dataset
         with rasterio.open(output_fn) as src:
-            grids_file = gdir.get_filepath("gridded_data")
-            with ncDataset(grids_file, "a") as nc:
+            grids_file = gdir.get_filepath('gridded_data')
+            with ncDataset(grids_file, 'a') as nc:
                 # Mask values
-                glacier_mask = nc["glacier_mask"][:]
+                glacier_mask = nc['glacier_mask'][:]
                 data = src.read(1) * glacier_mask
                 data[data > ed_max] = 1
                 data[data < ed_min] = 1
                 # Write data
-                vn = "debris_ed"
+                vn = 'debris_ed'
                 if vn in nc.variables:
                     v = nc.variables[vn]
                 else:
                     v = nc.createVariable(
                         vn,
-                        "f8",
+                        'f8',
                         (
-                            "y",
-                            "x",
+                            'y',
+                            'x',
                         ),
                         zlib=True,
                     )
-                v.units = "-"
-                v.long_name = "Debris enhancement factor"
+                v.units = '-'
+                v.long_name = 'Debris enhancement factor'
                 v[:] = data
 
 
-@entity_task(log, writes=["inversion_flowlines"])
-def debris_binned(gdir, ignore_debris=False, fl_str="inversion_flowlines"):
+@entity_task(log, writes=['inversion_flowlines'])
+def debris_binned(gdir, ignore_debris=False, fl_str='inversion_flowlines'):
     """Bin debris thickness and enhancement factors.
 
     Updates the 'inversion_flowlines' save file.
@@ -172,7 +172,7 @@ def debris_binned(gdir, ignore_debris=False, fl_str="inversion_flowlines"):
         fl = flowlines[0]
 
         assert len(flowlines) == 1, (
-            "Error: binning debris only works for single flowlines at present"
+            'Error: binning debris only works for single flowlines at present'
         )
 
     except:
@@ -180,12 +180,12 @@ def debris_binned(gdir, ignore_debris=False, fl_str="inversion_flowlines"):
 
     if flowlines is not None:
         # Add binned debris thickness and enhancement factors to flowlines
-        if os.path.exists(gdir.get_filepath("debris_hd")) and ignore_debris == False:
-            ds = xr.open_dataset(gdir.get_filepath("gridded_data"))
-            glacier_mask = ds["glacier_mask"].values
-            topo = ds["topo_smoothed"].values
-            hd = ds["debris_hd"].values
-            ed = ds["debris_ed"].values
+        if os.path.exists(gdir.get_filepath('debris_hd')) and ignore_debris == False:
+            ds = xr.open_dataset(gdir.get_filepath('gridded_data'))
+            glacier_mask = ds['glacier_mask'].values
+            topo = ds['topo_smoothed'].values
+            hd = ds['debris_hd'].values
+            ed = ds['debris_ed'].values
 
             # Only bin on-glacier values
             idx_glac = np.where(glacier_mask == 1)

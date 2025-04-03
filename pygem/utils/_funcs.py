@@ -37,8 +37,8 @@ def annualweightedmean_array(var, dates_table):
     var_annual : np.ndarray
         Annual weighted mean of variable
     """
-    if pygem_prms["time"]["timestep"] == "monthly":
-        dayspermonth = dates_table["daysinmonth"].values.reshape(-1, 12)
+    if pygem_prms['time']['timestep'] == 'monthly':
+        dayspermonth = dates_table['daysinmonth'].values.reshape(-1, 12)
         #  creates matrix (rows-years, columns-months) of the number of days per month
         daysperyear = dayspermonth.sum(axis=1)
         #  creates an array of the days per year (includes leap years)
@@ -59,10 +59,10 @@ def annualweightedmean_array(var, dates_table):
         # If averaging a single year, then reshape so it returns a 1d array
         if var_annual.shape[1] == 1:
             var_annual = var_annual.reshape(var_annual.shape[0])
-    elif pygem_prms["time"]["timestep"] == "daily":
+    elif pygem_prms['time']['timestep'] == 'daily':
         print(
-            "\nError: need to code the groupbyyearsum and groupbyyearmean for daily timestep."
-            "Exiting the model run.\n"
+            '\nError: need to code the groupbyyearsum and groupbyyearmean for daily timestep.'
+            'Exiting the model run.\n'
         )
         exit()
     return var_annual
@@ -79,23 +79,23 @@ def append_json(file_path, new_key, new_value):
     """
     try:
         # Read the existing data
-        with open(file_path, "r") as file:
+        with open(file_path, 'r') as file:
             data = json.load(file)
 
         # Ensure the JSON data is a dictionary
         if not isinstance(data, dict):
-            raise ValueError("JSON file must contain a dictionary at the top level.")
+            raise ValueError('JSON file must contain a dictionary at the top level.')
 
         # Add the new key-value pair
         data[new_key] = new_value
 
         # Write the updated data back to the file
-        with open(file_path, "w") as file:
+        with open(file_path, 'w') as file:
             json.dump(data, file)
 
     except FileNotFoundError:
         print(f"Error: The file '{file_path}' was not found.")
     except json.JSONDecodeError:
-        print("Error: The file does not contain valid JSON.")
+        print('Error: The file does not contain valid JSON.')
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        print(f'An unexpected error occurred: {e}')
