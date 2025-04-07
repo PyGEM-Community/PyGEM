@@ -42,7 +42,7 @@ def getparser():
     parser = argparse.ArgumentParser(description="distrube PyGEM simulated ice thickness to a 2D grid")
     # add arguments
     parser.add_argument('-simpath', action='store', type=str, nargs='+',
-                        help='path to PyGEM binned simulation (can take multiple)')
+                        help='path to PyGEM binned simulation (can take multiple, or can be a directory from which to process all files)')
     parser.add_argument('-ncores', action='store', type=int, default=1,
                         help='number of simultaneous processes (cores) to use')
     parser.add_argument('-v', '--debug', action='store_true',
@@ -115,7 +115,7 @@ def run(simpath, debug=False):
         glacier_str = '{0:0.5f}'.format(glacier_rgi_table['RGIId_float'])
         # ===== Load glacier data: area (km2), ice thickness (m), width (km) =====        
         try:
-            if not glacier_rgi_table['TermType'] in [1,5] or not pygem_prms['setup']['include_calving']:
+            if not glacier_rgi_table['TermType'] in [1,5] or not pygem_prms['setup']['include_tidewater']:
                 gdir = single_flowline_glacier_directory(glacier_str)
                 gdir.is_tidewater = False
             else:
@@ -156,7 +156,10 @@ def run(simpath, debug=False):
 def main():
     time_start = time.time()
     args = getparser().parse_args()
-
+    if (len(args.simpath) == 1) and (os.path.isdir(args.simpath[0])):
+        sims = glob.glob(args.simpath[0] + '/*.nc')
+    else:
+        sims = args.simpath 
     # number of cores for parallel processing
     if args.ncores > 1:
         ncores = int(np.min([len(args.simpath), args.ncores]))
@@ -166,9 +169,9 @@ def main():
     # set up partial function with debug argument
     run_with_debug = partial(run, debug=args.debug)
     # parallel processing
-    print('Processing with ' + str(ncores) + ' cores...')
+    print(f'Processing with {ncores} cores... \n{sims}')
     with multiprocessing.Pool(ncores) as p:
-        p.map(run_with_debug, args.simpath)
+        p.map(run_with_debug, sims)
 
     print('Total processing time:', time.time()-time_start, 's')
     
