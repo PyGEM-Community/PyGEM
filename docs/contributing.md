@@ -60,14 +60,18 @@ Installing a package in editable mode creates a symbolic link to your source cod
 
 (ruff_target)=
 ## Code linting and formatting
-PyGEM uses [ruff](https://docs.astral.sh/ruff/formatter) for linting and formatting, which ensures that the code adheres to a consistent coding style ([Black](https://black.readthedocs.io/en/stable/the_black_code_style/index.html)) and prevents potential errors, stylistic issues, or deviations from coding standards. The configuration for Ruff can be found in the `pyproject.toml` file. Linting and formatting checks are integrated into the CI pipeline, and any detected issues will cause it to fail.
+PyGEM **requires** all code to be linted and formatted using [ruff](https://docs.astral.sh/ruff/formatter). Ruff enforces a consistent coding style (based on [Black](https://black.readthedocs.io/en/stable/the_black_code_style/index.html)) and helps prevent potential errors, stylistic issues, or deviations from coding standards. The configuration for Ruff can be found in the `pyproject.toml` file.
 
+⚠️ **Both linting and formatting must be completed before code is merged.** These checks are run automatically in the CI pipeline. If any issues are detected, the pipeline will fail.
+
+### Lint the codebase
 To lint the codebase using Ruff, run the following command:
 ```
 ruff check /path/to/code
 ```
 Please address all reported errors. Many errors may be automatically and safely fixed by passing `--fix` to the above command. Other errors will need to be manually addressed.
 
+### Format the codebase
 To automatically format the codebase using Ruff, run the following command:
 ```
 ruff format /path/to/code
