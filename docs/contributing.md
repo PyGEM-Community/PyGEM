@@ -45,6 +45,7 @@ Installing a package in editable mode creates a symbolic link to your source cod
 - First, open a Draft PR. Then consider:
     - Have you finished making changes?
     - Have you added tests for all new functionalities you introduced?
+    - Have you run the ruff linter and formatter? See [the linting and formatting section below](ruff_target) on how to do that.
     - Have all tests passed in the CI? (Check the progress in the Checks tab of the PR.)
   
   If the answer to all of the above is "yes", mark the PR as "Ready for review" and request a review from an appropriate reviewer. If in doubt of which reviewer to assign, assign [drounce](https://github.com/drounce).
@@ -56,3 +57,22 @@ Installing a package in editable mode creates a symbolic link to your source cod
   - After responding to a reviewer's comment, do not mark it as resolved.
   - Once all comments are addressed, request a new review from the same reviewer. The reviewer should then resolve the comments they are satisfied with.
 - After approving someone else's PR, do not merge it. Let the original author of the PR merge it when they are ready, as they might notice necessary last-minute changes.
+
+(ruff_target)=
+## Code linting and formatting
+PyGEM **requires** all code to be linted and formatted using [ruff](https://docs.astral.sh/ruff/formatter). Ruff enforces a consistent coding style (based on [Black](https://black.readthedocs.io/en/stable/the_black_code_style/index.html)) and helps prevent potential errors, stylistic issues, or deviations from coding standards. The configuration for Ruff can be found in the `pyproject.toml` file.
+
+⚠️ **Both linting and formatting must be completed before code is merged.** These checks are run automatically in the CI pipeline. If any issues are detected, the pipeline will fail.
+
+### Lint the codebase
+To lint the codebase using Ruff, run the following command:
+```
+ruff check /path/to/code
+```
+Please address all reported errors. Many errors may be automatically and safely fixed by passing `--fix` to the above command. Other errors will need to be manually addressed.
+
+### Format the codebase
+To automatically format the codebase using Ruff, run the following command:
+```
+ruff format /path/to/code
+```

@@ -34,6 +34,7 @@ jupyter = "^1.1.1"
 arviz = "^0.20.0"
 oggm = "^1.6.2"
 ruamel-yaml = "^0.18.10"
+ruff = ">=0.9.6"
 pytest = ">=8.3.4"
 pytest-cov = ">=6.0.0"
 nbmake = ">=1.5.5"
@@ -57,6 +58,38 @@ duplicate_gdirs = "pygem.bin.op.duplicate_gdirs:main"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 88  # Default
+
+[tool.ruff.format]
+quote-style = "single"
+
+[tool.ruff.lint]
+select = [
+  "B",  # flake8-bugbear
+  "C",  # mccabe complexity
+  "E", "W",  # Pycodestyle
+  "F",  # Pyflakes
+  "I",  # isort
+]
+ignore = [
+    "B006",  # Mutable data structures in argument defaults
+    "B007",  # Loop control variable not used within loop body
+    "B008",  # Function call `range` in argument defaults
+    "B023",  # Function definition does not bind loop variable
+    "C405",  # Unnecessary list literal
+    "C408",  # Unnecessary `dict()` call
+    "C414",  # Unnecessary `list()` call
+    "C416",  # Unnecessary list comprehension
+    "C901",  # Function too complex
+    "E402",  # Module level import not at top of file
+    "E501",  # Line too long
+    "E712",  # Avoid equality comparisons to `False`
+    "E721",  # Use `is` and `is not` for type comparisons, or `isinstance()`
+    "E722",  # Using bare `except`
+    "F841",  # Local variable assigned to but never used
+]
 
 [tool.coverage.report]
 omit = ["pygem/tests/*"]

@@ -7,24 +7,22 @@ Distrubted under the MIT lisence
 
 Fetch filled Hugonnet reference mass balance data
 """
+
 # Built-in libraries
 import argparse
 import os
+
 # External libraries
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.ticker import MultipleLocator
-from scipy.stats import median_abs_deviation
 # oggm
 from oggm import utils
+
 # pygem imports
 from pygem.setup.config import ConfigManager
+
 # instantiate ConfigManager
 config_manager = ConfigManager()
 # read the config
 pygem_prms = config_manager.read_config()
-import pygem.pygem_modelsetup as modelsetup
 
 
 def run(fp='', debug=False, overwrite=False):
@@ -46,7 +44,7 @@ def run(fp='', debug=False, overwrite=False):
         print(mbdf.head())
 
     # pull only 2000-2020 period
-    mbdf_subset = mbdf[mbdf.period=='2000-01-01_2020-01-01']
+    mbdf_subset = mbdf[mbdf.period == '2000-01-01_2020-01-01']
 
     # reset the index
     mbdf_subset = mbdf_subset.reset_index()
@@ -55,15 +53,18 @@ def run(fp='', debug=False, overwrite=False):
     mbdf_subset = mbdf_subset.sort_values(by='rgiid')
 
     # rename some keys to work with what other scripts/functions expect
-    mbdf_subset= mbdf_subset.rename(columns={'dmdtda':'mb_mwea',
-                                            'err_dmdtda':'mb_mwea_err'})
+    mbdf_subset = mbdf_subset.rename(
+        columns={'dmdtda': 'mb_mwea', 'err_dmdtda': 'mb_mwea_err'}
+    )
 
     if fp[-4:] != '.csv':
         fp += '.csv'
 
     if os.path.isfile(fp) and not overwrite:
-        raise FileExistsError(f'The filled global geodetic mass balance file already exists, pass `-o` to overwrite, or pass a different file name: {fp}')
-    
+        raise FileExistsError(
+            f'The filled global geodetic mass balance file already exists, pass `-o` to overwrite, or pass a different file name: {fp}'
+        )
+
     mbdf_subset.to_csv(fp, index=False)
     if debug:
         print(f'Filled global geodetic mass balance data saved to: {fp}')
@@ -71,21 +72,31 @@ def run(fp='', debug=False, overwrite=False):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="grab filled Hugonnet et al. 2021 geodetic mass balance data from OGGM and converts to a format PyGEM utilizes")
+    parser = argparse.ArgumentParser(
+        description='grab filled Hugonnet et al. 2021 geodetic mass balance data from OGGM and converts to a format PyGEM utilizes'
+    )
     # add arguments
-    parser.add_argument('-fname', action='store', type=str, default=f"{pygem_prms['calib']['data']['massbalance']['hugonnet2021_fn']}",
-                        help='Reference mass balance data file name (default: df_pergla_global_20yr-filled.csv)')
-    parser.add_argument('-o', '--overwrite', action='store_true',
-                        help='Flag to overwrite existing geodetic mass balance data')
-    parser.add_argument('-v', '--debug', action='store_true',
-                        help='Flag for debugging')
+    parser.add_argument(
+        '-fname',
+        action='store',
+        type=str,
+        default=f'{pygem_prms["calib"]["data"]["massbalance"]["hugonnet2021_fn"]}',
+        help='Reference mass balance data file name (default: df_pergla_global_20yr-filled.csv)',
+    )
+    parser.add_argument(
+        '-o',
+        '--overwrite',
+        action='store_true',
+        help='Flag to overwrite existing geodetic mass balance data',
+    )
+    parser.add_argument('-v', '--debug', action='store_true', help='Flag for debugging')
     args = parser.parse_args()
 
     # hugonnet filepath
-    fp = f"{pygem_prms['root']}/{pygem_prms['calib']['data']['massbalance']['hugonnet2021_relpath']}/{args.fname}"
+    fp = f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["massbalance"]["hugonnet2021_relpath"]}/{args.fname}'
 
     run(fp, args.debug, args.overwrite)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

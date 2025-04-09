@@ -45,6 +45,13 @@ jobs:
       - name: 'Reinstall PyGEM'
         run: pip install --break-system-packages -e .
 
+      - name: 'Run ruff linting check'
+        run: ruff check .
+
+      - name: 'Run ruff formatting check'
+        if: ${{ !cancelled() }}
+        run: ruff format . --check
+
       - name: 'Initialize PyGEM'
         run: initialize
 

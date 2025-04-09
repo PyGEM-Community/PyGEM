@@ -1,13 +1,17 @@
 import logging
+
+import xarray as xr
 from oggm import cfg
 from oggm.utils import entity_task
-import xarray as xr
 
 # Module logger
 log = logging.getLogger(__name__)
 
 # Add the new name "my_netcdf_file" to the list of things that the GlacierDirectory understands
-cfg.BASENAMES['my_netcdf_file'] = ('somefilename.nc', "This is just a documentation string")
+cfg.BASENAMES['my_netcdf_file'] = (
+    'somefilename.nc',
+    'This is just a documentation string',
+)
 
 
 @entity_task(log, writes=[])

@@ -1,6 +1,6 @@
 # Libs
 import geopandas as gpd
-from oggm import utils, cfg, workflow
+from oggm import cfg, utils, workflow
 
 # Initialize OGGM and set up the default run parameters
 cfg.initialize()
@@ -30,9 +30,11 @@ gdirs = workflow.init_glacier_directories(rgidf)
 
 # Our task now
 from dummy_task_module import dummy_task
+
 workflow.execute_entity_task(dummy_task, gdirs)
 
 # See that we can read the new dummy data:
 import xarray as xr
+
 fpath = gdirs[0].get_filepath('my_netcdf_file')
 print(xr.open_dataset(fpath))
