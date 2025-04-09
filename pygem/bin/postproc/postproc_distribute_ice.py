@@ -145,7 +145,6 @@ def run(simpath, debug=False):
                 glacier_rgi_table['TermType'] not in [1, 5]
                 or not pygem_prms['setup']['include_tidewater']
             ):
-
                 gdir = single_flowline_glacier_directory(glacier_str)
                 gdir.is_tidewater = False
             else:
@@ -208,6 +207,6 @@ def main():
 
     print('Total processing time:', time.time() - time_start, 's')
 
-if __name__ == '__main__':
 
+if __name__ == '__main__':
     main()
