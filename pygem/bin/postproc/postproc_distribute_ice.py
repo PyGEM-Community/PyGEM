@@ -8,6 +8,7 @@ Distrubted under the MIT lisence
 
 # Built-in libraries
 import argparse
+import glob
 import multiprocessing
 import os
 import time
@@ -191,7 +192,7 @@ def main():
     if (len(args.simpath) == 1) and (os.path.isdir(args.simpath[0])):
         sims = glob.glob(args.simpath[0] + '/*.nc')
     else:
-        sims = args.simpath 
+        sims = args.simpath
     # number of cores for parallel processing
     if args.ncores > 1:
         ncores = int(np.min([len(args.simpath), args.ncores]))
