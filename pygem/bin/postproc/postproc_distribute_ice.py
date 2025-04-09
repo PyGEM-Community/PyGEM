@@ -50,7 +50,7 @@ def getparser():
         action='store',
         type=str,
         nargs='+',
-        help='path to PyGEM binned simulation (can take multiple)',
+        help='path to PyGEM binned simulation (can take multiple, or can be a directory to process)',
     )
     parser.add_argument(
         '-ncores',
@@ -60,6 +60,7 @@ def getparser():
         help='number of simultaneous processes (cores) to use',
     )
     parser.add_argument('-v', '--debug', action='store_true', help='Flag for debugging')
+
     return parser
 
 
@@ -141,8 +142,9 @@ def run(simpath, debug=False):
         try:
             if (
                 glacier_rgi_table['TermType'] not in [1, 5]
-                or not pygem_prms['setup']['include_calving']
+                or not pygem_prms['setup']['include_tidewater']
             ):
+
                 gdir = single_flowline_glacier_directory(glacier_str)
                 gdir.is_tidewater = False
             else:
@@ -186,7 +188,10 @@ def run(simpath, debug=False):
 def main():
     time_start = time.time()
     args = getparser().parse_args()
-
+    if (len(args.simpath) == 1) and (os.path.isdir(args.simpath[0])):
+        sims = glob.glob(args.simpath[0] + '/*.nc')
+    else:
+        sims = args.simpath 
     # number of cores for parallel processing
     if args.ncores > 1:
         ncores = int(np.min([len(args.simpath), args.ncores]))
@@ -196,12 +201,12 @@ def main():
     # set up partial function with debug argument
     run_with_debug = partial(run, debug=args.debug)
     # parallel processing
-    print('Processing with ' + str(ncores) + ' cores...')
+    print(f'Processing with {ncores} cores... \n{sims}')
     with multiprocessing.Pool(ncores) as p:
-        p.map(run_with_debug, args.simpath)
+        p.map(run_with_debug, sims)
 
     print('Total processing time:', time.time() - time_start, 's')
 
-
 if __name__ == '__main__':
+
     main()
