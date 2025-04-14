@@ -41,6 +41,8 @@ jobs:
       - name: 'Checkout the PyGEM repo'
         id: checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: 'Reinstall PyGEM'
         run: pip install --break-system-packages -e .
