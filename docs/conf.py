@@ -62,5 +62,5 @@ html_theme_options = {
     'use_repository_button': True,
     'show_nav_level': 1,
     'navigation_depth': 4,
-    "toc_title": 'On this page',
+    'toc_title': 'On this page',
 }
