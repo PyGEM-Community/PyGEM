@@ -59,8 +59,8 @@ The user information is strictly for bookkeeping purposes. This information is s
 
 | Variable | Type | Comment/Note |
 | :--- | :--- | :--- |
-| `setup.rgi_region01` | `list` of `integers` | List of RGI region numbers to include |
-| `setup.rgi_region02` | `list` of `integers` or `"all"` | List of RGI region numbers or `"all"` to include all regions |
+| `setup.rgi_region01` | `list` of `integers` | List of RGI order 01 region numbers to include |
+| `setup.rgi_region02` | `list` of `integers` or `"all"` | List of RGI  order 02 subregion numbers to include, or `"all"` to include all regions |
 | `setup.glac_no_skip` | `null` or `list` of `strings` | Glacier numbers to skip |
 | `setup.glac_no` | `null` or `list` of `strings` | List of RGI glacier numbers (e.g., `1.00570`) |
 | `setup.min_glac_area_km2` | `float` | Minimum glacier area (km$^{2}$) threshold |
@@ -79,7 +79,7 @@ Set glac_no will always overwrite the rgi regions, so if you want to use the rgi
 | Variable | Type | Comment/Note |
 | :--- | :--- | :--- |
 | `oggm.base_url` | `string` | URL for OGGM glacier directories |
-| `oggm.logging_level` | `string` | Log level (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `WORKFLOW`, `CRITICAL`) |
+| `oggm.logging_level` | `string` | Log level (`"DEBUG"`, `"INFO"`, `"WARNING"`, `"ERROR"`, `"WORKFLOW"`, `"CRITICAL"`) |
 | `oggm.border` | `integer` | Border size (options: `10`, `80`, `160`, `240`) |
 | `oggm.oggm_gdir_relpath` | `string` | Relative path to OGGM glacier directories |
 | `oggm.overwrite_gdirs` | `boolean` | Overwrite glacier directories if they exist |
@@ -91,20 +91,19 @@ Set glac_no will always overwrite the rgi regions, so if you want to use the rgi
 
 | Variable | Type | Comment/Note |
 | :--- | :--- | :--- |
-| `climate.ref_gcm_name` | `string` | Reference climate dataset (`ERA5`, etc.) |
+| `climate.ref_gcm_name` | `string` | Historical climate dataset (e.g.`"ERA5"`) |
 | `climate.ref_startyear` | `integer` | Start year for reference dataset |
 | `climate.ref_endyear` | `integer` | End year for reference dataset |
-| `climate.ref_wateryear` | `string` | Type of year (`calendar`, `hydro`, `custom`) |
+| `climate.ref_wateryear` | `string` | Type of year (`"calendar"`, `"hydro"`, `"custom"`) |
 | `climate.ref_spinupyears` | `integer` | Number of spin-up years |
 | `climate.gcm_name` | `string` | GCM dataset used for simulations |
-| `climate.scenario` | `null` or `string` | Climate scenario |
+| `climate.scenario` | `null` or `string` | Climate emission scenario (e.g. `"ssp245", "rcp65"`) |
 | `climate.gcm_startyear` | `integer` | Start year for GCM dataset |
 | `climate.gcm_endyear` | `integer` | End year for GCM dataset |
-| `climate.gcm_wateryear` | `string` | Year type (`calendar`, `hydro`, `custom`) |
+| `climate.gcm_wateryear` | `string` | Year type (`"calendar"`, `"hydro"`, `"custom"`) |
 | `climate.constantarea_years` | `integer` | Years to keep glacier area constant |
 | `climate.gcm_spinupyears` | `integer` | Number of spin-up years for simulation |
-| `climate.hindcast` | `boolean` | Enable or disable hindcasting |
-| `climate.paths` | `string` | Relative filepaths, filenames and variable names for climate datasets |
+| `climate.paths` | `string` | Relative filepaths, filenames and variable names for climate datasets (relative to `root`) |
 ```{note}
 The hindcast option will flip the climate data array so 1960-2000 would run 2000-1960 ensuring that glacier area at 2000 is correct; however, due to nonlinearities a run starting at 1960 would not provide the same mass change and area at 2000..
 ```
@@ -212,15 +211,15 @@ The hindcast option will flip the climate data array so 1960-2000 would run 2000
 
 | Variable | Type | Comment/Note |
 | :--- | :--- | :--- |
-| `calib.data.massbalance.hugonnet2021_relpath` | `string` | Path to Hugonnet (2021) mass balance data |
+| `calib.data.massbalance.hugonnet2021_relpath` | `string` | Path to Hugonnet (2021) mass balance data (relative to `root`) |
 | `calib.data.massbalance.hugonnet2021_fn` | `string` | Filename for Hugonnet (2021) mass balance data |
 | `calib.data.massbalance.hugonnet2021_facorrected_fn` | `string` | Filename for corrected Hugonnet (2021) mass balance data |
-| `calib.data.oib.oib_relpath` | `string` | Path to OIB lidar data |
+| `calib.data.oib.oib_relpath` | `string` | Path to OIB lidar data (relative to `root`) |
 | `calib.data.oib.oib_rebin` | `integer` | Elevation rebinning in meters |
 | `calib.data.oib.oib_filter_pctl` | `float` | Pixel count percentile filter |
-| `calib.data.frontalablation.frontalablation_relpath` | `string` | Path to frontal ablation data |
+| `calib.data.frontalablation.frontalablation_relpath` | `string` | Path to frontal ablation data (relative to `root`) |
 | `calib.data.frontalablation.frontalablation_cal_fn` | `string` | Filename for frontal ablation calibration data |
-| `calib.data.icethickness.h_consensus_relpath` | `string` | Path to ice thickness data |
+| `calib.data.icethickness.h_consensus_relpath` | `string` | Path to ice thickness data (relative to `root`) |
 
 ### Ice Thickness Calibration
 
@@ -267,14 +266,14 @@ The hindcast option will flip the climate data array so 1960-2000 would run 2000
 | `mb.option_surfacetype_initial` | `integer` | 1: median elevation (default), 2: mean elevation |
 | `mb.include_firn` | `boolean` | `true`: firn included, `false`: firn is modeled as snow |
 | `mb.include_debris` | `boolean` | `true`: account for debris with melt factors, `false`: do not account for debris |
-| `mb.debris_relpath` | `string` | Path to debris dataset |
+| `mb.debris_relpath` | `string` | Path to debris dataset (relative to `root`) |
 | `mb.option_elev_ref_downscale` | `string` | `'Zmed'`, `'Zmax'`, or `'Zmin'` for median, max, or min glacier elevations |
 | `mb.option_temp2bins` | `integer` | `1`: adjust temp from GCM to glacier bins using lapse rates |
-| `mb.option_adjusttemp_surfelev` | `integer` | `1`: adjust temps based on surface elevation changes, `0`: no adjustment |
+| `mb.option_adjusttemp_surfelev` | `integer` | `1`: adjust temperatures based on surface elevation changes, `0`: no adjustment |
 | `mb.option_prec2bins` | `integer` | `1`: adjust precipitation from GCM to glacier bins |
 | `mb.option_preclimit` | `integer` | `1`: limit uppermost 25% using an exponential function |
 | `mb.option_accumulation` | `integer` | `1`: single threshold, `2`: threshold ± 1$^\circ$C using linear interpolation |
-| `mb.option_ablation` | `integer` | `1`: monthly temp, `2`: superimposed daily temps enabling melt near 0$^\circ$C |
+| `mb.option_ablation` | `integer` | `1`: monthly temperatures, `2`: superimpose daily temperatures to allow melt during months with negative mean temperatures but occasional positive daily values |
 | `mb.option_ddf_firn` | `integer` | `0`: ddf_firn = ddf_snow, `1`: ddf_firn = mean of ddf_snow and ddf_ice |
 | `mb.option_refreezing` | `string` | `'Woodward'`: annual air temp (Woodward et al. 1997), `'HH2015'`: heat conduction (Huss & Hock 2015) |
 | `mb.Woodard_rf_opts.rf_month` | `integer` | Refreezing month |
@@ -293,7 +292,7 @@ The hindcast option will flip the climate data array so 1960-2000 would run 2000
 
 | Variable | Type | Comment/Note |
 | :--- | :--- | :--- |
-| `rgi.rgi_relpath` | `string` | Filepath for RGI files |
+| `rgi.rgi_relpath` | `string` | Filepath for RGI files (relative to `root`) |
 | `rgi.rgi_lat_colname` | `string` | Name of latitude column |
 | `rgi.rgi_lon_colname` | `string` | Name of longitude column (360-based) |
 | `rgi.elev_colname` | `string` | Name of elevation column |
