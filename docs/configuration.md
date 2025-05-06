@@ -60,7 +60,7 @@ The user information is strictly for bookkeeping purposes. This information is s
 | Variable | Type | Comment/Note |
 | :--- | :--- | :--- |
 | `setup.rgi_region01` | `list` of `integers` | List of RGI order 01 region numbers to include |
-| `setup.rgi_region02` | `list` of `integers` or `"all"` | List of RGI  order 02 subregion numbers to include, or `"all"` to include all regions |
+| `setup.rgi_region02` | `list` of `integers` or `'all'` | List of RGI  order 02 subregion numbers to include, or `'all'` to include all regions |
 | `setup.glac_no_skip` | `null` or `list` of `strings` | Glacier numbers to skip |
 | `setup.glac_no` | `null` or `list` of `strings` | List of RGI glacier numbers (e.g., `1.00570`) |
 | `setup.min_glac_area_km2` | `float` | Minimum glacier area (km$^{2}$) threshold |
@@ -79,7 +79,7 @@ Set glac_no will always overwrite the rgi regions, so if you want to use the rgi
 | Variable | Type | Comment/Note |
 | :--- | :--- | :--- |
 | `oggm.base_url` | `string` | URL for OGGM glacier directories |
-| `oggm.logging_level` | `string` | Log level (`"DEBUG"`, `"INFO"`, `"WARNING"`, `"ERROR"`, `"WORKFLOW"`, `"CRITICAL"`) |
+| `oggm.logging_level` | `string` | Log level (`'DEBUG'`, `'INFO'`, `'WARNING'`, `'ERROR'`, `'WORKFLOW'`, `'CRITICAL'`) |
 | `oggm.border` | `integer` | Border size (options: `10`, `80`, `160`, `240`) |
 | `oggm.oggm_gdir_relpath` | `string` | Relative path to OGGM glacier directories |
 | `oggm.overwrite_gdirs` | `boolean` | Overwrite glacier directories if they exist |
@@ -91,16 +91,16 @@ Set glac_no will always overwrite the rgi regions, so if you want to use the rgi
 
 | Variable | Type | Comment/Note |
 | :--- | :--- | :--- |
-| `climate.ref_gcm_name` | `string` | Historical climate dataset (e.g.`"ERA5"`) |
+| `climate.ref_gcm_name` | `string` | Historical climate dataset (e.g.`'ERA5'`) |
 | `climate.ref_startyear` | `integer` | Start year for reference dataset |
 | `climate.ref_endyear` | `integer` | End year for reference dataset |
-| `climate.ref_wateryear` | `string` | Type of year (`"calendar"`, `"hydro"`, `"custom"`) |
+| `climate.ref_wateryear` | `string` | Type of year (`'calendar'`, `'hydro'`, `'custom'`) |
 | `climate.ref_spinupyears` | `integer` | Number of spin-up years |
 | `climate.gcm_name` | `string` | GCM dataset used for simulations |
-| `climate.scenario` | `null` or `string` | Climate emission scenario (e.g. `"ssp245", "rcp65"`) |
+| `climate.scenario` | `null` or `string` | Climate emission scenario (e.g. `'ssp245', 'rcp65'`) |
 | `climate.gcm_startyear` | `integer` | Start year for GCM dataset |
 | `climate.gcm_endyear` | `integer` | End year for GCM dataset |
-| `climate.gcm_wateryear` | `string` | Year type (`"calendar"`, `"hydro"`, `"custom"`) |
+| `climate.gcm_wateryear` | `string` | Year type (`'calendar'`, `'hydro'`, `'custom'`) |
 | `climate.constantarea_years` | `integer` | Years to keep glacier area constant |
 | `climate.gcm_spinupyears` | `integer` | Number of spin-up years for simulation |
 | `climate.paths` | `string` | Relative filepaths, filenames and variable names for climate datasets (relative to `root`) |
@@ -114,8 +114,8 @@ The hindcast option will flip the climate data array so 1960-2000 would run 2000
 
 | Variable | Type | Comment/Note |
 | :--- | :--- | :--- |
-| `calib.option_calibration` | `string` | Calibration option ('emulator', 'MCMC', 'HH2015', 'HH2015mod', 'null') |
-| `calib.priors_reg_fn` | `string` | Prior distribution (specify filename, relative to `root/Output/calibration/`, or set to `null`) |
+| `calib.option_calibration` | `string` | Calibration option (`'emulator'`, `'MCMC'`, `'HH2015'`, `'HH2015mod'`, `'null'`) |
+| `calib.priors_reg_fn` | `string` | Prior distribution (specify filename, relative to `root/Output/calibration/`, or set to `'null'`) |
 
 ### HH2015 Parameters
 
@@ -233,18 +233,18 @@ The hindcast option will flip the climate data array so 1960-2000 would run 2000
 
 | Variable | Type | Comment/Note |
 | :--- | :--- | :--- |
-| `sim.option_dynamics` | `null` or `string` | Glacier dynamics scheme (`OGGM`, `MassRedistributionCurves`, `null`) |
+| `sim.option_dynamics` | `null` or `string` | Glacier dynamics scheme (`'OGGM'`, `'MassRedistributionCurves'`, `'null'`) |
 | `sim.option_bias_adjustment` | `integer` | Bias adjustment option (`0`, `1`, `2`, `3`) |
-| `sim.nsims` | `integer` | Number of simulations |
+| `sim.nsims` | `integer` | Number of simulations to run. Default is 1. More than 1 simulation can be run for glaciers that have been calibrated using the `'MCMC'` option |
 
 ### Output Options
 
 | Variable | Type | Comment/Note |
 | :--- | :--- | :--- |
-| `sim.out.sim_stats` | `list` | Output statistics (`mean`, `std`, `median`, etc.) |
-| `sim.out.export_all_simiters` | `boolean` | Export all simulation results |
-| `sim.out.export_extra_vars` | `boolean` | Export extra variables (temp, prec, melt, etc.) |
-| `sim.out.export_binned_data` | `boolean` | Export binned ice thickness |
+| `sim.out.sim_stats` | `list` of `strings` | Output statistics (`'mean'`, `'std'`, `'median'`, etc.) |
+| `sim.out.export_all_simiters` | `boolean` | Export all simulation results (for `sim.nsims` > 1), otherwise calculate statistics specified by `sim.out.sim_stats` |
+| `sim.out.export_extra_vars` | `boolean` | Export extra variables (temperature, precipitation, melt, etc.) |
+| `sim.out.export_binned_data` | `boolean` | Export binned ice data |
 | `sim.out.export_binned_components` | `boolean` | Export mass balance components |
 
 ### Model Parameters
