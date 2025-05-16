@@ -230,6 +230,7 @@ def run(args):
                 reg_glac_gcm_melt_monthly = None
                 reg_glac_gcm_refreeze_monthly = None
                 reg_glac_gcm_frontalablation_monthly = None
+                reg_glac_gcm_snowline_monthly = None
                 reg_glac_gcm_massbaltotal_monthly = None
                 reg_glac_gcm_prec_monthly = None
                 reg_glac_gcm_mass_monthly = None
@@ -237,6 +238,8 @@ def run(args):
                 # annual vars
                 reg_glac_gcm_area_annual = None
                 reg_glac_gcm_mass_annual = None
+                reg_glac_gcm_ela_annual = None
+                reg_glac_gcm_mass_bsl_annual = None
 
                 ### LEVEL IV ###
                 # loop through each glacier in batch list
@@ -261,6 +264,7 @@ def run(args):
                             glac_frontalablation_monthly = (
                                 ds_glac.glac_frontalablation_monthly.values
                             )
+                            glac_snowline_monthly = ds_glac.glac_snowline_monthly.values
                             glac_massbaltotal_monthly = (
                                 ds_glac.glac_massbaltotal_monthly.values
                             )
@@ -275,6 +279,9 @@ def run(args):
                             glac_frontalablation_monthly = np.full(
                                 (1, len(time_values)), np.nan
                             )
+                            glac_snowline_monthly = np.full(
+                                (1, len(time_values)), np.nan
+                            )
                             glac_massbaltotal_monthly = np.full(
                                 (1, len(time_values)), np.nan
                             )
@@ -283,6 +290,8 @@ def run(args):
                         # get annual vars
                         glac_area_annual = ds_glac.glac_area_annual.values
                         glac_mass_annual = ds_glac.glac_mass_annual.values
+                        glac_ela_annual = ds_glac.glac_ELA_annual.values
+                        glac_mass_bsl_annual = ds_glac.glac_mass_bsl_annual.values
 
                     # if glacier output DNE in sim output file, create empty nan arrays to keep record of missing glaciers
                     except:
@@ -295,6 +304,7 @@ def run(args):
                         glac_frontalablation_monthly = np.full(
                             (1, len(time_values)), np.nan
                         )
+                        glac_snowline_monthly = np.full((1, len(time_values)), np.nan)
                         glac_massbaltotal_monthly = np.full(
                             (1, len(time_values)), np.nan
                         )
@@ -303,6 +313,10 @@ def run(args):
                         # annual vars
                         glac_area_annual = np.full((1, year_values.shape[0]), np.nan)
                         glac_mass_annual = np.full((1, year_values.shape[0]), np.nan)
+                        glac_ela_annual = np.full((1, year_values.shape[0]), np.nan)
+                        glac_mass_bsl_annual = np.full(
+                            (1, year_values.shape[0]), np.nan
+                        )
 
                     # append each glacier output to master regional set of arrays
                     if reg_glac_gcm_mass_annual is None:
@@ -315,12 +329,15 @@ def run(args):
                         reg_glac_gcm_frontalablation_monthly = (
                             glac_frontalablation_monthly
                         )
+                        reg_glac_gcm_snowline_monthly = glac_snowline_monthly
                         reg_glac_gcm_massbaltotal_monthly = glac_massbaltotal_monthly
                         reg_glac_gcm_prec_monthly = glac_prec_monthly
                         reg_glac_gcm_mass_monthly = glac_mass_monthly
                         # annual vars
                         reg_glac_gcm_area_annual = glac_area_annual
                         reg_glac_gcm_mass_annual = glac_mass_annual
+                        reg_glac_gcm_ela_annual = glac_ela_annual
+                        reg_glac_gcm_mass_bsl_annual = glac_mass_bsl_annual
                     # otherwise concatenate existing arrays
                     else:
                         # monthly vars
@@ -348,6 +365,10 @@ def run(args):
                             ),
                             axis=0,
                         )
+                        reg_glac_gcm_snowline_monthly = np.concatenate(
+                            (reg_glac_gcm_snowline_monthly, glac_snowline_monthly),
+                            axis=0,
+                        )
                         reg_glac_gcm_massbaltotal_monthly = np.concatenate(
                             (
                                 reg_glac_gcm_massbaltotal_monthly,
@@ -367,6 +388,12 @@ def run(args):
                         )
                         reg_glac_gcm_mass_annual = np.concatenate(
                             (reg_glac_gcm_mass_annual, glac_mass_annual), axis=0
+                        )
+                        reg_glac_gcm_ela_annual = np.concatenate(
+                            (reg_glac_gcm_ela_annual, glac_ela_annual), axis=0
+                        )
+                        reg_glac_gcm_mass_bsl_annual = np.concatenate(
+                            (reg_glac_gcm_mass_bsl_annual, glac_mass_bsl_annual), axis=0
                         )
 
                 # aggregate gcms
@@ -390,6 +417,9 @@ def run(args):
                     reg_glac_allgcms_frontalablation_monthly = (
                         reg_glac_gcm_frontalablation_monthly[np.newaxis, :, :]
                     )
+                    reg_glac_allgcms_snowline_monthly = reg_glac_gcm_snowline_monthly[
+                        np.newaxis, :, :
+                    ]
                     reg_glac_allgcms_massbaltotal_monthly = (
                         reg_glac_gcm_massbaltotal_monthly[np.newaxis, :, :]
                     )
@@ -404,6 +434,12 @@ def run(args):
                         np.newaxis, :, :
                     ]
                     reg_glac_allgcms_mass_annual = reg_glac_gcm_mass_annual[
+                        np.newaxis, :, :
+                    ]
+                    reg_glac_allgcms_ela_annual = reg_glac_gcm_ela_annual[
+                        np.newaxis, :, :
+                    ]
+                    reg_glac_allgcms_mass_bsl_annual = reg_glac_gcm_mass_bsl_annual[
                         np.newaxis, :, :
                     ]
                 else:
@@ -450,6 +486,13 @@ def run(args):
                         ),
                         axis=0,
                     )
+                    reg_glac_allgcms_snowline_monthly = np.concatenate(
+                        (
+                            reg_glac_allgcms_snowline_monthly,
+                            reg_glac_gcm_snowline_monthly[np.newaxis, :, :],
+                        ),
+                        axis=0,
+                    )
                     reg_glac_allgcms_massbaltotal_monthly = np.concatenate(
                         (
                             reg_glac_allgcms_massbaltotal_monthly,
@@ -483,6 +526,20 @@ def run(args):
                         (
                             reg_glac_allgcms_mass_annual,
                             reg_glac_gcm_mass_annual[np.newaxis, :, :],
+                        ),
+                        axis=0,
+                    )
+                    reg_glac_allgcms_ela_annual = np.concatenate(
+                        (
+                            reg_glac_allgcms_ela_annual,
+                            reg_glac_gcm_ela_annual[np.newaxis, :, :],
+                        ),
+                        axis=0,
+                    )
+                    reg_glac_allgcms_mass_bsl_annual = np.concatenate(
+                        (
+                            reg_glac_allgcms_mass_bsl_annual,
+                            reg_glac_gcm_mass_bsl_annual[np.newaxis, :, :],
                         ),
                         axis=0,
                     )
@@ -657,6 +714,29 @@ def run(args):
                 )
                 ds.glac_frontalablation_monthly.attrs['grid_mapping'] = 'crs'
 
+            # glac_snowline_monthly
+            elif var == 'glac_snowline_monthly':
+                ds = xr.Dataset(
+                    data_vars=dict(
+                        glac_snowline_monthly=(
+                            coord_order,
+                            reg_glac_allgcms_snowline_monthly,
+                        ),
+                        crs=np.nan,
+                    ),
+                    coords=coords_dict,
+                    attrs=attrs_dict,
+                )
+                ds.glac_snowline_monthly.attrs['long_name'] = (
+                    'transient snowline altitude above mean sea level'
+                )
+                ds.glac_snowline_monthly.attrs['units'] = 'm'
+                ds.glac_snowline_monthly.attrs['temporal_resolution'] = 'monthly'
+                ds.glac_snowline_monthly.attrs['comment'] = (
+                    'transient snowline is altitude separating snow from ice/firn'
+                )
+                ds.glac_snowline_monthly.attrs['grid_mapping'] = 'crs'
+
             # glac_massbaltotal_monthly
             elif var == 'glac_massbaltotal_monthly':
                 ds = xr.Dataset(
@@ -751,6 +831,49 @@ def run(args):
                     'mass of ice based on area and ice thickness at start of the year'
                 )
                 ds.glac_mass_annual.attrs['grid_mapping'] = 'crs'
+
+            # glac_ela_annual
+            elif var == 'glac_ela_annual':
+                ds = xr.Dataset(
+                    data_vars=dict(
+                        glac_ela_annual=(coord_order, reg_glac_allgcms_ela_annual),
+                        crs=np.nan,
+                    ),
+                    coords=coords_dict,
+                    attrs=attrs_dict,
+                )
+                ds.glac_ela_annual.attrs['long_name'] = (
+                    'annual equilibrium line altitude above mean sea level'
+                )
+                ds.glac_ela_annual.attrs['units'] = 'm'
+                ds.glac_ela_annual.attrs['temporal_resolution'] = 'annual'
+                ds.glac_ela_annual.attrs['comment'] = (
+                    'equilibrium line altitude is the elevation where the climatic mass balance is zero'
+                )
+                ds.glac_ela_annual.attrs['grid_mapping'] = 'crs'
+
+            # glac_mass_bsl_annual
+            elif var == 'glac_mass_bsl_annual':
+                ds = xr.Dataset(
+                    data_vars=dict(
+                        glac_mass_bsl_annual=(
+                            coord_order,
+                            reg_glac_allgcms_mass_bsl_annual,
+                        ),
+                        crs=np.nan,
+                    ),
+                    coords=coords_dict,
+                    attrs=attrs_dict,
+                )
+                ds.glac_mass_bsl_annual.attrs['long_name'] = (
+                    'glacier mass below sea leve'
+                )
+                ds.glac_mass_bsl_annual.attrs['units'] = 'kg'
+                ds.glac_mass_bsl_annual.attrs['temporal_resolution'] = 'annual'
+                ds.glac_mass_bsl_annual.attrs['comment'] = (
+                    'mass of ice below sea level based on area and ice thickness at start of the year'
+                )
+                ds.glac_mass_bsl_annual.attrs['grid_mapping'] = 'crs'
 
             # crs attributes - same for all vars
             ds.crs.attrs['grid_mapping_name'] = 'latitude_longitude'
@@ -948,11 +1071,14 @@ def main():
             'glac_melt_monthly',
             'glac_refreeze_monthly',
             'glac_frontalablation_monthly',
+            'glac_snowline_monthly',
             'glac_massbaltotal_monthly',
             'glac_prec_monthly',
             'glac_mass_monthly',
             'glac_mass_annual',
             'glac_area_annual',
+            'glac_ela_annual',
+            'glac_mass_bsl_annual',
         ],
         nargs='+',
     )
@@ -1020,11 +1146,14 @@ def main():
             'glac_melt_monthly',
             'glac_refreeze_monthly',
             'glac_frontalablation_monthly',
+            'glac_snowline_monthly',
             'glac_massbaltotal_monthly',
             'glac_prec_monthly',
             'glac_mass_monthly',
             'glac_mass_annual',
             'glac_area_annual',
+            'glac_ela_annual',
+            'glac_mass_bsl_annual',
         ]
 
     # get number of jobs and split into desired number of cores
