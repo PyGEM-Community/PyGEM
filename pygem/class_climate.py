@@ -8,6 +8,7 @@ Distrubted under the MIT lisence
 class of climate data and functions associated with manipulating the dataset to be in the proper format
 """
 
+import glob, sys
 import os
 
 import numpy as np
@@ -22,6 +23,7 @@ from pygem.setup.config import ConfigManager
 config_manager = ConfigManager()
 # read the config
 pygem_prms = config_manager.read_config()
+from pygem.utils._funcs import haversine_dist
 
 
 class GCM:
@@ -105,6 +107,52 @@ class GCM:
                     + scenario
                     + pygem_prms['climate']['paths']['cesm2_fp_fx_ending']
                 )
+                # Extra information
+                self.timestep = pygem_prms['time']['timestep']
+                self.rgi_lat_colname = pygem_prms['rgi']['rgi_lat_colname']
+                self.rgi_lon_colname = pygem_prms['rgi']['rgi_lon_colname']
+                self.scenario = scenario
+
+            # Set parameters for CESM2 Large Ensemble
+            elif self.name == 'mesaclip_cesm2_hres':
+                # Variable names
+                self.temp_vn = 'TREFHT'
+                self.prec_vn = 'PRECT'
+                self.elev_vn = 'orog'
+                self.lat_vn = 'latitude'
+                self.lon_vn = 'longitude'
+                self.time_vn = 'time'
+                # Variable filepaths
+                self.var_fp = (
+                    pygem_prms['root']
+                    + pygem_prms['climate']['paths']['mesaclip_relpath']
+                    + '/RCP'
+                    + scenario
+                    + '/proc/'
+                )
+                self.fx_fp = (
+                    pygem_prms['root']
+                    + pygem_prms['climate']['paths']['mesaclip_relpath']
+                    + '/RCP'
+                    + scenario
+                    + '/proc/'
+                )
+                # Variable filenames
+                tmp = glob.glob(
+                    f'{self.var_fp}b.e13.BRCP{scenario}*-1990-2100.{realization}.cam.h0.{self.temp_vn}.nc'
+                )
+                if len(tmp) == 1:
+                    self.temp_fn = os.path.split(tmp[0])[-1]
+                else:
+                    raise ValueError('No temperature file found')
+                tmp = glob.glob(
+                    f'{self.var_fp}b.e13.BRCP{scenario}*-1990-2100.{realization}.cam.h0.{self.prec_vn}.nc'
+                )
+                if len(tmp) == 1:
+                    self.prec_fn = os.path.split(tmp[0])[-1]
+                else:
+                    raise ValueError('No precipitation file found')
+                self.elev_fn = ''
                 # Extra information
                 self.timestep = pygem_prms['time']['timestep']
                 self.rgi_lat_colname = pygem_prms['rgi']['rgi_lat_colname']
@@ -439,6 +487,13 @@ class GCM:
             array of dates associated with the meteorological data (may differ slightly from those in table for monthly
             timestep, i.e., be from the beginning/middle/end of month)
         """
+        # Shift each time backward by one month
+        def _shift_back_one_month(t):
+            if t.month > 1:
+                return t.replace(month=t.month - 1)
+            else:
+                return t.replace(year=t.year - 1, month=12)
+            
         # Import netcdf file
         if not os.path.exists(self.var_fp + filename):
             if os.path.exists(self.var_fp + filename.replace('r1i1p1f1', 'r4i1p1f1')):
@@ -449,6 +504,12 @@ class GCM:
         data = xr.open_dataset(self.var_fp + filename)
         glac_variable_series = np.zeros((main_glac_rgi.shape[0], dates_table.shape[0]))
 
+        # high-res mesaclip cesm2 data records time stamp at end of averaging period, so need to shift all time stamps BACK by a month to be consistent with PyGEM
+        if self.name == 'mesaclip_cesm2_hres':
+            shifted_times = [_shift_back_one_month(t) for t in data.time.values]
+            # Assign shifted times
+            data['time'] = shifted_times
+        
         # Check GCM provides required years of data
         years_check = pd.Series(data['time']).apply(lambda x: int(x.strftime('%Y')))
         assert years_check.max() >= dates_table.year.max(), (
@@ -534,16 +595,39 @@ class GCM:
         else:
             #  argmin() finds the minimum distance between the glacier lat/lon and the GCM pixel; .values is used to
             #  extract the position's value as opposed to having an array
-            lat_nearidx = np.abs(
-                main_glac_rgi[self.rgi_lat_colname].values[:, np.newaxis]
-                - data.variables[self.lat_vn][:].values
-            ).argmin(axis=1)
-            lon_nearidx = np.abs(
-                main_glac_rgi[self.rgi_lon_colname].values[:, np.newaxis]
-                - data.variables[self.lon_vn][:].values
-            ).argmin(axis=1)
+            if self.name == 'mesaclip_cesm2_hres':
+                grid_lons = data.variables[self.lon_vn].values
+                grid_lats = data.variables[self.lat_vn].values
+                glac_lons = main_glac_rgi[self.rgi_lon_colname].values
+                glac_lats = main_glac_rgi[self.rgi_lat_colname].values
+                distances = haversine_dist(grid_lons, grid_lats, glac_lons, glac_lats)
+                latlon_nearidx = np.argmin(distances, axis=1)  # (n_targets,)
+
+                # fill_values = [9.96921e+36, 1.993842e+37]
+                # # Identify where fill values are
+                # mask = (data[vn] == fill_values[0]) | (data[vn] == fill_values[1])
+                # if np.any(mask):
+                #     # Shift one step forward and backward along 'time' dimension
+                #     nxt = data[vn].shift(time=-1)
+                #     prv = data[vn].shift(time=1)
+                #     # Compute the average of the neighboring time steps
+                #     avg_neighbors = (prv + nxt) / 2
+                #     # Only replace values where fill_value is present
+                #     filled = data[vn].where(~mask, avg_neighbors)
+                #     # Put filled values back into the dataset
+                #     data[vn] = filled
+
+            else:
+                lat_nearidx = np.abs(
+                    main_glac_rgi[self.rgi_lat_colname].values[:, np.newaxis]
+                    - data.variables[self.lat_vn][:].values
+                ).argmin(axis=1)
+                lon_nearidx = np.abs(
+                    main_glac_rgi[self.rgi_lon_colname].values[:, np.newaxis]
+                    - data.variables[self.lon_vn][:].values
+                ).argmin(axis=1)
+                latlon_nearidx = list(zip(lat_nearidx, lon_nearidx))
             # Find unique latitude/longitudes
-            latlon_nearidx = list(zip(lat_nearidx, lon_nearidx))
             latlon_nearidx_unique = list(set(latlon_nearidx))
             # Create dictionary of time series for each unique latitude/longitude
             glac_variable_dict = {}
@@ -554,10 +638,14 @@ class GCM:
                         start_idx : end_idx + 1, expver_idx, latlon[0], latlon[1]
                     ].values
                 else:
-                    glac_variable_dict[latlon] = data[vn][
-                        start_idx : end_idx + 1, latlon[0], latlon[1]
-                    ].values
-
+                    if self.name == 'mesaclip_cesm2_hres':
+                        glac_variable_dict[latlon] = data[vn][
+                            start_idx : end_idx + 1, latlon
+                        ].values
+                    else:
+                        glac_variable_dict[latlon] = data[vn][
+                            start_idx : end_idx + 1, latlon[0], latlon[1]
+                        ].values
             # Convert to series
             glac_variable_series = np.array(
                 [glac_variable_dict[x] for x in latlon_nearidx]
@@ -565,8 +653,12 @@ class GCM:
 
         # Perform corrections to the data if necessary
         # Surface air temperature corrections
-        if vn in ['tas', 't2m', 'T2']:
-            if 'units' in data[vn].attrs and data[vn].attrs['units'] == 'K':
+        if vn in ['tas', 't2m', 'T2', 'TREFHT']:
+            if (
+                'units' in data[vn].attrs
+                and data[vn].attrs['units'] == 'K'
+                or vn == 'TREFHT'
+            ):
                 # Convert from K to deg C
                 glac_variable_series = glac_variable_series - 273.15
             else:
@@ -578,10 +670,13 @@ class GCM:
                 )
         # Precipitation corrections
         # If the variable is precipitation
-        elif vn in ['pr', 'tp', 'TOTPRECIP']:
+        elif vn in ['pr', 'tp', 'TOTPRECIP', 'PRECT']:
             # If the variable has units and those units are meters (ERA Interim)
             if 'units' in data[vn].attrs and data[vn].attrs['units'] == 'm':
                 pass
+            elif vn == 'PRECT':
+                # Convert from m/s to m/day
+                glac_variable_series = glac_variable_series * 3600 * 24
             # Elseif the variable has units and those units are kg m-2 s-1 (CMIP5/CMIP6)
             elif 'units' in data[vn].attrs and data[vn].attrs['units'] == 'kg m-2 s-1':
                 # Convert from kg m-2 s-1 to m day-1
