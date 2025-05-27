@@ -27,7 +27,16 @@ pygem_prms = config_manager.read_config()
 import pygem.pygem_modelsetup as modelsetup
 
 
-def run(reg, simpath, gcm, sim_climate_scenario, calib_opt, bias_adj, sim_startyear, sim_endyear):
+def run(
+    reg,
+    simpath,
+    gcm,
+    sim_climate_scenario,
+    calib_opt,
+    bias_adj,
+    sim_startyear,
+    sim_endyear,
+):
     # define base directory
     base_dir = simpath + '/' + str(reg).zfill(2) + '/'
 
