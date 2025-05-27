@@ -90,7 +90,12 @@ class GCM:
                     + '.cam.h0.1980-2100.nc'
                 )
                 self.elev_fn = (
-                    self.elev_vn + '_fx_' + sim_climate_scenario + '_' + name + '.cam.h0.nc'
+                    self.elev_vn
+                    + '_fx_'
+                    + sim_climate_scenario
+                    + '_'
+                    + name
+                    + '.cam.h0.nc'
                 )
                 # Variable filepaths
                 self.var_fp = (
@@ -142,7 +147,9 @@ class GCM:
                     + realization
                     + 'i1p1f1_gr3_1980-2100.nc'
                 )
-                self.elev_fn = self.elev_vn + '_fx_' + sim_climate_scenario + '_' + name + '.nc'
+                self.elev_fn = (
+                    self.elev_vn + '_fx_' + sim_climate_scenario + '_' + name + '.nc'
+                )
                 # Variable filepaths
                 self.var_fp = (
                     pygem_prms['root']
@@ -233,13 +240,28 @@ class GCM:
                 self.time_vn = 'time'
                 # Variable filenames
                 self.temp_fn = (
-                    self.temp_vn + '_mon_' + name + '_' + sim_climate_scenario + '_r1i1p1_native.nc'
+                    self.temp_vn
+                    + '_mon_'
+                    + name
+                    + '_'
+                    + sim_climate_scenario
+                    + '_r1i1p1_native.nc'
                 )
                 self.prec_fn = (
-                    self.prec_vn + '_mon_' + name + '_' + sim_climate_scenario + '_r1i1p1_native.nc'
+                    self.prec_vn
+                    + '_mon_'
+                    + name
+                    + '_'
+                    + sim_climate_scenario
+                    + '_r1i1p1_native.nc'
                 )
                 self.elev_fn = (
-                    self.elev_vn + '_fx_' + name + '_' + sim_climate_scenario + '_r0i0p0.nc'
+                    self.elev_vn
+                    + '_fx_'
+                    + name
+                    + '_'
+                    + sim_climate_scenario
+                    + '_r0i0p0.nc'
                 )
                 # Variable filepaths
                 self.var_fp = (
@@ -289,10 +311,20 @@ class GCM:
                 self.time_vn = 'time'
                 # Variable filenames
                 self.temp_fn = (
-                    name + '_' + sim_climate_scenario + '_r1i1p1f1_' + self.temp_vn + '.nc'
+                    name
+                    + '_'
+                    + sim_climate_scenario
+                    + '_r1i1p1f1_'
+                    + self.temp_vn
+                    + '.nc'
                 )
                 self.prec_fn = (
-                    name + '_' + sim_climate_scenario + '_r1i1p1f1_' + self.prec_vn + '.nc'
+                    name
+                    + '_'
+                    + sim_climate_scenario
+                    + '_r1i1p1f1_'
+                    + self.prec_vn
+                    + '.nc'
                 )
                 self.elev_fn = name + '_' + self.elev_vn + '.nc'
                 # Variable filepaths
