@@ -32,13 +32,13 @@ class GCM:
     ----------
     name : str
         name of climate dataset.
-    scenario : str
-        rcp or ssp scenario (example: 'rcp26' or 'ssp585')
+    sim_climate_scenario : str
+        rcp or ssp sim_climate_scenario (example: 'rcp26' or 'ssp585')
     realization : str
         realization from large ensemble (example: '1011.001' or '1301.020')
     """
 
-    def __init__(self, name=str(), scenario=str(), realization=None):
+    def __init__(self, name=str(), sim_climate_scenario=str(), realization=None):
         """
         Add variable name and specific properties associated with each gcm.
         """
@@ -51,10 +51,10 @@ class GCM:
         # Source of climate data
         self.name = name
 
-        # If multiple realizations from each model+scenario are being used,
+        # If multiple realizations from each model+sim_climate_scenario are being used,
         #   then self.realization = realization.
         # Otherwise, the realization attribute is not considered for single
-        #   realization model+scenario simulations.
+        #   realization model+sim_climate_scenario simulations.
         if realization is not None:
             self.realization = realization
 
@@ -72,7 +72,7 @@ class GCM:
                 self.temp_fn = (
                     self.temp_vn
                     + '_mon_'
-                    + scenario
+                    + sim_climate_scenario
                     + '_'
                     + name
                     + '-'
@@ -82,7 +82,7 @@ class GCM:
                 self.prec_fn = (
                     self.prec_vn
                     + '_mon_'
-                    + scenario
+                    + sim_climate_scenario
                     + '_'
                     + name
                     + '-'
@@ -90,26 +90,26 @@ class GCM:
                     + '.cam.h0.1980-2100.nc'
                 )
                 self.elev_fn = (
-                    self.elev_vn + '_fx_' + scenario + '_' + name + '.cam.h0.nc'
+                    self.elev_vn + '_fx_' + sim_climate_scenario + '_' + name + '.cam.h0.nc'
                 )
                 # Variable filepaths
                 self.var_fp = (
                     pygem_prms['root']
                     + pygem_prms['climate']['paths']['cesm2_relpath']
-                    + scenario
+                    + sim_climate_scenario
                     + pygem_prms['climate']['paths']['cesm2_fp_var_ending']
                 )
                 self.fx_fp = (
                     pygem_prms['root']
                     + pygem_prms['climate']['paths']['cesm2_relpath']
-                    + scenario
+                    + sim_climate_scenario
                     + pygem_prms['climate']['paths']['cesm2_fp_fx_ending']
                 )
                 # Extra information
                 self.timestep = pygem_prms['time']['timestep']
                 self.rgi_lat_colname = pygem_prms['rgi']['rgi_lat_colname']
                 self.rgi_lon_colname = pygem_prms['rgi']['rgi_lon_colname']
-                self.scenario = scenario
+                self.sim_climate_scenario = sim_climate_scenario
 
             # Set parameters for GFDL SPEAR Large Ensemble
             elif self.name == 'GFDL-SPEAR-MED':
@@ -125,7 +125,7 @@ class GCM:
                 self.temp_fn = (
                     self.temp_vn
                     + '_mon_'
-                    + scenario
+                    + sim_climate_scenario
                     + '_'
                     + name
                     + '-'
@@ -135,32 +135,32 @@ class GCM:
                 self.prec_fn = (
                     self.prec_vn
                     + '_mon_'
-                    + scenario
+                    + sim_climate_scenario
                     + '_'
                     + name
                     + '-'
                     + realization
                     + 'i1p1f1_gr3_1980-2100.nc'
                 )
-                self.elev_fn = self.elev_vn + '_fx_' + scenario + '_' + name + '.nc'
+                self.elev_fn = self.elev_vn + '_fx_' + sim_climate_scenario + '_' + name + '.nc'
                 # Variable filepaths
                 self.var_fp = (
                     pygem_prms['root']
                     + pygem_prms['climate']['paths']['gfdl_relpath']
-                    + scenario
+                    + sim_climate_scenario
                     + pygem_prms['climate']['paths']['gfdl_fp_var_ending']
                 )
                 self.fx_fp = (
                     pygem_prms['root']
                     + pygem_prms['climate']['paths']['gfdl_relpath']
-                    + scenario
+                    + sim_climate_scenario
                     + pygem_prms['climate']['paths']['gfdl_fp_fx_ending']
                 )
                 # Extra information
                 self.timestep = pygem_prms['time']['timestep']
                 self.rgi_lat_colname = pygem_prms['rgi']['rgi_lat_colname']
                 self.rgi_lon_colname = pygem_prms['rgi']['rgi_lon_colname']
-                self.scenario = scenario
+                self.sim_climate_scenario = sim_climate_scenario
 
         else:
             self.realization = []
@@ -223,7 +223,7 @@ class GCM:
                 self.rgi_lon_colname = pygem_prms['rgi']['rgi_lon_colname']
 
             # Standardized CMIP5 format (GCM/RCP)
-            elif 'rcp' in scenario:
+            elif 'rcp' in sim_climate_scenario:
                 # Variable names
                 self.temp_vn = 'tas'
                 self.prec_vn = 'pr'
@@ -233,25 +233,25 @@ class GCM:
                 self.time_vn = 'time'
                 # Variable filenames
                 self.temp_fn = (
-                    self.temp_vn + '_mon_' + name + '_' + scenario + '_r1i1p1_native.nc'
+                    self.temp_vn + '_mon_' + name + '_' + sim_climate_scenario + '_r1i1p1_native.nc'
                 )
                 self.prec_fn = (
-                    self.prec_vn + '_mon_' + name + '_' + scenario + '_r1i1p1_native.nc'
+                    self.prec_vn + '_mon_' + name + '_' + sim_climate_scenario + '_r1i1p1_native.nc'
                 )
                 self.elev_fn = (
-                    self.elev_vn + '_fx_' + name + '_' + scenario + '_r0i0p0.nc'
+                    self.elev_vn + '_fx_' + name + '_' + sim_climate_scenario + '_r0i0p0.nc'
                 )
                 # Variable filepaths
                 self.var_fp = (
                     pygem_prms['root']
                     + pygem_prms['climate']['paths']['cmip5_relpath']
-                    + scenario
+                    + sim_climate_scenario
                     + pygem_prms['climate']['paths']['cmip5_fp_var_ending']
                 )
                 self.fx_fp = (
                     pygem_prms['root']
                     + pygem_prms['climate']['paths']['cmip5_relpath']
-                    + scenario
+                    + sim_climate_scenario
                     + pygem_prms['climate']['paths']['cmip5_fp_fx_ending']
                 )
                 if not os.path.exists(self.var_fp) and os.path.exists(
@@ -276,10 +276,10 @@ class GCM:
                 self.timestep = pygem_prms['time']['timestep']
                 self.rgi_lat_colname = pygem_prms['rgi']['rgi_lat_colname']
                 self.rgi_lon_colname = pygem_prms['rgi']['rgi_lon_colname']
-                self.scenario = scenario
+                self.sim_climate_scenario = sim_climate_scenario
 
             # Standardized CMIP6 format (GCM/SSP)
-            elif 'ssp' in scenario:
+            elif 'ssp' in sim_climate_scenario:
                 # Variable names
                 self.temp_vn = 'tas'
                 self.prec_vn = 'pr'
@@ -289,10 +289,10 @@ class GCM:
                 self.time_vn = 'time'
                 # Variable filenames
                 self.temp_fn = (
-                    name + '_' + scenario + '_r1i1p1f1_' + self.temp_vn + '.nc'
+                    name + '_' + sim_climate_scenario + '_r1i1p1f1_' + self.temp_vn + '.nc'
                 )
                 self.prec_fn = (
-                    name + '_' + scenario + '_r1i1p1f1_' + self.prec_vn + '.nc'
+                    name + '_' + sim_climate_scenario + '_r1i1p1f1_' + self.prec_vn + '.nc'
                 )
                 self.elev_fn = name + '_' + self.elev_vn + '.nc'
                 # Variable filepaths
@@ -312,7 +312,7 @@ class GCM:
                 self.timestep = pygem_prms['time']['timestep']
                 self.rgi_lat_colname = pygem_prms['rgi']['rgi_lat_colname']
                 self.rgi_lon_colname = pygem_prms['rgi']['rgi_lon_colname']
-                self.scenario = scenario
+                self.sim_climate_scenario = sim_climate_scenario
 
     def importGCMfxnearestneighbor_xarray(self, filename, vn, main_glac_rgi):
         """
