@@ -12,7 +12,7 @@ Next, clone PyGEM. This will place the code at your current directory, so you ma
 ```
 git clone https://github.com/PyGEM-Community/PyGEM.git
 ```
-If you opted to create your own fork, clone using appropriate repo URL: `git clone https://github.com/<YOUR-USERNAME>/PyGEM.git`
+If you opted to create your own fork, clone using appropriate repo URL: `git clone https://github.com/YOUR-USERNAME/PyGEM.git`
 
 Navigate to root project directory:
 ```

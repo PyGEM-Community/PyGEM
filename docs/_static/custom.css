@@ -1,0 +1,4 @@
+/* Hide the right-hand "On this page" sidebar */
+.bd-toc {
+    display: none !important;
+}
