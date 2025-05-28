@@ -85,7 +85,7 @@ def haversine_dist(grid_lons, grid_lats, target_lons, target_lats):
     R = 6371.0  # Earth radius in kilometers
 
     # Convert degrees to radians
-    grid_lons = np.radians(grid_lons)[np.newaxis, :]  # (1, ncol)
+    grid_lons = np.radians(grid_lons)[np.newaxis, :]    # (1, ncol)
     grid_lats = np.radians(grid_lats)[np.newaxis, :]
     target_lons = np.radians(target_lons)[:, np.newaxis]  # (n_targets, 1)
     target_lats = np.radians(target_lats)[:, np.newaxis]
@@ -93,10 +93,7 @@ def haversine_dist(grid_lons, grid_lats, target_lons, target_lats):
     dlon = grid_lons - target_lons
     dlat = grid_lats - target_lats
 
-    a = (
-        np.sin(dlat / 2.0) ** 2
-        + np.cos(target_lats) * np.cos(grid_lats) * np.sin(dlon / 2.0) ** 2
-    )
+    a = np.sin(dlat / 2.0) ** 2 + np.cos(target_lats) * np.cos(grid_lats) * np.sin(dlon / 2.0) ** 2
     c = 2 * np.arcsin(np.sqrt(a))
 
     return R * c  # (n_targets, ncol)
