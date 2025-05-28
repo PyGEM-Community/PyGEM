@@ -943,7 +943,7 @@ def run(args):
 
     ### MERGE BATCHES FOR ANNUAL VARS ###
     for var in vars:
-        if 'annual' in var:
+        if '_annual_' in var:
             var_fp = f'{comppath}glacier_stats/{var}/{str(reg).zfill(2)}/'
 
             fp_merge_list_start = []
