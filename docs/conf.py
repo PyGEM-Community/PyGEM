@@ -56,11 +56,11 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 
 html_theme = 'sphinx_book_theme'
-html_static_path = ['_static']
 
 html_theme_options = {
     'repository_url': 'https://github.com/PyGEM-Community/PyGEM',
     'use_repository_button': True,
-    'show_nav_level': 2,
-    'navigation_depth': 3,
+    'show_nav_level': 1,
+    'navigation_depth': 4,
+    'toc_title': 'On this page',
 }

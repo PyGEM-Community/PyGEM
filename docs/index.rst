@@ -48,8 +48,9 @@ with respect to modeling glacier dynamics and ice thickness inversions.
    :caption: Getting Started:
 
    install_pygem
-   test_pygem
+   configuration
    scripts_overview
+   test_pygem
    model_output
 
 .. toctree::
@@ -57,8 +58,12 @@ with respect to modeling glacier dynamics and ice thickness inversions.
    :caption: Contributing:
 
    contributing
-   citing
 
+.. toctree::
+   :maxdepth: 1
+   :caption: Citing:
+
+   citing
 .. Indices and tables
 .. ==================
 

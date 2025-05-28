@@ -57,11 +57,14 @@ jobs:
 
       - name: 'Clone the PyGEM-notebooks repo'
         run: |
-          # Use PyGEM-notebook:main for master branch and PyGEM-notebooks:dev otherwise
           BRANCH=${GITHUB_REF#refs/heads/}
-          git clone --depth 1 --branch $([[ "$BRANCH" == "master" ]] && echo "main" || echo "dev") \
-            https://github.com/pygem-community/PyGEM-notebooks.git
-          echo "PYGEM_NOTEBOOKS_DIRPATH=$(pwd)/PyGEM-notebooks" >> $GITHUB_ENV
+          if [ "$BRANCH" = "master" ]; then
+            NOTEBOOK_BRANCH="main"
+          else
+            NOTEBOOK_BRANCH="dev"
+          fi
+          git clone --depth 1 --branch "$NOTEBOOK_BRANCH" https://github.com/pygem-community/PyGEM-notebooks.git
+          echo "PYGEM_NOTEBOOKS_DIRPATH=$(pwd)/PyGEM-notebooks" >> "$GITHUB_ENV"
 
       - name: 'Run tests'
         run: |

@@ -1,5 +1,10 @@
 (publications_target)=
-# Select Publications
+# Publications
+## Publications describing PyGEM
 * Rounce, D.R., Hock, R., Maussion, F., Hugonnet, R., Kochtitzky, W., Huss, M., Berthier, E., Brinkerhoff, D., Compagno, L., Copland, L., Farinotti, D., Menounos, B., and McNabb, R.W. (2023). “[Global glacier change in the 21st century: Every increase in temperature matters](https://www.science.org/doi/10.1126/science.abo1324)”, Science, 379(6627), pp. 78-83, doi:10.1126/science.abo1324
 * Rounce, D.R., Hock, R., and Shean, D.E. (2020). “[Glacier mass change in High Mountain Asia through 2100 using the open-source Python Glacier Evolution Model (PyGEM)](https://www.frontiersin.org/articles/10.3389/feart.2019.00331/full)”, Frontiers in Earth Science, 7(331), pp. 1-20, doi:10.3389/feart.2019.00331
 * Rounce, D.R., Khurana, T., Short, M.B., Hock, R., Shean, D.E., and Brinkherhoff, D.J. (2020). “[Quantifying parameter uncertainty in a large-scale glacier evolution model using Bayesian inference – Application to High Mountain Asia](https://www.cambridge.org/core/journals/journal-of-glaciology/article/quantifying-parameter-uncertainty-in-a-largescale-glacier-evolution-model-using-bayesian-inference-application-to-high-mountain-asia/61D8956E9A6C27CC1A5AEBFCDADC0432)”, Journal of Glaciology, 66(256), pp. 175-187, doi:10.1017/jog.2019.91
+
+## Publications using PyGEM
+* Yang, R, Hock, R., Rounce, D., Kang, S. (2024). "[Regional-scale response of glacier speed to seasonal runoff variations on the Kenai Peninsula, Alaska.](https://doi.org/10.1029/2025GL115248)", Geophysical Research Letters. 52, e2025GL115248, doi:10.1029/2025GL115248.
+* Kochtitzky W., Copland, L., Van Wychen, W., Hock, R., Rounce, D.R., Jiskoot, H., Scambos, T.A., Morlighem, M., King, M., Cha, L., Gould, L., Merrill,P-M., Glazovsky, A., Hugonnet, R., Strozzi, T., Noël, B., Navarro, F., Millan, R., Dowdeswell, J.A., Cook, A., Dalton, A., Khan, S., Jania, J. (2023). "[Progress towards globally complete frontal ablation estimates of marine-terminating glaciers](https://doi.org/10.1017/aog.2023.35)". Annals of Glaciology. doi:10.1017/aog.2023.35.

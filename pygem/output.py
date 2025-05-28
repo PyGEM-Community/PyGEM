@@ -53,10 +53,10 @@ class single_glacier:
         DataFrame containing metadata and characteristics of the glacier from the Randolph Glacier Inventory.
     dates_table : pd.DataFrame
         DataFrame containing the time series of dates associated with the model output.
-    gcm_name : str
+    sim_climate_name : str
         Name of the General Circulation Model (GCM) used for climate forcing.
-    scenario : str
-        Emission or climate scenario under which the simulation is run.
+    sim_climate_scenario : str
+        Emission or climate sim_climate_scenario under which the simulation is run.
     realization : str
         Specific realization or ensemble member of the GCM simulation.
     nsims : int
@@ -67,9 +67,9 @@ class single_glacier:
         Start year of the reference period for model calibration or comparison.
     ref_endyear : int
         End year of the reference period for model calibration or comparison.
-    gcm_startyear : int
+    sim_startyear : int
         Start year of the GCM forcing data used in the simulation.
-    gcm_endyear : int
+    sim_endyear : int
         End year of the GCM forcing data used in the simulation.
     option_calibration : str
         Model calibration method.
@@ -79,15 +79,15 @@ class single_glacier:
 
     glacier_rgi_table: pd.DataFrame
     dates_table: pd.DataFrame
-    gcm_name: str
-    scenario: str
+    sim_climate_name: str
+    sim_climate_scenario: str
     realization: str
     nsims: int
     modelprms: dict
     ref_startyear: int
     ref_endyear: int
-    gcm_startyear: int
-    gcm_endyear: int
+    sim_startyear: int
+    sim_endyear: int
     option_calibration: str
     option_bias_adjustment: str
 
@@ -123,23 +123,23 @@ class single_glacier:
         if outfn:
             self.outfn = outfn
         else:
-            self.outfn = self.glacier_str + '_' + self.gcm_name + '_'
-            if self.scenario:
-                self.outfn += f'{self.scenario}_'
+            self.outfn = self.glacier_str + '_' + self.sim_climate_name + '_'
+            if self.sim_climate_scenario:
+                self.outfn += f'{self.sim_climate_scenario}_'
             if self.realization:
                 self.outfn += f'{self.realization}_'
             if self.option_calibration:
                 self.outfn += f'{self.option_calibration}_'
             else:
                 self.outfn += f'kp{self.modelprms["kp"]}_ddfsnow{self.modelprms["ddfsnow"]}_tbias{self.modelprms["tbias"]}_'
-            if self.gcm_name not in ['ERA-Interim', 'ERA5', 'COAWST']:
+            if self.sim_climate_name not in ['ERA-Interim', 'ERA5', 'COAWST']:
                 self.outfn += f'ba{self.option_bias_adjustment}_'
             else:
                 self.outfn += 'ba0_'
             if self.option_calibration:
                 self.outfn += 'SETS_'
-            self.outfn += f'{self.gcm_startyear}_'
-            self.outfn += f'{self.gcm_endyear}_'
+            self.outfn += f'{self.sim_startyear}_'
+            self.outfn += f'{self.sim_endyear}_'
 
     def get_fn(self):
         """Return the output dataset filename."""
@@ -163,30 +163,24 @@ class single_glacier:
 
     def _set_time_vals(self):
         """Set output dataset time and year values from dates_table."""
-        if pygem_prms['climate']['gcm_wateryear'] == 'hydro':
+        if pygem_prms['climate']['sim_wateryear'] == 'hydro':
             self.year_type = 'water year'
             self.annual_columns = np.unique(self.dates_table['wateryear'].values)[
                 0 : int(self.dates_table.shape[0] / 12)
             ]
-        elif pygem_prms['climate']['gcm_wateryear'] == 'calendar':
+        elif pygem_prms['climate']['sim_wateryear'] == 'calendar':
             self.year_type = 'calendar year'
             self.annual_columns = np.unique(self.dates_table['year'].values)[
                 0 : int(self.dates_table.shape[0] / 12)
             ]
-        elif pygem_prms['climate']['gcm_wateryear'] == 'custom':
+        elif pygem_prms['climate']['sim_wateryear'] == 'custom':
             self.year_type = 'custom year'
-        self.time_values = self.dates_table.loc[
-            pygem_prms['climate']['gcm_spinupyears'] * 12 : self.dates_table.shape[0]
-            + 1,
-            'date',
-        ].tolist()
+        self.time_values = self.dates_table['date'].values.tolist()
         self.time_values = [
             cftime.DatetimeNoLeap(x.year, x.month, x.day) for x in self.time_values
         ]
         # append additional year to self.year_values to account for mass and area at end of period
-        self.year_values = self.annual_columns[
-            pygem_prms['climate']['gcm_spinupyears'] : self.annual_columns.shape[0]
-        ]
+        self.year_values = self.annual_columns
         self.year_values = np.concatenate(
             (self.year_values, np.array([self.annual_columns[-1] + 1]))
         )
@@ -198,11 +192,11 @@ class single_glacier:
         # overwrite variables that are possibly different from pygem_input
         self.mdl_params_dict['ref_startyear'] = self.ref_startyear
         self.mdl_params_dict['ref_endyear'] = self.ref_endyear
-        self.mdl_params_dict['gcm_startyear'] = self.gcm_startyear
-        self.mdl_params_dict['gcm_endyear'] = self.gcm_endyear
-        self.mdl_params_dict['gcm_name'] = self.gcm_name
+        self.mdl_params_dict['sim_startyear'] = self.sim_startyear
+        self.mdl_params_dict['sim_endyear'] = self.sim_endyear
+        self.mdl_params_dict['sim_climate_name'] = self.sim_climate_name
         self.mdl_params_dict['realization'] = self.realization
-        self.mdl_params_dict['scenario'] = self.scenario
+        self.mdl_params_dict['sim_climate_scenario'] = self.sim_climate_scenario
         self.mdl_params_dict['option_calibration'] = self.option_calibration
         self.mdl_params_dict['option_bias_adjustment'] = self.option_bias_adjustment
         # record manually defined modelprms if calibration option is None
@@ -370,9 +364,9 @@ class glacierwide_stats(single_glacier):
 
     def _set_outdir(self):
         """Set the output directory path. Create if it does not already exist."""
-        self.outdir += self.reg_str + '/' + self.gcm_name + '/'
-        if self.gcm_name not in ['ERA-Interim', 'ERA5', 'COAWST']:
-            self.outdir += self.scenario + '/'
+        self.outdir += self.reg_str + '/' + self.sim_climate_name + '/'
+        if self.sim_climate_name not in ['ERA-Interim', 'ERA5', 'COAWST']:
+            self.outdir += self.sim_climate_scenario + '/'
         self.outdir += 'stats/'
         # Create filepath if it does not exist
         os.makedirs(self.outdir, exist_ok=True)
@@ -818,9 +812,9 @@ class binned_stats(single_glacier):
 
     def _set_outdir(self):
         """Set the output directory path. Create if it does not already exist."""
-        self.outdir += self.reg_str + '/' + self.gcm_name + '/'
-        if self.gcm_name not in ['ERA-Interim', 'ERA5', 'COAWST']:
-            self.outdir += self.scenario + '/'
+        self.outdir += self.reg_str + '/' + self.sim_climate_name + '/'
+        if self.sim_climate_name not in ['ERA-Interim', 'ERA5', 'COAWST']:
+            self.outdir += self.sim_climate_scenario + '/'
         self.outdir += 'binned/'
         # Create filepath if it does not exist
         os.makedirs(self.outdir, exist_ok=True)
