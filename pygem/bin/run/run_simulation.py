@@ -77,9 +77,9 @@ def getparser():
     ----------
     gcm_list_fn (optional) : str
         text file that contains the climate data to be used in the model simulation
-    gcm_name (optional) : str
+    sim_climate_name (optional) : str
         gcm name
-    scenario (optional) : str
+    sim_climate_scenario (optional) : str
         representative concentration pathway or shared socioeconomic pathway (ex. 'rcp26', 'ssp585')
     realization (optional) : str
         single realization from large ensemble (ex. '1011.001', '1301.020')
@@ -128,10 +128,10 @@ def getparser():
         help='Randoph Glacier Inventory glacier number (can take multiple)',
     )
     parser.add_argument(
-        '-ref_gcm_name',
+        '-ref_climate_name',
         action='store',
         type=str,
-        default=pygem_prms['climate']['ref_gcm_name'],
+        default=pygem_prms['climate']['ref_climate_name'],
         help='reference gcm name',
     )
     parser.add_argument(
@@ -159,22 +159,22 @@ def getparser():
         '-gcm_list_fn',
         action='store',
         type=str,
-        default=pygem_prms['climate']['ref_gcm_name'],
+        default=pygem_prms['climate']['ref_climate_name'],
         help='text file full of commands to run (ex. CanESM2 or CESM2)',
     )
     parser.add_argument(
-        '-gcm_name',
+        '-sim_climate_name',
         action='store',
         type=str,
-        default=pygem_prms['climate']['gcm_name'],
+        default=pygem_prms['climate']['sim_climate_name'],
         help='GCM name used for model run',
     )
     parser.add_argument(
-        '-scenario',
+        '-sim_climate_scenario',
         action='store',
         type=none_or_value,
-        default=pygem_prms['climate']['scenario'],
-        help='rcp or ssp scenario used for model run (ex. rcp26 or ssp585)',
+        default=pygem_prms['climate']['sim_climate_scenario'],
+        help='rcp or ssp sim_climate_scenario used for model run (ex. rcp26 or ssp585)',
     )
     parser.add_argument(
         '-realization',
@@ -191,17 +191,17 @@ def getparser():
         help='text file full of realizations to run',
     )
     parser.add_argument(
-        '-gcm_startyear',
+        '-sim_startyear',
         action='store',
         type=int,
-        default=pygem_prms['climate']['gcm_startyear'],
+        default=pygem_prms['climate']['sim_startyear'],
         help='start year for the model run',
     )
     parser.add_argument(
-        '-gcm_endyear',
+        '-sim_endyear',
         action='store',
         type=int,
-        default=pygem_prms['climate']['gcm_endyear'],
+        default=pygem_prms['climate']['sim_endyear'],
         help='start year for the model run',
     )
     parser.add_argument(
@@ -356,15 +356,17 @@ def run(list_packed_vars):
     args = parser.parse_args()
     count = list_packed_vars[0]
     glac_no = list_packed_vars[1]
-    gcm_name = list_packed_vars[2]
+    sim_climate_name = list_packed_vars[2]
     realization = list_packed_vars[3]
-    if (gcm_name != args.ref_gcm_name) and (args.scenario is None):
-        scenario = os.path.basename(args.gcm_list_fn).split('_')[1]
+    if (sim_climate_name != args.ref_climate_name) and (
+        args.sim_climate_scenario is None
+    ):
+        sim_climate_scenario = os.path.basename(args.gcm_list_fn).split('_')[1]
     else:
-        scenario = args.scenario
+        sim_climate_scenario = args.sim_climate_scenario
     debug = args.debug
     if debug:
-        print(f'scenario:{scenario}')
+        print(f'sim_climate_scenario:{sim_climate_scenario}')
 
     # ===== LOAD GLACIERS =====
     main_glac_rgi = modelsetup.selectglaciersrgitable(glac_no=glac_no)
@@ -372,50 +374,51 @@ def run(list_packed_vars):
     # ===== TIME PERIOD =====
     # Reference Calibration Period
     # adjust end year in event that gcm_end year precedes ref_startyear
-    ref_endyear = min([args.ref_endyear, args.gcm_endyear])
+    ref_endyear = min([args.ref_endyear, args.sim_endyear])
     dates_table_ref = modelsetup.datesmodelrun(
         startyear=args.ref_startyear,
         endyear=ref_endyear,
-        spinupyears=pygem_prms['climate']['ref_spinupyears'],
         option_wateryear=pygem_prms['climate']['ref_wateryear'],
     )
 
     # GCM Full Period (includes reference and simulation periods)
     dates_table_full = modelsetup.datesmodelrun(
-        startyear=min([args.ref_startyear, args.gcm_startyear]),
-        endyear=args.gcm_endyear,
-        spinupyears=pygem_prms['climate']['gcm_spinupyears'],
-        option_wateryear=pygem_prms['climate']['gcm_wateryear'],
+        startyear=min([args.ref_startyear, args.sim_startyear]),
+        endyear=args.sim_endyear,
+        option_wateryear=pygem_prms['climate']['sim_wateryear'],
     )
 
     # GCM Simulation Period
     dates_table = modelsetup.datesmodelrun(
-        startyear=args.gcm_startyear,
-        endyear=args.gcm_endyear,
-        spinupyears=pygem_prms['climate']['gcm_spinupyears'],
-        option_wateryear=pygem_prms['climate']['gcm_wateryear'],
+        startyear=args.sim_startyear,
+        endyear=args.sim_endyear,
+        option_wateryear=pygem_prms['climate']['sim_wateryear'],
     )
 
     if debug:
         print('ref years:', args.ref_startyear, ref_endyear)
-        print('sim years:', args.gcm_startyear, args.gcm_endyear)
+        print('sim years:', args.sim_startyear, args.sim_endyear)
 
     # ===== LOAD CLIMATE DATA =====
     # Climate class
-    if gcm_name in ['ERA5', 'ERA-Interim', 'COAWST']:
-        gcm = class_climate.GCM(name=gcm_name)
+    if sim_climate_name in ['ERA5', 'ERA-Interim', 'COAWST']:
+        gcm = class_climate.GCM(name=sim_climate_name)
         ref_gcm = gcm
         dates_table_ref = dates_table_full
     else:
         # GCM object
         if realization is None:
-            gcm = class_climate.GCM(name=gcm_name, scenario=scenario)
+            gcm = class_climate.GCM(
+                name=sim_climate_name, sim_climate_scenario=sim_climate_scenario
+            )
         else:
             gcm = class_climate.GCM(
-                name=gcm_name, scenario=scenario, realization=realization
+                name=sim_climate_name,
+                sim_climate_scenario=sim_climate_scenario,
+                realization=realization,
             )
         # Reference GCM
-        ref_gcm = class_climate.GCM(name=args.ref_gcm_name)
+        ref_gcm = class_climate.GCM(name=args.ref_climate_name)
 
     # ----- Select Temperature and Precipitation Data -----
     # Air temperature [degC]
@@ -445,12 +448,12 @@ def run(list_packed_vars):
 
     # ----- Temperature and Precipitation Bias Adjustments -----
     # No adjustments
-    if args.option_bias_adjustment == 0 or gcm_name == args.ref_gcm_name:
-        if pygem_prms['climate']['gcm_wateryear'] == 'hydro':
+    if args.option_bias_adjustment == 0 or sim_climate_name == args.ref_climate_name:
+        if pygem_prms['climate']['sim_wateryear'] == 'hydro':
             dates_cn = 'wateryear'
         else:
             dates_cn = 'year'
-        sim_idx_start = dates_table_full[dates_cn].to_list().index(args.gcm_startyear)
+        sim_idx_start = dates_table_full[dates_cn].to_list().index(args.sim_startyear)
         gcm_elev_adj = gcm_elev
         gcm_temp_adj = gcm_temp[:, sim_idx_start:]
         gcm_prec_adj = gcm_prec[:, sim_idx_start:]
@@ -465,10 +468,8 @@ def run(list_packed_vars):
                 gcm_temp,
                 dates_table_ref,
                 dates_table_full,
-                args.gcm_startyear,
+                args.sim_startyear,
                 args.ref_startyear,
-                ref_spinupyears=pygem_prms['climate']['ref_spinupyears'],
-                gcm_spinupyears=pygem_prms['climate']['gcm_spinupyears'],
             )
             # Precipitation bias correction
             gcm_prec_adj, gcm_elev_adj = gcmbiasadj.prec_biasadj_opt1(
@@ -477,10 +478,8 @@ def run(list_packed_vars):
                 gcm_prec,
                 dates_table_ref,
                 dates_table_full,
-                args.gcm_startyear,
+                args.sim_startyear,
                 args.ref_startyear,
-                ref_spinupyears=pygem_prms['climate']['ref_spinupyears'],
-                gcm_spinupyears=pygem_prms['climate']['gcm_spinupyears'],
             )
         # OPTION 2: Adjust temp and prec using Huss and Hock (2015)
         elif args.option_bias_adjustment == 2:
@@ -491,10 +490,8 @@ def run(list_packed_vars):
                 gcm_temp,
                 dates_table_ref,
                 dates_table_full,
-                args.gcm_startyear,
+                args.sim_startyear,
                 args.ref_startyear,
-                ref_spinupyears=pygem_prms['climate']['ref_spinupyears'],
-                gcm_spinupyears=pygem_prms['climate']['gcm_spinupyears'],
             )
             # Precipitation bias correction
             gcm_prec_adj, gcm_elev_adj = gcmbiasadj.prec_biasadj_HH2015(
@@ -503,8 +500,6 @@ def run(list_packed_vars):
                 gcm_prec,
                 dates_table_ref,
                 dates_table_full,
-                ref_spinupyears=pygem_prms['climate']['ref_spinupyears'],
-                gcm_spinupyears=pygem_prms['climate']['gcm_spinupyears'],
             )
         # OPTION 3: Adjust temp and prec using quantile delta mapping, Cannon et al. (2015)
         elif args.option_bias_adjustment == 3:
@@ -515,10 +510,8 @@ def run(list_packed_vars):
                 gcm_temp,
                 dates_table_ref,
                 dates_table_full,
-                args.gcm_startyear,
+                args.sim_startyear,
                 args.ref_startyear,
-                ref_spinupyears=pygem_prms['climate']['ref_spinupyears'],
-                gcm_spinupyears=pygem_prms['climate']['gcm_spinupyears'],
             )
 
             # Precipitation bias correction
@@ -528,10 +521,8 @@ def run(list_packed_vars):
                 gcm_prec,
                 dates_table_ref,
                 dates_table_full,
-                args.gcm_startyear,
+                args.sim_startyear,
                 args.ref_startyear,
-                ref_spinupyears=pygem_prms['climate']['ref_spinupyears'],
-                gcm_spinupyears=pygem_prms['climate']['gcm_spinupyears'],
             )
 
     # assert that the gcm_elev_adj is not None
@@ -542,12 +533,12 @@ def run(list_packed_vars):
     if pygem_prms['mb']['option_ablation'] != 2:
         gcm_tempstd = np.zeros((main_glac_rgi.shape[0], dates_table.shape[0]))
         ref_tempstd = np.zeros((main_glac_rgi.shape[0], dates_table_ref.shape[0]))
-    elif pygem_prms['mb']['option_ablation'] == 2 and gcm_name in ['ERA5']:
+    elif pygem_prms['mb']['option_ablation'] == 2 and sim_climate_name in ['ERA5']:
         gcm_tempstd, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(
             gcm.tempstd_fn, gcm.tempstd_vn, main_glac_rgi, dates_table
         )
         ref_tempstd = gcm_tempstd
-    elif pygem_prms['mb']['option_ablation'] == 2 and args.ref_gcm_name in ['ERA5']:
+    elif pygem_prms['mb']['option_ablation'] == 2 and args.ref_climate_name in ['ERA5']:
         # Compute temp std based on reference climate data
         ref_tempstd, ref_dates = ref_gcm.importGCMvarnearestneighbor_xarray(
             ref_gcm.tempstd_fn, ref_gcm.tempstd_vn, main_glac_rgi, dates_table_ref
@@ -561,7 +552,7 @@ def run(list_packed_vars):
         ref_tempstd = np.zeros((main_glac_rgi.shape[0], dates_table_ref.shape[0]))
 
     # Lapse rate
-    if gcm_name in ['ERA-Interim', 'ERA5']:
+    if sim_climate_name in ['ERA-Interim', 'ERA5']:
         gcm_lr, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(
             gcm.lr_fn, gcm.lr_vn, main_glac_rgi, dates_table
         )
@@ -576,7 +567,7 @@ def run(list_packed_vars):
             ref_lr,
             dates_table_ref,
             dates_table_full,
-            args.gcm_startyear,
+            args.sim_startyear,
             args.ref_startyear,
         )
 
@@ -597,7 +588,7 @@ def run(list_packed_vars):
     for glac in range(main_glac_rgi.shape[0]):
         if glac == 0:
             print(
-                gcm_name,
+                sim_climate_name,
                 ':',
                 main_glac_rgi.loc[main_glac_rgi.index.values[glac], 'RGIId'],
             )
@@ -641,13 +632,6 @@ def run(list_packed_vars):
                 'lr': ref_lr[glac, :],
             }
             gdir_ref.dates_table = dates_table_ref
-
-            # Add climate data to glacier directory
-            if pygem_prms['climate']['hindcast'] == True:
-                gcm_temp_adj = gcm_temp_adj[::-1]
-                gcm_tempstd = gcm_tempstd[::-1]
-                gcm_prec_adj = gcm_prec_adj[::-1]
-                gcm_lr = gcm_lr[::-1]
 
             gdir.historical_climate = {
                 'elev': gcm_elev_adj[glac],
@@ -864,7 +848,7 @@ def run(list_packed_vars):
                         ]
 
                 # Time attributes and values
-                if pygem_prms['climate']['gcm_wateryear'] == 'hydro':
+                if pygem_prms['climate']['sim_wateryear'] == 'hydro':
                     annual_columns = np.unique(dates_table['wateryear'].values)[
                         0 : int(dates_table.shape[0] / 12)
                     ]
@@ -873,9 +857,7 @@ def run(list_packed_vars):
                         0 : int(dates_table.shape[0] / 12)
                     ]
                 # append additional year to year_values to account for mass and area at end of period
-                year_values = annual_columns[
-                    pygem_prms['climate']['gcm_spinupyears'] : annual_columns.shape[0]
-                ]
+                year_values = annual_columns
                 year_values = np.concatenate(
                     (year_values, np.array([annual_columns[-1] + 1]))
                 )
@@ -1167,11 +1149,15 @@ def run(list_packed_vars):
                                     + '/Output/simulations/fail-exceed_domain/'
                                     + reg_str
                                     + '/'
-                                    + gcm_name
+                                    + sim_climate_name
                                     + '/'
                                 )
-                                if gcm_name not in ['ERA-Interim', 'ERA5', 'COAWST']:
-                                    fail_domain_fp += scenario + '/'
+                                if sim_climate_name not in [
+                                    'ERA-Interim',
+                                    'ERA5',
+                                    'COAWST',
+                                ]:
+                                    fail_domain_fp += sim_climate_scenario + '/'
                                 if not os.path.exists(fail_domain_fp):
                                     os.makedirs(fail_domain_fp, exist_ok=True)
                                 txt_fn_fail = glacier_str + '-sim_failed.txt'
@@ -1198,9 +1184,6 @@ def run(list_packed_vars):
                                     fs=fs,
                                     is_tidewater=gdir.is_tidewater,
                                     water_level=water_level,
-                                    spinupyears=pygem_prms['climate'][
-                                        'ref_spinupyears'
-                                    ],
                                 )
                                 _, diag = ev_model.run_until_and_store(nyears)
                                 ev_model.mb_model.glac_wide_volume_annual = (
@@ -1374,11 +1357,15 @@ def run(list_packed_vars):
                                     + '/Output/simulations/fail-exceed_domain/'
                                     + reg_str
                                     + '/'
-                                    + gcm_name
+                                    + sim_climate_name
                                     + '/'
                                 )
-                                if gcm_name not in ['ERA-Interim', 'ERA5', 'COAWST']:
-                                    fail_domain_fp += scenario + '/'
+                                if sim_climate_name not in [
+                                    'ERA-Interim',
+                                    'ERA5',
+                                    'COAWST',
+                                ]:
+                                    fail_domain_fp += sim_climate_scenario + '/'
                                 if not os.path.exists(fail_domain_fp):
                                     os.makedirs(fail_domain_fp, exist_ok=True)
                                 txt_fn_fail = glacier_str + '-sim_failed.txt'
@@ -1406,7 +1393,7 @@ def run(list_packed_vars):
                             option_areaconstant=True,
                         )
                         # ----- MODEL RUN WITH CONSTANT GLACIER AREA -----
-                        years = np.arange(args.gcm_startyear, args.gcm_endyear + 1)
+                        years = np.arange(args.sim_startyear, args.sim_endyear + 1)
                         mb_all = []
                         for year in years - years[0]:
                             mb_annual = mbmod.get_annual_mb(
@@ -1768,14 +1755,14 @@ def run(list_packed_vars):
                             glacier_rgi_table=glacier_rgi_table,
                             dates_table=dates_table,
                             nsims=1,
-                            gcm_name=gcm_name,
-                            scenario=scenario,
+                            sim_climate_name=sim_climate_name,
+                            sim_climate_scenario=sim_climate_scenario,
                             realization=realization,
                             modelprms=modelprms,
                             ref_startyear=args.ref_startyear,
                             ref_endyear=ref_endyear,
-                            gcm_startyear=args.gcm_startyear,
-                            gcm_endyear=args.gcm_endyear,
+                            sim_startyear=args.sim_startyear,
+                            sim_endyear=args.sim_endyear,
                             option_calibration=args.option_calibration,
                             option_bias_adjustment=args.option_bias_adjustment,
                         )
@@ -1867,14 +1854,14 @@ def run(list_packed_vars):
                         glacier_rgi_table=glacier_rgi_table,
                         dates_table=dates_table,
                         nsims=nsims,
-                        gcm_name=gcm_name,
-                        scenario=scenario,
+                        sim_climate_name=sim_climate_name,
+                        sim_climate_scenario=sim_climate_scenario,
                         realization=realization,
                         modelprms=modelprms,
                         ref_startyear=args.ref_startyear,
                         ref_endyear=ref_endyear,
-                        gcm_startyear=args.gcm_startyear,
-                        gcm_endyear=args.gcm_endyear,
+                        sim_startyear=args.sim_startyear,
+                        sim_endyear=args.sim_endyear,
                         option_calibration=args.option_calibration,
                         option_bias_adjustment=args.option_bias_adjustment,
                     )
@@ -2092,14 +2079,14 @@ def run(list_packed_vars):
                                 nsims=1,
                                 nbins=surface_h_initial.shape[0],
                                 binned_components=args.export_binned_components,
-                                gcm_name=gcm_name,
-                                scenario=scenario,
+                                sim_climate_name=sim_climate_name,
+                                sim_climate_scenario=sim_climate_scenario,
                                 realization=realization,
                                 modelprms=modelprms,
                                 ref_startyear=args.ref_startyear,
                                 ref_endyear=ref_endyear,
-                                gcm_startyear=args.gcm_startyear,
-                                gcm_endyear=args.gcm_endyear,
+                                sim_startyear=args.sim_startyear,
+                                sim_endyear=args.sim_endyear,
                                 option_calibration=args.option_calibration,
                                 option_bias_adjustment=args.option_bias_adjustment,
                             )
@@ -2170,14 +2157,14 @@ def run(list_packed_vars):
                             nsims=nsims,
                             nbins=surface_h_initial.shape[0],
                             binned_components=args.export_binned_components,
-                            gcm_name=gcm_name,
-                            scenario=scenario,
+                            sim_climate_name=sim_climate_name,
+                            sim_climate_scenario=sim_climate_scenario,
                             realization=realization,
                             modelprms=modelprms,
                             ref_startyear=args.ref_startyear,
                             ref_endyear=ref_endyear,
-                            gcm_startyear=args.gcm_startyear,
-                            gcm_endyear=args.gcm_endyear,
+                            sim_startyear=args.sim_startyear,
+                            sim_endyear=args.sim_endyear,
                             option_calibration=args.option_calibration,
                             option_bias_adjustment=args.option_bias_adjustment,
                         )
@@ -2259,11 +2246,11 @@ def run(list_packed_vars):
                 + '/Output/simulations/failed/'
                 + reg_str
                 + '/'
-                + gcm_name
+                + sim_climate_name
                 + '/'
             )
-            if gcm_name not in ['ERA-Interim', 'ERA5', 'COAWST']:
-                fail_fp += scenario + '/'
+            if sim_climate_name not in ['ERA-Interim', 'ERA5', 'COAWST']:
+                fail_fp += sim_climate_scenario + '/'
             if not os.path.exists(fail_fp):
                 os.makedirs(fail_fp, exist_ok=True)
             txt_fn_fail = glacier_str + '-sim_failed.txt'
@@ -2286,8 +2273,8 @@ def main():
         assert args.ref_startyear < args.ref_endyear, (
             f'ref_startyear [{args.ref_startyear}] must be less than ref_endyear [{args.ref_endyear}]'
         )
-        assert args.gcm_startyear < args.gcm_endyear, (
-            f'gcm_startyear [{args.gcm_startyear}] must be less than gcm_endyear [{args.gcm_endyear}]'
+        assert args.sim_startyear < args.sim_endyear, (
+            f'sim_startyear [{args.sim_startyear}] must be less than sim_endyear [{args.sim_endyear}]'
         )
     except AssertionError as err:
         print('error: ', err)
@@ -2324,17 +2311,17 @@ def main():
     )
 
     # Read GCM names from argument parser
-    gcm_name = args.gcm_list_fn
-    if args.gcm_name is not None:
-        gcm_list = [args.gcm_name]
-        scenario = args.scenario
-    elif args.gcm_list_fn == args.ref_gcm_name:
-        gcm_list = [args.ref_gcm_name]
-        scenario = args.scenario
+    sim_climate_name = args.gcm_list_fn
+    if args.sim_climate_name is not None:
+        gcm_list = [args.sim_climate_name]
+        sim_climate_scenario = args.sim_climate_scenario
+    elif args.gcm_list_fn == args.ref_climate_name:
+        gcm_list = [args.ref_climate_name]
+        sim_climate_scenario = args.sim_climate_scenario
     else:
         with open(args.gcm_list_fn, 'r') as gcm_fn:
             gcm_list = gcm_fn.read().splitlines()
-            scenario = os.path.basename(args.gcm_list_fn).split('_')[1]
+            sim_climate_scenario = os.path.basename(args.gcm_list_fn).split('_')[1]
             print('Found %d gcms to process' % (len(gcm_list)))
 
     # Read realizations from argument parser
@@ -2352,20 +2339,24 @@ def main():
     # If passing this through the list_packed_vars, then don't go back and get from arg parser again!
 
     # Loop through all GCMs
-    for gcm_name in gcm_list:
-        if args.scenario is None:
-            print('Processing:', gcm_name)
-        elif args.scenario is not None:
-            print('Processing:', gcm_name, scenario)
+    for sim_climate_name in gcm_list:
+        if args.sim_climate_scenario is None:
+            print('Processing:', sim_climate_name)
+        elif args.sim_climate_scenario is not None:
+            print('Processing:', sim_climate_name, sim_climate_scenario)
         # Pack variables for multiprocessing
         list_packed_vars = []
         if realizations is not None:
             for realization in realizations:
                 for count, glac_no_lst in enumerate(glac_no_lsts):
-                    list_packed_vars.append([count, glac_no_lst, gcm_name, realization])
+                    list_packed_vars.append(
+                        [count, glac_no_lst, sim_climate_name, realization]
+                    )
         else:
             for count, glac_no_lst in enumerate(glac_no_lsts):
-                list_packed_vars.append([count, glac_no_lst, gcm_name, realizations])
+                list_packed_vars.append(
+                    [count, glac_no_lst, sim_climate_name, realizations]
+                )
 
         print('Processing with ' + str(num_cores) + ' cores...')
         # Parallel processing

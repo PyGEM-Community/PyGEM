@@ -213,7 +213,7 @@ def est_kp(
 
     # ===== LOAD CLIMATE DATA =====
     # Climate class
-    gcm = class_climate.GCM(name=pygem_prms['climate']['ref_gcm_name'])
+    gcm = class_climate.GCM(name=pygem_prms['climate']['ref_climate_name'])
 
     # Air temperature [degC]
     gcm_temp, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(
@@ -233,7 +233,7 @@ def est_kp(
     )
 
     # ===== PROCESS THE OBSERVATIONS ======
-    prec_cn = pygem_prms['climate']['ref_gcm_name'] + '_prec'
+    prec_cn = pygem_prms['climate']['ref_climate_name'] + '_prec'
     wgms_df[prec_cn] = np.nan
     wgms_df['kp'] = np.nan
     wgms_df['ndays'] = np.nan
