@@ -28,7 +28,7 @@ To support model testing and demonstration, a suite of Jupyter notebooks can be 
     <td style="width: 50%;">
       <a href="https://www.science.org/doi/10.1126/science.abo1324"><img src="https://img.shields.io/badge/citation-Rounce%20et%20al.%20(2023;%20Science)-orange.svg"></a>
       &nbsp;
-      <a href="https://doi.org/10.5281/zenodo.15045308"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.15045308.svg" alt="DOI"></a>
+      <a href="https://doi.org/10.5281/zenodo.15538452"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.15538452.svg" alt="DOI"></a>
     </td>
   </tr>
   <tr>
