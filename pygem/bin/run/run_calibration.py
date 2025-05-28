@@ -122,7 +122,7 @@ def getparser():
             type=str,
             default=None,
             help='filepath containing list of rgi_glac_number, helpful for running batches on spc',
-        )
+        ),
     )
     parser.add_argument(
         '-rgi_glac_number',
@@ -541,7 +541,7 @@ def run(list_packed_vars):
 
     # Unpack variables
     glac_no = list_packed_vars[1]
-    ref_climate_name = list_packed_vars[2]
+    sim_climate_name = list_packed_vars[2]
 
     parser = getparser()
     args = parser.parse_args()
@@ -560,15 +560,15 @@ def run(list_packed_vars):
 
     # ===== LOAD CLIMATE DATA =====
     # Climate class
-    assert ref_climate_name in ['ERA5', 'ERA-Interim'], (
-        'Error: Calibration not set up for ' + ref_climate_name
+    assert sim_climate_name in ['ERA5', 'ERA-Interim'], (
+        'Error: Calibration not set up for ' + sim_climate_name
     )
-    gcm = class_climate.GCM(name=ref_climate_name)
+    gcm = class_climate.GCM(name=sim_climate_name)
     # Air temperature [degC]
     gcm_temp, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(
         gcm.temp_fn, gcm.temp_vn, main_glac_rgi, dates_table
     )
-    if pygem_prms['mb']['option_ablation'] == 2 and ref_climate_name in ['ERA5']:
+    if pygem_prms['mb']['option_ablation'] == 2 and sim_climate_name in ['ERA5']:
         gcm_tempstd, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(
             gcm.tempstd_fn, gcm.tempstd_vn, main_glac_rgi, dates_table
         )
@@ -591,7 +591,7 @@ def run(list_packed_vars):
     for glac in range(main_glac_rgi.shape[0]):
         if debug or glac == 0 or glac == main_glac_rgi.shape[0]:
             print(
-                ref_climate_name,
+                sim_climate_name,
                 ':',
                 main_glac_rgi.loc[main_glac_rgi.index.values[glac], 'RGIId'],
             )
@@ -3002,13 +3002,13 @@ def main():
     )
 
     # Read GCM names from argument parser
-    ref_climate_name = args.ref_climate_name
-    print('Processing:', ref_climate_name)
+    sim_climate_name = args.ref_climate_name
+    print('Processing:', sim_climate_name)
 
     # Pack variables for multiprocessing
     list_packed_vars = []
     for count, glac_no_lst in enumerate(glac_no_lsts):
-        list_packed_vars.append([count, glac_no_lst, ref_climate_name])
+        list_packed_vars.append([count, glac_no_lst, sim_climate_name])
     # Parallel processing
     if num_cores > 1:
         print('Processing in parallel with ' + str(num_cores) + ' cores...')
