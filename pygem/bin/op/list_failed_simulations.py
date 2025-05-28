@@ -27,7 +27,7 @@ pygem_prms = config_manager.read_config()
 import pygem.pygem_modelsetup as modelsetup
 
 
-def run(reg, simpath, gcm, sim_climate_scenario, calib_opt, bias_adj, sim_startyear, sim_endyear):
+def run(reg, simpath, gcm, scenario, calib_opt, bias_adj, gcm_startyear, gcm_endyear):
     # define base directory
     base_dir = simpath + '/' + str(reg).zfill(2) + '/'
 
@@ -43,19 +43,19 @@ def run(reg, simpath, gcm, sim_climate_scenario, calib_opt, bias_adj, sim_starty
     glacno_list_all = list(main_glac_rgi_all['rgino_str'].values)
 
     # get list of glacier simulation files
-    if sim_climate_scenario:
-        sim_dir = base_dir + gcm + '/' + sim_climate_scenario + '/stats/'
+    if scenario:
+        sim_dir = base_dir + gcm + '/' + scenario + '/stats/'
     else:
         sim_dir = base_dir + gcm + '/stats/'
 
-    # check if gcm has given sim_climate_scenario
+    # check if gcm has given scenario
     assert os.path.isdir(sim_dir), f'Error: simulation path not found, {sim_dir}'
 
     # instantiate list of galcnos that are not in sim_dir
     failed_glacnos = []
 
     fps = glob.glob(
-        sim_dir + f'*_{calib_opt}_ba{bias_adj}_*_{sim_startyear}_{sim_endyear}_all.nc'
+        sim_dir + f'*_{calib_opt}_ba{bias_adj}_*_{gcm_startyear}_{gcm_endyear}_all.nc'
     )
 
     # Glaciers with successful runs to process
@@ -67,7 +67,7 @@ def run(reg, simpath, gcm, sim_climate_scenario, calib_opt, bias_adj, sim_starty
         main_glac_rgi_all.apply(lambda x: x.rgino_str in glacno_ran, axis=1)
     ]
     print(
-        f'{gcm} {str(sim_climate_scenario).replace("None", "")} glaciers successfully simulated:\n  - {main_glac_rgi.shape[0]} of {main_glac_rgi_all.shape[0]} glaciers ({np.round(main_glac_rgi.shape[0] / main_glac_rgi_all.shape[0] * 100, 3)}%)'
+        f'{gcm} {str(scenario).replace("None", "")} glaciers successfully simulated:\n  - {main_glac_rgi.shape[0]} of {main_glac_rgi_all.shape[0]} glaciers ({np.round(main_glac_rgi.shape[0] / main_glac_rgi_all.shape[0] * 100, 3)}%)'
     )
     print(
         f'  - {np.round(main_glac_rgi.Area.sum(), 0)} km2 of {np.round(main_glac_rgi_all.Area.sum(), 0)} km2 ({np.round(main_glac_rgi.Area.sum() / main_glac_rgi_all.Area.sum() * 100, 3)}%)'
@@ -88,7 +88,7 @@ def run(reg, simpath, gcm, sim_climate_scenario, calib_opt, bias_adj, sim_starty
 def main():
     # Set up CLI
     parser = argparse.ArgumentParser(
-        description="""description: script to check for failed PyGEM glacier simulations\n\nexample call: $python list_failed_simulations.py -rgi_region01=1 -sim_climate_name=CanESM5 -scenrio=ssp585 -outdir=/path/to/output/failed/glaciers/""",
+        description="""description: script to check for failed PyGEM glacier simulations\n\nexample call: $python list_failed_simulations.py -rgi_region01=1 -gcm_name=CanESM5 -scenrio=ssp585 -outdir=/path/to/output/failed/glaciers/""",
         formatter_class=argparse.RawTextHelpFormatter,
     )
     requiredNamed = parser.add_argument_group('required named arguments')
@@ -100,30 +100,30 @@ def main():
         nargs='+',
     )
     parser.add_argument(
-        '-sim_climate_name',
+        '-gcm_name',
         type=str,
         default=None,
         help='GCM name to compile results from (ex. ERA5 or CESM2)',
     )
     parser.add_argument(
-        '-sim_climate_scenario',
+        '-scenario',
         action='store',
         type=str,
         default=None,
-        help='rcp or ssp sim_climate_scenario used for model run (ex. rcp26 or ssp585)',
+        help='rcp or ssp scenario used for model run (ex. rcp26 or ssp585)',
     )
     parser.add_argument(
-        '-sim_startyear',
+        '-gcm_startyear',
         action='store',
         type=int,
-        default=pygem_prms['climate']['sim_startyear'],
+        default=pygem_prms['climate']['gcm_startyear'],
         help='start year for the model run',
     )
     parser.add_argument(
-        '-sim_endyear',
+        '-gcm_endyear',
         action='store',
         type=int,
-        default=pygem_prms['climate']['sim_endyear'],
+        default=pygem_prms['climate']['gcm_endyear'],
         help='start year for the model run',
     )
     parser.add_argument(
@@ -152,13 +152,13 @@ def main():
     args = parser.parse_args()
 
     region = args.rgi_region01
-    sim_climate_scenario = args.sim_climate_scenario
-    sim_climate_name = args.sim_climate_name
+    scenario = args.scenario
+    gcm_name = args.gcm_name
     bias_adj = args.option_bias_adjustment
     simpath = pygem_prms['root'] + '/Output/simulations/'
 
-    if sim_climate_name in ['ERA5', 'ERA-Interim', 'COAWST']:
-        sim_climate_scenario = None
+    if gcm_name in ['ERA5', 'ERA-Interim', 'COAWST']:
+        scenario = None
         bias_adj = 0
 
     if not isinstance(region, list):
@@ -172,31 +172,31 @@ def main():
         failed_glacs = run(
             reg,
             simpath,
-            args.sim_climate_name,
-            sim_climate_scenario,
+            args.gcm_name,
+            scenario,
             args.option_calibration,
             bias_adj,
-            args.sim_startyear,
-            args.sim_endyear,
+            args.gcm_startyear,
+            args.gcm_endyear,
         )
         if len(failed_glacs) > 0:
             if args.outdir:
                 fout = os.path.join(
                     args.outdir,
-                    f'R{str(reg).zfill(2)}_{args.sim_climate_name}_{sim_climate_scenario}_{args.sim_startyear}_{args.sim_endyear}_failed_rgiids.json',
+                    f'R{str(reg).zfill(2)}_{args.gcm_name}_{scenario}_{args.gcm_startyear}_{args.gcm_endyear}_failed_rgiids.json',
                 ).replace('None_', '')
                 with open(fout, 'w') as f:
                     json.dump(failed_glacs, f)
                     print(
-                        f'List of failed glaciers for {sim_climate_name} {str(sim_climate_scenario).replace("None", "")} exported to: {fout}'
+                        f'List of failed glaciers for {gcm_name} {str(scenario).replace("None", "")} exported to: {fout}'
                     )
             if args.verbose:
                 print(
-                    f'Failed glaciers for RGI region R{str(reg).zfill(2)} {args.sim_climate_name} {str(sim_climate_scenario).replace("None", "")} {args.sim_startyear}-{args.sim_endyear}:'
+                    f'Failed glaciers for RGI region R{str(reg).zfill(2)} {args.gcm_name} {str(scenario).replace("None", "")} {args.gcm_startyear}-{args.gcm_endyear}:'
                 )
                 print(failed_glacs)
 
         else:
             print(
-                f'No glaciers failed from R{region}, for {sim_climate_name} {sim_climate_scenario.replace("None", "")}'
+                f'No glaciers failed from R{region}, for {gcm_name} {scenario.replace("None", "")}'
             )

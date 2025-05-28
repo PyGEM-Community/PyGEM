@@ -43,7 +43,7 @@ log = logging.getLogger(__name__)
 @entity_task(log, writes=['consensus_mass'])
 def consensus_gridded(
     gdir,
-    h_consensus_fp=f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["icethickness"]["h_ref_relpath"]}',
+    h_consensus_fp=f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["icethickness"]["h_consensus_relpath"]}',
     add_mass=True,
     add_to_gridded=True,
 ):

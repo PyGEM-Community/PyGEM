@@ -132,15 +132,15 @@ def reg_calving_flux(
 
     # ===== LOAD CLIMATE DATA =====
     # Climate class
-    assert args.ref_climate_name in ['ERA5', 'ERA-Interim'], (
-        'Error: Calibration not set up for ' + args.ref_climate_name
+    assert args.ref_gcm_name in ['ERA5', 'ERA-Interim'], (
+        'Error: Calibration not set up for ' + args.ref_gcm_name
     )
-    gcm = class_climate.GCM(name=args.ref_climate_name)
+    gcm = class_climate.GCM(name=args.ref_gcm_name)
     # Air temperature [degC]
     gcm_temp, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(
         gcm.temp_fn, gcm.temp_vn, main_glac_rgi, dates_table
     )
-    if pygem_prms['mb']['option_ablation'] == 2 and args.ref_climate_name in ['ERA5']:
+    if pygem_prms['mb']['option_ablation'] == 2 and args.ref_gcm_name in ['ERA5']:
         gcm_tempstd, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(
             gcm.tempstd_fn, gcm.tempstd_vn, main_glac_rgi, dates_table
         )
@@ -3059,10 +3059,10 @@ def main():
         nargs='+',
     )
     parser.add_argument(
-        '-ref_climate_name',
+        '-ref_gcm_name',
         action='store',
         type=str,
-        default=pygem_prms['climate']['ref_climate_name'],
+        default=pygem_prms['climate']['ref_gcm_name'],
         help='reference gcm name',
     )
     parser.add_argument(

@@ -233,8 +233,8 @@ class PyGEMMassBalance(MassBalanceModel):
         year = int(year)
         if self.repeat_period:
             year = year % (
-                pygem_prms['climate']['sim_endyear']
-                - pygem_prms['climate']['sim_startyear']
+                pygem_prms['climate']['gcm_endyear']
+                - pygem_prms['climate']['gcm_startyear']
             )
 
         fl = fls[fl_id]
@@ -300,44 +300,46 @@ class PyGEMMassBalance(MassBalanceModel):
                 #            if (pygem_prms['time']['timestep'] == 'monthly') and (glac_idx_t0.shape[0] != 0):
 
                 # AIR TEMPERATURE: Downscale the gcm temperature [deg C] to each bin
-                # Downscale using gcm and glacier lapse rates
-                #  T_bin = T_gcm + lr_gcm * (z_ref - z_gcm) + lr_glac * (z_bin - z_ref) + tempchange
-                self.bin_temp[:, 12 * year : 12 * (year + 1)] = (
-                    self.glacier_gcm_temp[12 * year : 12 * (year + 1)]
-                    + self.glacier_gcm_lrgcm[12 * year : 12 * (year + 1)]
-                    * (
-                        self.glacier_rgi_table.loc[
-                            pygem_prms['mb']['option_elev_ref_downscale']
-                        ]
-                        - self.glacier_gcm_elev
-                    )
-                    + self.glacier_gcm_lrglac[12 * year : 12 * (year + 1)]
-                    * (
-                        heights
-                        - self.glacier_rgi_table.loc[
-                            pygem_prms['mb']['option_elev_ref_downscale']
-                        ]
-                    )[:, np.newaxis]
-                    + self.modelprms['tbias']
-                )
-
-                # PRECIPITATION/ACCUMULATION: Downscale the precipitation (liquid and solid) to each bin
-                # Precipitation using precipitation factor and precipitation gradient
-                #  P_bin = P_gcm * prec_factor * (1 + prec_grad * (z_bin - z_ref))
-                bin_precsnow[:, 12 * year : 12 * (year + 1)] = (
-                    self.glacier_gcm_prec[12 * year : 12 * (year + 1)]
-                    * self.modelprms['kp']
-                    * (
-                        1
-                        + self.modelprms['precgrad']
+                if pygem_prms['mb']['option_temp2bins'] == 1:
+                    # Downscale using gcm and glacier lapse rates
+                    #  T_bin = T_gcm + lr_gcm * (z_ref - z_gcm) + lr_glac * (z_bin - z_ref) + tempchange
+                    self.bin_temp[:, 12 * year : 12 * (year + 1)] = (
+                        self.glacier_gcm_temp[12 * year : 12 * (year + 1)]
+                        + self.glacier_gcm_lrgcm[12 * year : 12 * (year + 1)]
+                        * (
+                            self.glacier_rgi_table.loc[
+                                pygem_prms['mb']['option_elev_ref_downscale']
+                            ]
+                            - self.glacier_gcm_elev
+                        )
+                        + self.glacier_gcm_lrglac[12 * year : 12 * (year + 1)]
                         * (
                             heights
                             - self.glacier_rgi_table.loc[
                                 pygem_prms['mb']['option_elev_ref_downscale']
                             ]
-                        )
-                    )[:, np.newaxis]
-                )
+                        )[:, np.newaxis]
+                        + self.modelprms['tbias']
+                    )
+
+                # PRECIPITATION/ACCUMULATION: Downscale the precipitation (liquid and solid) to each bin
+                if pygem_prms['mb']['option_prec2bins'] == 1:
+                    # Precipitation using precipitation factor and precipitation gradient
+                    #  P_bin = P_gcm * prec_factor * (1 + prec_grad * (z_bin - z_ref))
+                    bin_precsnow[:, 12 * year : 12 * (year + 1)] = (
+                        self.glacier_gcm_prec[12 * year : 12 * (year + 1)]
+                        * self.modelprms['kp']
+                        * (
+                            1
+                            + self.modelprms['precgrad']
+                            * (
+                                heights
+                                - self.glacier_rgi_table.loc[
+                                    pygem_prms['mb']['option_elev_ref_downscale']
+                                ]
+                            )
+                        )[:, np.newaxis]
+                    )
                 # Option to adjust prec of uppermost 25% of glacier for wind erosion and reduced moisture content
                 if pygem_prms['mb']['option_preclimit'] == 1:
                     # Elevation range based on all flowlines

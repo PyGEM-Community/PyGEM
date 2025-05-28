@@ -52,17 +52,17 @@ oggm:
 climate:
   # Reference period runs (reference period refers to the calibration period)
   #   This will typically vary between 1980-present
-  ref_climate_name: ERA5                              # reference climate dataset
+  ref_gcm_name: ERA5                              # reference climate dataset
   ref_startyear: 2000                             # first year of model run (reference dataset)
   ref_endyear: 2019                               # last year of model run (reference dataset)
   ref_wateryear: calendar                         # options for years: 'calendar', 'hydro', 'custom'
   ref_spinupyears: 0                              # spin up years
   # GCM period used for simulation run
-  sim_climate_name: ERA5                                  # simulation climate dataset
-  sim_climate_scenario: null                                  # simulation scenario
-  sim_startyear: 2000                             # first year of model run (simulation dataset)
-  sim_endyear: 2019                               # last year of model run (simulation dataset)
-  sim_wateryear: calendar                         # options for years: 'calendar', 'hydro', 'custom'
+  gcm_name: ERA5                                  # simulation climate dataset
+  scenario: null                                  # simulation scenario
+  gcm_startyear: 2000                             # first year of model run (simulation dataset)
+  gcm_endyear: 2019                               # last year of model run (simulation dataset)
+  gcm_wateryear: calendar                         # options for years: 'calendar', 'hydro', 'custom'
   constantarea_years: 0                           # number of years to not let the area or volume change
   gcm_spinupyears: 0                              # spin up years for simulation (output not set up for spinup years at present)
   # ===== CLIMATE DATA FILEPATHS AND FILENAMES =====
@@ -198,7 +198,7 @@ calib:
       frontalablation_cal_fn: all-frontalablation_cal_ind.csv                                       # merged frontalablation calibration data (produced by run_calibration_frontalablation.py)
     # ice thickness
     icethickness:
-      h_ref_relpath: /IceThickness_Farinotti/composite_thickness_RGI60-all_regions/ 
+      h_consensus_relpath: /IceThickness_Farinotti/composite_thickness_RGI60-all_regions/ 
 
   icethickness_cal_frac_byarea: 0.9               # Regional glacier area fraction that is used to calibrate the ice thickness
                                                   #  e.g., 0.9 means only the largest 90% of glaciers by area will be used to calibrate
@@ -226,11 +226,11 @@ sim:
     export_binned_area_threshold: 0               # Area threshold for exporting binned ice thickness
   # ===== OGGM DYNAMICS =====
   oggm_dynamics:
-    cfl_number: 0.02                              # Time step threshold (seconds)
-    cfl_number_calving: 0.01                      # Time step threshold for marine-terimating glaciers (seconds)
-    use_reg_glena: true
+    cfl_number: 0.02
+    cfl_number_calving: 0.01
     glena_reg_relpath: /Output/calibration/glena_region.csv
-    # glen_a multiplier if not using regionally calibrated glens_a
+    use_reg_glena: true
+    # glens_a multiplier if not using regionally calibrated glens_a
     fs: 0
     glen_a_multiplier: 1
   # Mass redistribution / Glacier geometry change options
@@ -267,8 +267,10 @@ mb:
   # Reference elevation options for downscaling climate variables
   option_elev_ref_downscale: Zmed                 # 'Zmed', 'Zmax', or 'Zmin' for median, maximum or minimum glacier elevations
   # Downscale temperature to bins options
+  option_temp2bins: 1                             # 1: lr_gcm and lr_glac to adjust temp from gcm to the glacier bins
   option_adjusttemp_surfelev: 1                   # 1: adjust temps based on surface elev changes; 0: no adjustment
   # Downscale precipitation to bins options
+  option_prec2bins: 1                             # 1: prec_factor and prec_grad to adjust precip from gcm to the glacier bins
   option_preclimit: 0                             # 1: limit the uppermost 25% using an expontial fxn
 
   # Accumulation model options
@@ -326,18 +328,26 @@ time:
   wateryear_month_start: 10                       # water year starting month
   winter_month_start: 10                          # first month of winter (for HMA winter is October 1 - April 30)
   summer_month_start: 5                           # first month of summer (for HMA summer is May 1 - Sept 30)
+  option_dates: 1                                 # 1: use dates from date table (first of each month), 2: dates from climate data
   timestep: monthly                               # time step ('monthly' only option at present)
 
 # ===== MODEL CONSTANTS =====
 constants:
   density_ice: 900                                # Density of ice [kg m-3] (or Gt / 1000 km3)
   density_water: 1000                             # Density of water [kg m-3]
+  area_ocean: 362.5e+12                           # Area of ocean [m2] (Cogley, 2012 from Marzeion et al. 2020)
   k_ice: 2.33                                     # Thermal conductivity of ice [J s-1 K-1 m-1] recall (W = J s-1)
   k_air: 0.023                                    # Thermal conductivity of air [J s-1 K-1 m-1] (Mellor, 1997)
+  #k_air: 0.001                                   # Thermal conductivity of air [J s-1 K-1 m-1]
   ch_ice: 1890000                                 # Volumetric heat capacity of ice [J K-1 m-3] (density=900, heat_capacity=2100 J K-1 kg-1)
   ch_air: 1297                                    # Volumetric Heat capacity of air [J K-1 m-3] (density=1.29, heat_capacity=1005 J K-1 kg-1)
   Lh_rf: 333550                                   # Latent heat of fusion [J kg-1]
   tolerance: 1.0e-12                              # Model tolerance (used to remove low values caused by rounding errors)
+  gravity: 9.81                                   # Gravity [m s-2]
+  pressure_std: 101325                            # Standard pressure [Pa]
+  temp_std: 288.15                                # Standard temperature [K]
+  R_gas: 8.3144598                                # Universal gas constant [J mol-1 K-1]
+  molarmass_air: 0.0289644                        # Molar mass of Earth's air [kg mol-1]
 
 # ===== DEBUGGING OPTIONS =====
 debug:

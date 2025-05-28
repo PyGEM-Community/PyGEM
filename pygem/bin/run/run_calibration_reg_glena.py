@@ -47,7 +47,7 @@ def getparser():
 
     Parameters
     ----------
-    ref_climate_name (optional) : str
+    ref_gcm_name (optional) : str
         reference gcm name
     rgi_glac_number_fn : str
         filename of .pkl file containing a list of glacier numbers which is used to run batches on the supercomputer
@@ -74,10 +74,10 @@ def getparser():
         nargs='+',
     )
     parser.add_argument(
-        '-ref_climate_name',
+        '-ref_gcm_name',
         action='store',
         type=str,
-        default=pygem_prms['climate']['ref_climate_name'],
+        default=pygem_prms['climate']['ref_gcm_name'],
         help='reference gcm name',
     )
     parser.add_argument(
@@ -334,16 +334,16 @@ def main():
 
         # ===== LOAD CLIMATE DATA =====
         # Climate class
-        sim_climate_name = args.ref_climate_name
-        assert sim_climate_name in ['ERA5', 'ERA-Interim'], (
-            'Error: Calibration not set up for ' + sim_climate_name
+        gcm_name = args.ref_gcm_name
+        assert gcm_name in ['ERA5', 'ERA-Interim'], (
+            'Error: Calibration not set up for ' + gcm_name
         )
-        gcm = class_climate.GCM(name=sim_climate_name)
+        gcm = class_climate.GCM(name=gcm_name)
         # Air temperature [degC]
         gcm_temp, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(
             gcm.temp_fn, gcm.temp_vn, main_glac_rgi_subset, dates_table
         )
-        if pygem_prms['mbmod']['option_ablation'] == 2 and sim_climate_name in ['ERA5']:
+        if pygem_prms['mbmod']['option_ablation'] == 2 and gcm_name in ['ERA5']:
             gcm_tempstd, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(
                 gcm.tempstd_fn, gcm.tempstd_vn, main_glac_rgi_subset, dates_table
             )
