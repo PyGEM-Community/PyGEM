@@ -60,7 +60,16 @@ html_theme = 'sphinx_book_theme'
 html_theme_options = {
     'repository_url': 'https://github.com/PyGEM-Community/PyGEM',
     'use_repository_button': True,
-    'show_nav_level': 1,
-    'navigation_depth': 4,
-    "toc_title": 'On this page',
+    'show_nav_level': 2,
+    'navigation_depth': 3,
+    'show_toc_level': 0,  # Optional, but harmless now
 }
+
+html_sidebars = {
+    "**": ["search-field.html", "sbt-sidebar-nav.html"]
+}
+
+html_static_path = ['_static']
+
+def setup(app):
+    app.add_css_file('custom.css')
