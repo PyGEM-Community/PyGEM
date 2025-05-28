@@ -273,7 +273,7 @@ Set glac_no will always overwrite the rgi regions, so if you want to use the rgi
 
 | Variable | Type | Comment/Note |
 | :--- | :--- | :--- |
-| `mb.option_surfacetype_initial` | `integer` | 1: median elevation (default), 2: mean elevation |
+| `mb.option_surfacetype_initial` | `integer` | `1`: median elevation (default), `2`: mean elevation |
 | `mb.include_firn` | `boolean` | `true`: firn included, `false`: firn is modeled as snow |
 | `mb.include_debris` | `boolean` | `true`: account for debris with melt factors, `false`: do not account for debris |
 | `mb.debris_relpath` | `string` | Path to debris dataset (relative to `root`) |
