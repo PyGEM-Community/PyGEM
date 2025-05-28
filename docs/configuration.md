@@ -92,8 +92,8 @@ Set glac_no will always overwrite the rgi regions, so if you want to use the rgi
 | Variable | Type | Comment/Note |
 | :--- | :--- | :--- |
 | `climate.ref_climate_name` | `string` | Historical reference climate dataset (e.g.`'ERA5'`) |
-| `climate.ref_startyear` | `integer` | Reference period start year (inclusive) |
-| `climate.ref_endyear` | `integer` | Reference period end year (inclusive) |
+| `climate.ref_startyear` | `integer` | Reference period start year (inclusive, default is `2000`) |
+| `climate.ref_endyear` | `integer` | Reference period end year (inclusive, default is `2019`) |
 | `climate.ref_wateryear` | `string` | Reference period year type (`'calendar'`, `'hydro'`, `'custom'`) |
 | `climate.sim_climate_name` | `string` | Climate dataset used for simulations (can be reference climate or GCM, e.g. `ERA5` or `CESM2`) |
 | `climate.sim_climate_scenario` | `null` or `string` | Climate emission scenario (e.g. `'ssp245', 'rcp65'`) |
@@ -246,7 +246,9 @@ Set glac_no will always overwrite the rgi regions, so if you want to use the rgi
 | `sim.out.export_binned_components` | `boolean` | Export mass balance components |
 
 ### Dynamics
-| `sim.oggm_dynamics.cfl_number` | `float` |  [seconds] |
+| Variable | Type | Comment/Note |
+| :--- | :--- | :--- |
+| `sim.oggm_dynamics.cfl_number` | `float` |  Time step threshold [seconds] |
 | `sim.oggm_dynamics.cfl_number_calving` | `float` | Time step threshold for marine-terimating glaciers [seconds] |
 | `sim.oggm_dynamics.use_reg_glena` | `boolean` | Use regionally averaged glen_a creep paremeter |
 | `sim.oggm_dynamics.glena_reg_relpath` | `string` | Path to comma-separated value file containing regionally averaged `glen_a` and `fs` parameter values (relative to `root`) |
