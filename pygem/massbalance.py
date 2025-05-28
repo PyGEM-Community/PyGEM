@@ -36,6 +36,7 @@ class PyGEMMassBalance(MassBalanceModel):
         modelprms,
         glacier_rgi_table,
         option_areaconstant=False,
+        hindcast=pygem_prms['climate']['hindcast'],
         frontalablation_k=None,
         debug=pygem_prms['debug']['mb'],
         debug_refreeze=pygem_prms['debug']['refreeze'],
@@ -62,6 +63,8 @@ class PyGEMMassBalance(MassBalanceModel):
             option to turn on print statements for development or debugging of code
         debug_refreeze : Boolean
             option to turn on print statements for development/debugging of refreezing code
+        hindcast : Boolean
+            switch to run the model in reverse or not (may be irrelevant after converting to OGGM's setup)
         """
         if debug:
             print('\n\nDEBUGGING MASS BALANCE FUNCTION\n\n')
@@ -102,6 +105,12 @@ class PyGEMMassBalance(MassBalanceModel):
         self.glacier_gcm_elev = gdir.historical_climate['elev']
         self.glacier_gcm_lrgcm = gdir.historical_climate['lr']
         self.glacier_gcm_lrglac = gdir.historical_climate['lr']
+
+        if pygem_prms['climate']['hindcast'] == True:
+            self.glacier_gcm_prec = self.glacier_gcm_prec[::-1]
+            self.glacier_gcm_temp = self.glacier_gcm_temp[::-1]
+            self.glacier_gcm_lrgcm = self.glacier_gcm_lrgcm[::-1]
+            self.glacier_gcm_lrglac = self.glacier_gcm_lrglac[::-1]
 
         self.repeat_period = repeat_period
 

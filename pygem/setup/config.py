@@ -158,6 +158,7 @@ class ConfigManager:
         'climate.gcm_wateryear': str,
         'climate.constantarea_years': int,
         'climate.gcm_spinupyears': int,
+        'climate.hindcast': bool,
         'climate.paths': dict,
         'climate.paths.era5_relpath': str,
         'climate.paths.era5_temp_fn': str,

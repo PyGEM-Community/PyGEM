@@ -642,6 +642,13 @@ def run(list_packed_vars):
             }
             gdir_ref.dates_table = dates_table_ref
 
+            # Add climate data to glacier directory
+            if pygem_prms['climate']['hindcast'] == True:
+                gcm_temp_adj = gcm_temp_adj[::-1]
+                gcm_tempstd = gcm_tempstd[::-1]
+                gcm_prec_adj = gcm_prec_adj[::-1]
+                gcm_lr = gcm_lr[::-1]
+
             gdir.historical_climate = {
                 'elev': gcm_elev_adj[glac],
                 'temp': gcm_temp_adj[glac, :],

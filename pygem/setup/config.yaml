@@ -65,6 +65,8 @@ climate:
   gcm_wateryear: calendar                         # options for years: 'calendar', 'hydro', 'custom'
   constantarea_years: 0                           # number of years to not let the area or volume change
   gcm_spinupyears: 0                              # spin up years for simulation (output not set up for spinup years at present)
+  # Hindcast option (flips array so 1960-2000 would run 2000-1960 ensuring that glacier area at 2000 is correct)
+  hindcast: false                                 # true: run hindcast simulation, false: do not
   # ===== CLIMATE DATA FILEPATHS AND FILENAMES =====
   paths:
     # ERA4 (default reference climate data)

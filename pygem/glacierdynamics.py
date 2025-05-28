@@ -622,6 +622,7 @@ class MassRedistributionCurveModel(FlowlineModel):
         glac_idx_initial,
         heights,
         debug=False,
+        hindcast=0,
         sec_in_year=365 * 24 * 3600,
     ):
         """
@@ -663,6 +664,10 @@ class MassRedistributionCurveModel(FlowlineModel):
         glacier_volumechange = (
             glac_bin_massbalclim_annual * sec_in_year * glacier_area_t0
         ).sum()
+
+        # For hindcast simulations, volume change is the opposite
+        if hindcast == 1:
+            glacier_volumechange = -1 * glacier_volumechange
 
         if debug:
             print('\nDebugging Mass Redistribution Huss function\n')
