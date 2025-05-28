@@ -68,37 +68,6 @@ def annualweightedmean_array(var, dates_table):
     return var_annual
 
 
-def haversine_dist(grid_lons, grid_lats, target_lons, target_lats):
-    """
-    Compute haversine distances between each (lon_target, lat_target)
-    and all (grid_lons, grid_lats) positions.
-
-    Parameters:
-    - grid_lons: (ncol,) array of longitudes from data
-    - grid_lats: (ncol,) array of latitudes from data
-    - target_lons: (n_targets,) array of target longitudes
-    - target_lats: (n_targets,) array of target latitudes
-
-    Returns:
-    - distances: (n_targets, ncol) array of distances in km to each grid location for each target
-    """
-    R = 6371.0  # Earth radius in kilometers
-
-    # Convert degrees to radians
-    grid_lons = np.radians(grid_lons)[np.newaxis, :]    # (1, ncol)
-    grid_lats = np.radians(grid_lats)[np.newaxis, :]
-    target_lons = np.radians(target_lons)[:, np.newaxis]  # (n_targets, 1)
-    target_lats = np.radians(target_lats)[:, np.newaxis]
-
-    dlon = grid_lons - target_lons
-    dlat = grid_lats - target_lats
-
-    a = np.sin(dlat / 2.0) ** 2 + np.cos(target_lats) * np.cos(grid_lats) * np.sin(dlon / 2.0) ** 2
-    c = 2 * np.arcsin(np.sqrt(a))
-
-    return R * c  # (n_targets, ncol)
-
-
 def append_json(file_path, new_key, new_value):
     """
     Opens a JSON file, reads its content, adds a new key-value pair,
