@@ -52,22 +52,20 @@ oggm:
 climate:
   # Reference period runs (reference period refers to the calibration period)
   #   This will typically vary between 1980-present
-  ref_climate_name: ERA5                              # reference climate dataset
+  ref_climate_name: ERA5                          # reference climate dataset
   ref_startyear: 2000                             # first year of model run (reference dataset)
   ref_endyear: 2019                               # last year of model run (reference dataset)
   ref_wateryear: calendar                         # options for years: 'calendar', 'hydro', 'custom'
-  ref_spinupyears: 0                              # spin up years
   # GCM period used for simulation run
-  sim_climate_name: ERA5                                  # simulation climate dataset
-  sim_climate_scenario: null                                  # simulation scenario
+  sim_climate_name: ERA5                          # simulation climate dataset
+  sim_climate_scenario: null                      # simulation scenario
   sim_startyear: 2000                             # first year of model run (simulation dataset)
   sim_endyear: 2019                               # last year of model run (simulation dataset)
   sim_wateryear: calendar                         # options for years: 'calendar', 'hydro', 'custom'
   constantarea_years: 0                           # number of years to not let the area or volume change
-  gcm_spinupyears: 0                              # spin up years for simulation (output not set up for spinup years at present)
   # ===== CLIMATE DATA FILEPATHS AND FILENAMES =====
   paths:
-    # ERA4 (default reference climate data)
+    # ERA5 (default reference climate data)
     era5_relpath: /climate_data/ERA5/
     era5_temp_fn: ERA5_temp_monthly.nc
     era5_tempstd_fn: ERA5_tempstd_monthly.nc
