@@ -358,9 +358,7 @@ def run(list_packed_vars):
     glac_no = list_packed_vars[1]
     sim_climate_name = list_packed_vars[2]
     realization = list_packed_vars[3]
-    if (sim_climate_name != args.ref_climate_name) and (
-        args.sim_climate_scenario is None
-    ):
+    if (sim_climate_name != args.ref_climate_name) and (args.sim_climate_scenario is None):
         sim_climate_scenario = os.path.basename(args.gcm_list_fn).split('_')[1]
     else:
         sim_climate_scenario = args.sim_climate_scenario
@@ -411,14 +409,10 @@ def run(list_packed_vars):
     else:
         # GCM object
         if realization is None:
-            gcm = class_climate.GCM(
-                name=sim_climate_name, sim_climate_scenario=sim_climate_scenario
-            )
+            gcm = class_climate.GCM(name=sim_climate_name, sim_climate_scenario=sim_climate_scenario)
         else:
             gcm = class_climate.GCM(
-                name=sim_climate_name,
-                sim_climate_scenario=sim_climate_scenario,
-                realization=realization,
+                name=sim_climate_name, sim_climate_scenario=sim_climate_scenario, realization=realization
             )
         # Reference GCM
         ref_gcm = class_climate.GCM(name=args.ref_climate_name)
@@ -1169,11 +1163,7 @@ def run(list_packed_vars):
                                     + sim_climate_name
                                     + '/'
                                 )
-                                if sim_climate_name not in [
-                                    'ERA-Interim',
-                                    'ERA5',
-                                    'COAWST',
-                                ]:
+                                if sim_climate_name not in ['ERA-Interim', 'ERA5', 'COAWST']:
                                     fail_domain_fp += sim_climate_scenario + '/'
                                 if not os.path.exists(fail_domain_fp):
                                     os.makedirs(fail_domain_fp, exist_ok=True)
@@ -1380,11 +1370,7 @@ def run(list_packed_vars):
                                     + sim_climate_name
                                     + '/'
                                 )
-                                if sim_climate_name not in [
-                                    'ERA-Interim',
-                                    'ERA5',
-                                    'COAWST',
-                                ]:
+                                if sim_climate_name not in ['ERA-Interim', 'ERA5', 'COAWST']:
                                     fail_domain_fp += sim_climate_scenario + '/'
                                 if not os.path.exists(fail_domain_fp):
                                     os.makedirs(fail_domain_fp, exist_ok=True)
@@ -2369,14 +2355,10 @@ def main():
         if realizations is not None:
             for realization in realizations:
                 for count, glac_no_lst in enumerate(glac_no_lsts):
-                    list_packed_vars.append(
-                        [count, glac_no_lst, sim_climate_name, realization]
-                    )
+                    list_packed_vars.append([count, glac_no_lst, sim_climate_name, realization])
         else:
             for count, glac_no_lst in enumerate(glac_no_lsts):
-                list_packed_vars.append(
-                    [count, glac_no_lst, sim_climate_name, realizations]
-                )
+                list_packed_vars.append([count, glac_no_lst, sim_climate_name, realizations])
 
         print('Processing with ' + str(num_cores) + ' cores...')
         # Parallel processing
