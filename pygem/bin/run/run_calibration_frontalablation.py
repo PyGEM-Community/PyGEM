@@ -126,8 +126,6 @@ def reg_calving_flux(
     dates_table = modelsetup.datesmodelrun(
         startyear=args.ref_startyear,
         endyear=args.ref_endyear,
-        spinupyears=pygem_prms['climate']['ref_spinupyears'],
-        option_wateryear=pygem_prms['climate']['ref_wateryear'],
     )
 
     # ===== LOAD CLIMATE DATA =====

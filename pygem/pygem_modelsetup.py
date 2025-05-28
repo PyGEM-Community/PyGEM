@@ -28,7 +28,7 @@ pygem_prms = config_manager.read_config()
 def datesmodelrun(
     startyear=pygem_prms['climate']['ref_startyear'],
     endyear=pygem_prms['climate']['ref_endyear'],
-    spinupyears=pygem_prms['climate']['ref_spinupyears'],
+    spinupyears=0,
     option_wateryear=pygem_prms['climate']['ref_wateryear'],
 ):
     """
