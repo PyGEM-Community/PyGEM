@@ -1,8 +1,6 @@
 (install_pygem_target)=
 # Installation
-PyGEM has been tested successfully on Linux and macOS systems. For Windows users (Windows 10/11), we recommend installing the [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl) (WSL), and then installing and running PyGEM from there.
-
-PyGEM has been packaged using [Poetry](https://python-poetry.org/) and is hosted on the Python Package Index ([PyPI](https://pypi.org/project/pygem/)), to ensure that all dependencies install seamlessly. It is recommended that users create a [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/index.html) environment from which to install the model dependencies and core code. If you do not yet have conda installed, see [conda's documentation](https://docs.conda.io/projects/conda/en/latest/user-guide/install) for instructions.
+The Python Glacier Evolution Model has been packaged using Poetry and is hosted on the Python Package Index ([PyPI](https://pypi.org/project/pygem/)), to ensure that all dependencies install seamlessly. It is recommended that users create a [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/index.html) environment from which to install the model dependencies and core code. If you do not yet have conda installed, see [conda's documentation](https://docs.conda.io/projects/conda/en/latest/user-guide/install) for instructions.
 
 Next, choose your preferred PyGEM installation option:<br>
 - [**stable**](stable_install_target): this is the latest version that has been officially released to PyPI, with a fixed version number (e.g. v1.0.1). It is intended for general use.
