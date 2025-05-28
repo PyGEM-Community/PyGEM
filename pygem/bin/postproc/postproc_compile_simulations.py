@@ -942,21 +942,23 @@ def run(args):
         )
 
     ### MERGE BATCHES FOR ANNUAL VARS ###
-    for var in vars:
-        if '_annual_' in var:
-            var_fp = f'{comppath}glacier_stats/{var}/{str(reg).zfill(2)}/'
+    vns = ['glac_mass_annual', 'glac_area_annual']
+
+    for vn in vns:
+        if vn in vars:
+            vn_fp = f'{comppath}glacier_stats/{vn}/{str(reg).zfill(2)}/'
 
             fp_merge_list_start = []
 
             if realizations[0]:
                 fp_merge_list = glob.glob(
-                    f'{var_fp}/R{str(reg).zfill(2)}_{var}_{gcms[0]}_{scenario}_Batch-*_{calibration}_ba{bias_adj}_{nsets}_{gcm_startyear}_{gcm_endyear}_all.nc'.replace(
+                    f'{vn_fp}/R{str(reg).zfill(2)}_{vn}_{gcms[0]}_{scenario}_Batch-*_{calibration}_ba{bias_adj}_{nsets}_{gcm_startyear}_{gcm_endyear}_all.nc'.replace(
                         '__', '_'
                     )
                 )
             else:
                 fp_merge_list = glob.glob(
-                    f'{var_fp}/R{str(reg).zfill(2)}_{var}_{scenario}_Batch-*_{calibration}_ba{bias_adj}_{nsets}_{gcm_startyear}_{gcm_endyear}_all.nc'.replace(
+                    f'{vn_fp}/R{str(reg).zfill(2)}_{vn}_{scenario}_Batch-*_{calibration}_ba{bias_adj}_{nsets}_{gcm_startyear}_{gcm_endyear}_all.nc'.replace(
                         '__', '_'
                     )
                 )
