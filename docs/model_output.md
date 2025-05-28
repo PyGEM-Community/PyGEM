@@ -1,8 +1,6 @@
 (model_output_overview_target)=
 # Model Output 
-The model outputs a variety of data including monthly mass balance and its components (accumulation, melt, refreezing, frontal ablation, glacier runoff), and annual mass, mass below sea level, and area. Results are written as a netcdf file (.nc) for each glacier. If multiple simulations are performed (e.g., for Monte Carlo simulations), then statistics related to the median and median absolute deviation are output for each parameter. 
-
-In addition to this standard glacier-wide output, binned outputs are also available (by setting `sim["out"]["export_binned_data"]` to `true` in the [PyGEM configuration file](contributing_pygem_target)), which include each bins initial surface elevation, annual area, annual mass, annual thickness, annual climatic mass balance, and monthly climatic mass balance. Monthly climatic mass balance components can also be stored by setting `sim["out"]["export_binned_components"]` to `true`.
+The model outputs a variety of data including monthly mass balance and its components (accumulation, melt, refreezing, frontal ablation, glacier runoff), and annual mass, mass below sea level, and area. Results are written as a netcdf file (.nc) for each glacier. If multiple simulations are performed (e.g., for Monte Carlo simulations), then statistics related to the median and median absolute deviation are output for each parameter. In addition to this standard glacier-wide output, binned output is also available, which include the bins surface elevation, volume, thickness, and climatic mass balance annually.
 
 ## Post-processing Data
 PyGEM simulations are output for each glacier individually. For most analyses, it is useful to aggregate or merge analyses to a regional or global scale. PyGEM's *postproc.compile_simulations.py* is designed to do just so.
