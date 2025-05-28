@@ -110,41 +110,34 @@ def run(args):
 
     ############################################################
     ### get time values - should be the same across all sims ###
-    ### also ensure that specified GCM/scenario pair was run ###
     ############################################################
-    for gcm in gcms:
-        gcm_path = os.path.join(base_dir, gcm)
-        if not os.path.exists(gcm_path):
-            print(f'{gcm} not found, skipping')
-            gcms.remove(gcm)
-
-        if scenario:
-            scenario_path = os.path.join(gcm_path, scenario)
-            if not os.path.exists(scenario_path):
-                print(f'{scenario} not found for {gcm}, skipping')
+    if scenario:
+        # ensure scenario has been run for each gcm
+        for gcm in gcms:
+            if scenario not in os.listdir(base_dir + '/' + gcm):
+                # remove the gcm from our gcm list if the desired scenario is not contained
                 gcms.remove(gcm)
-            # get first file
-            fp = glob.glob(
-                base_dir
-                + gcm
-                + '/'
-                + scenario
-                + '/stats/'
-                + f'*{gcm}_{scenario}_{realizations[0]}_{calibration}_ba{bias_adj}_*_{gcm_startyear}_{gcm_endyear}_all.nc'.replace(
-                    '__', '_'
-                )
-            )[0]
-        else:
-            fp = glob.glob(
-                base_dir
-                + gcm
-                + '/stats/'
-                + f'*{gcm}_{calibration}_ba{bias_adj}_*_{gcm_startyear}_{gcm_endyear}_all.nc'
-            )[0]
-    # get number of sets from file name
-    nsets = fp.split('/')[-1].split('_')[-4]
-    # open dataset and read time/year values
-    ds_glac = xr.open_dataset(fp)
+                print(f'scenario {scenario} not found for {gcm}, skipping')
+        fn = glob.glob(
+            base_dir
+            + gcm
+            + '/'
+            + scenario
+            + '/stats/'
+            + f'*{gcm}_{scenario}_{realizations[0]}_{calibration}_ba{bias_adj}_*_{gcm_startyear}_{gcm_endyear}_all.nc'.replace(
+                '__', '_'
+            )
+        )[0]
+    else:
+        fn = glob.glob(
+            base_dir
+            + gcm
+            + '/stats/'
+            + f'*{gcm}_{calibration}_ba{bias_adj}_*_{gcm_startyear}_{gcm_endyear}_all.nc'
+        )[0]
+    nsets = fn.split('/')[-1].split('_')[-4]
+
+    ds_glac = xr.open_dataset(fn)
     year_values = ds_glac.year.values
     time_values = ds_glac.time.values
     # check if desired vars are in ds
@@ -162,12 +155,16 @@ def run(args):
     ### LEVEL I ###
     # loop through glacier batches of 1000
     for nbatch, glacno_list in enumerate(glacno_list_batches):
+        print(f'Batch {nbatch}:')
+
         # batch start timer
         loop_start = time.time()
 
         # get batch start and end numbers
         batch_start = glacno_list[0].split('.')[1]
         batch_end = glacno_list[-1].split('.')[1]
+
+        print(nbatch, batch_start, batch_end)
 
         # get all glacier info for glaciers in batch
         main_glac_rgi_batch = main_glac_rgi_all.loc[
@@ -203,7 +200,7 @@ def run(args):
                     sim_dir
                     + f'*{gcm}_{scenario}_{realization}_{calibration}_ba{bias_adj}_{nsets}_{gcm_startyear}_{gcm_endyear}_all.nc'.replace(
                         '__', '_'
-                    ).replace('__', '_')
+                    )
                 )
 
                 # during 0th batch, print the regional stats of glaciers and area successfully simulated for all regional glaciers for given gcm scenario
@@ -241,7 +238,7 @@ def run(args):
                 # annual vars
                 reg_glac_gcm_area_annual = None
                 reg_glac_gcm_mass_annual = None
-                reg_glac_gcm_ELA_annual = None
+                reg_glac_gcm_ela_annual = None
                 reg_glac_gcm_mass_bsl_annual = None
 
                 ### LEVEL IV ###
@@ -249,13 +246,13 @@ def run(args):
                 for i, glacno in enumerate(glacno_list):
                     # get glacier string and file name
                     glacier_str = '{0:0.5f}'.format(float(glacno))
-                    glacno_fp = f'{sim_dir}/{glacier_str}_{gcm}_{scenario}_{realization}_{calibration}_ba{bias_adj}_{nsets}_{gcm_startyear}_{gcm_endyear}_all.nc'.replace(
+                    glacno_fn = f'{sim_dir}/{glacier_str}_{gcm}_{scenario}_{realization}_{calibration}_ba{bias_adj}_{nsets}_{gcm_startyear}_{gcm_endyear}_all.nc'.replace(
                         '__', '_'
-                    ).replace('__', '_')
+                    )
                     # try to load all glaciers in region
                     try:
                         # open netcdf file
-                        ds_glac = xr.open_dataset(glacno_fp)
+                        ds_glac = xr.open_dataset(glacno_fn)
                         # get monthly vars
                         glac_runoff_monthly = ds_glac.glac_runoff_monthly.values
                         offglac_runoff_monthly = ds_glac.offglac_runoff_monthly.values
@@ -293,7 +290,7 @@ def run(args):
                         # get annual vars
                         glac_area_annual = ds_glac.glac_area_annual.values
                         glac_mass_annual = ds_glac.glac_mass_annual.values
-                        glac_ELA_annual = ds_glac.glac_ELA_annual.values
+                        glac_ela_annual = ds_glac.glac_ELA_annual.values
                         glac_mass_bsl_annual = ds_glac.glac_mass_bsl_annual.values
 
                     # if glacier output DNE in sim output file, create empty nan arrays to keep record of missing glaciers
@@ -316,7 +313,7 @@ def run(args):
                         # annual vars
                         glac_area_annual = np.full((1, year_values.shape[0]), np.nan)
                         glac_mass_annual = np.full((1, year_values.shape[0]), np.nan)
-                        glac_ELA_annual = np.full((1, year_values.shape[0]), np.nan)
+                        glac_ela_annual = np.full((1, year_values.shape[0]), np.nan)
                         glac_mass_bsl_annual = np.full(
                             (1, year_values.shape[0]), np.nan
                         )
@@ -339,7 +336,7 @@ def run(args):
                         # annual vars
                         reg_glac_gcm_area_annual = glac_area_annual
                         reg_glac_gcm_mass_annual = glac_mass_annual
-                        reg_glac_gcm_ELA_annual = glac_ELA_annual
+                        reg_glac_gcm_ela_annual = glac_ela_annual
                         reg_glac_gcm_mass_bsl_annual = glac_mass_bsl_annual
                     # otherwise concatenate existing arrays
                     else:
@@ -392,8 +389,8 @@ def run(args):
                         reg_glac_gcm_mass_annual = np.concatenate(
                             (reg_glac_gcm_mass_annual, glac_mass_annual), axis=0
                         )
-                        reg_glac_gcm_ELA_annual = np.concatenate(
-                            (reg_glac_gcm_ELA_annual, glac_ELA_annual), axis=0
+                        reg_glac_gcm_ela_annual = np.concatenate(
+                            (reg_glac_gcm_ela_annual, glac_ela_annual), axis=0
                         )
                         reg_glac_gcm_mass_bsl_annual = np.concatenate(
                             (reg_glac_gcm_mass_bsl_annual, glac_mass_bsl_annual), axis=0
@@ -439,7 +436,7 @@ def run(args):
                     reg_glac_allgcms_mass_annual = reg_glac_gcm_mass_annual[
                         np.newaxis, :, :
                     ]
-                    reg_glac_allgcms_ELA_annual = reg_glac_gcm_ELA_annual[
+                    reg_glac_allgcms_ela_annual = reg_glac_gcm_ela_annual[
                         np.newaxis, :, :
                     ]
                     reg_glac_allgcms_mass_bsl_annual = reg_glac_gcm_mass_bsl_annual[
@@ -532,10 +529,10 @@ def run(args):
                         ),
                         axis=0,
                     )
-                    reg_glac_allgcms_ELA_annual = np.concatenate(
+                    reg_glac_allgcms_ela_annual = np.concatenate(
                         (
-                            reg_glac_allgcms_ELA_annual,
-                            reg_glac_gcm_ELA_annual[np.newaxis, :, :],
+                            reg_glac_allgcms_ela_annual,
+                            reg_glac_gcm_ela_annual[np.newaxis, :, :],
                         ),
                         axis=0,
                     )
@@ -835,25 +832,25 @@ def run(args):
                 )
                 ds.glac_mass_annual.attrs['grid_mapping'] = 'crs'
 
-            # glac_ELA_annual
-            elif var == 'glac_ELA_annual':
+            # glac_ela_annual
+            elif var == 'glac_ela_annual':
                 ds = xr.Dataset(
                     data_vars=dict(
-                        glac_ELA_annual=(coord_order, reg_glac_allgcms_ELA_annual),
+                        glac_ela_annual=(coord_order, reg_glac_allgcms_ela_annual),
                         crs=np.nan,
                     ),
                     coords=coords_dict,
                     attrs=attrs_dict,
                 )
-                ds.glac_ELA_annual.attrs['long_name'] = (
+                ds.glac_ela_annual.attrs['long_name'] = (
                     'annual equilibrium line altitude above mean sea level'
                 )
-                ds.glac_ELA_annual.attrs['units'] = 'm'
-                ds.glac_ELA_annual.attrs['temporal_resolution'] = 'annual'
-                ds.glac_ELA_annual.attrs['comment'] = (
+                ds.glac_ela_annual.attrs['units'] = 'm'
+                ds.glac_ela_annual.attrs['temporal_resolution'] = 'annual'
+                ds.glac_ela_annual.attrs['comment'] = (
                     'equilibrium line altitude is the elevation where the climatic mass balance is zero'
                 )
-                ds.glac_ELA_annual.attrs['grid_mapping'] = 'crs'
+                ds.glac_ela_annual.attrs['grid_mapping'] = 'crs'
 
             # glac_mass_bsl_annual
             elif var == 'glac_mass_bsl_annual':
@@ -932,14 +929,12 @@ def run(args):
             else:
                 ds_fn = f'R{str(reg).zfill(2)}_{var}_{scenario}_Batch-{str(batch_start)}-{str(batch_end)}_{calibration}_ba{bias_adj}_{nsets}_{gcm_startyear}_{gcm_endyear}_all.nc'.replace(
                     '__', '_'
-                ).replace('__', '_')
+                )
 
             ds.to_netcdf(vn_fp + ds_fn)
 
         loop_end = time.time()
-        print(
-            f'Batch {nbatch} ([{str(reg).zfill(2)}.{batch_start}:{str(reg).zfill(2)}.{batch_end}]) runtime:\t{np.round(loop_end - loop_start, 2)} seconds'
-        )
+        print(f'Batch {nbatch} runtime:\t{np.round(loop_end - loop_start, 2)} seconds')
 
     ### MERGE BATCHES FOR ANNUAL VARS ###
     vns = ['glac_mass_annual', 'glac_area_annual']
@@ -948,46 +943,46 @@ def run(args):
         if vn in vars:
             vn_fp = f'{comppath}glacier_stats/{vn}/{str(reg).zfill(2)}/'
 
-            fp_merge_list_start = []
+            fn_merge_list_start = []
 
             if realizations[0]:
-                fp_merge_list = glob.glob(
+                fn_merge_list = glob.glob(
                     f'{vn_fp}/R{str(reg).zfill(2)}_{vn}_{gcms[0]}_{scenario}_Batch-*_{calibration}_ba{bias_adj}_{nsets}_{gcm_startyear}_{gcm_endyear}_all.nc'.replace(
                         '__', '_'
                     )
                 )
             else:
-                fp_merge_list = glob.glob(
+                fn_merge_list = glob.glob(
                     f'{vn_fp}/R{str(reg).zfill(2)}_{vn}_{scenario}_Batch-*_{calibration}_ba{bias_adj}_{nsets}_{gcm_startyear}_{gcm_endyear}_all.nc'.replace(
                         '__', '_'
                     )
                 )
-            fp_merge_list_start = [int(f.split('-')[-2]) for f in fp_merge_list]
+            fn_merge_list_start = [int(f.split('-')[-2]) for f in fn_merge_list]
 
-            if len(fp_merge_list) > 0:
-                fp_merge_list = [
-                    x for _, x in sorted(zip(fp_merge_list_start, fp_merge_list))
+            if len(fn_merge_list) > 0:
+                fn_merge_list = [
+                    x for _, x in sorted(zip(fn_merge_list_start, fn_merge_list))
                 ]
 
                 ds = None
-                for fp in fp_merge_list:
-                    ds_batch = xr.open_dataset(fp)
+                for fn in fn_merge_list:
+                    ds_batch = xr.open_dataset(fn)
 
                     if ds is None:
                         ds = ds_batch
                     else:
                         ds = xr.concat([ds, ds_batch], dim='glacier')
                 # save
-                ds_fp = (
-                    fp.split('Batch')[0][:-1]
+                ds_fn = (
+                    fn.split('Batch')[0][:-1]
                     + f'_{calibration}_ba{bias_adj}_{nsets}_{gcm_startyear}_{gcm_endyear}_all.nc'
                 )
-                ds.to_netcdf(ds_fp)
+                ds.to_netcdf(ds_fn)
 
                 ds_batch.close()
 
-                for fp in fp_merge_list:
-                    os.remove(fp)
+                for fn in fn_merge_list:
+                    os.remove(fn)
 
 
 def main():
@@ -1082,7 +1077,7 @@ def main():
             'glac_mass_monthly',
             'glac_mass_annual',
             'glac_area_annual',
-            'glac_ELA_annual',
+            'glac_ela_annual',
             'glac_mass_bsl_annual',
         ],
         nargs='+',
@@ -1132,8 +1127,6 @@ def main():
             raise ValueError(
                 f'Must specify a scenario for future GCM runs\nGCMs: {gcms}\nscenarios: {scenarios}'
             )
-        # no bias adjustment if not a future GCM - ensure bias_adj == 0
-        bias_adj = 0
 
     if realizations is None:
         realizations = ['']
@@ -1159,7 +1152,7 @@ def main():
             'glac_mass_monthly',
             'glac_mass_annual',
             'glac_area_annual',
-            'glac_ELA_annual',
+            'glac_ela_annual',
             'glac_mass_bsl_annual',
         ]
 
