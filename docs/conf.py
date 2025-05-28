@@ -56,20 +56,11 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 
 html_theme = 'sphinx_book_theme'
+html_static_path = ['_static']
 
 html_theme_options = {
     'repository_url': 'https://github.com/PyGEM-Community/PyGEM',
     'use_repository_button': True,
     'show_nav_level': 2,
     'navigation_depth': 3,
-    'show_toc_level': 0,  # Optional, but harmless now
 }
-
-html_sidebars = {
-    "**": ["search-field.html", "sbt-sidebar-nav.html"]
-}
-
-html_static_path = ['_static']
-
-def setup(app):
-    app.add_css_file('custom.css')

@@ -13,3 +13,13 @@ run_calibration_overview
 run_calibration_reg_glena_overview
 run_simulation_overview
 ```
+
+
+```{toctree}
+---
+caption: Other:
+maxdepth: 1
+---
+
+config.yaml <configuration>
+```
