@@ -378,6 +378,7 @@ def run(list_packed_vars):
     dates_table_ref = modelsetup.datesmodelrun(
         startyear=args.ref_startyear,
         endyear=ref_endyear,
+        spinupyears=pygem_prms['climate']['ref_spinupyears'],
         option_wateryear=pygem_prms['climate']['ref_wateryear'],
     )
 
@@ -385,6 +386,7 @@ def run(list_packed_vars):
     dates_table_full = modelsetup.datesmodelrun(
         startyear=min([args.ref_startyear, args.sim_startyear]),
         endyear=args.sim_endyear,
+        spinupyears=pygem_prms['climate']['gcm_spinupyears'],
         option_wateryear=pygem_prms['climate']['sim_wateryear'],
     )
 
@@ -392,6 +394,7 @@ def run(list_packed_vars):
     dates_table = modelsetup.datesmodelrun(
         startyear=args.sim_startyear,
         endyear=args.sim_endyear,
+        spinupyears=pygem_prms['climate']['gcm_spinupyears'],
         option_wateryear=pygem_prms['climate']['sim_wateryear'],
     )
 
@@ -470,6 +473,8 @@ def run(list_packed_vars):
                 dates_table_full,
                 args.sim_startyear,
                 args.ref_startyear,
+                ref_spinupyears=pygem_prms['climate']['ref_spinupyears'],
+                gcm_spinupyears=pygem_prms['climate']['gcm_spinupyears'],
             )
             # Precipitation bias correction
             gcm_prec_adj, gcm_elev_adj = gcmbiasadj.prec_biasadj_opt1(
@@ -480,6 +485,8 @@ def run(list_packed_vars):
                 dates_table_full,
                 args.sim_startyear,
                 args.ref_startyear,
+                ref_spinupyears=pygem_prms['climate']['ref_spinupyears'],
+                gcm_spinupyears=pygem_prms['climate']['gcm_spinupyears'],
             )
         # OPTION 2: Adjust temp and prec using Huss and Hock (2015)
         elif args.option_bias_adjustment == 2:
@@ -492,6 +499,8 @@ def run(list_packed_vars):
                 dates_table_full,
                 args.sim_startyear,
                 args.ref_startyear,
+                ref_spinupyears=pygem_prms['climate']['ref_spinupyears'],
+                gcm_spinupyears=pygem_prms['climate']['gcm_spinupyears'],
             )
             # Precipitation bias correction
             gcm_prec_adj, gcm_elev_adj = gcmbiasadj.prec_biasadj_HH2015(
@@ -500,6 +509,8 @@ def run(list_packed_vars):
                 gcm_prec,
                 dates_table_ref,
                 dates_table_full,
+                ref_spinupyears=pygem_prms['climate']['ref_spinupyears'],
+                gcm_spinupyears=pygem_prms['climate']['gcm_spinupyears'],
             )
         # OPTION 3: Adjust temp and prec using quantile delta mapping, Cannon et al. (2015)
         elif args.option_bias_adjustment == 3:
@@ -512,6 +523,8 @@ def run(list_packed_vars):
                 dates_table_full,
                 args.sim_startyear,
                 args.ref_startyear,
+                ref_spinupyears=pygem_prms['climate']['ref_spinupyears'],
+                gcm_spinupyears=pygem_prms['climate']['gcm_spinupyears'],
             )
 
             # Precipitation bias correction
@@ -523,6 +536,8 @@ def run(list_packed_vars):
                 dates_table_full,
                 args.sim_startyear,
                 args.ref_startyear,
+                ref_spinupyears=pygem_prms['climate']['ref_spinupyears'],
+                gcm_spinupyears=pygem_prms['climate']['gcm_spinupyears'],
             )
 
     # assert that the gcm_elev_adj is not None
@@ -857,7 +872,9 @@ def run(list_packed_vars):
                         0 : int(dates_table.shape[0] / 12)
                     ]
                 # append additional year to year_values to account for mass and area at end of period
-                year_values = annual_columns
+                year_values = annual_columns[
+                    pygem_prms['climate']['gcm_spinupyears'] : annual_columns.shape[0]
+                ]
                 year_values = np.concatenate(
                     (year_values, np.array([annual_columns[-1] + 1]))
                 )
@@ -1184,6 +1201,9 @@ def run(list_packed_vars):
                                     fs=fs,
                                     is_tidewater=gdir.is_tidewater,
                                     water_level=water_level,
+                                    spinupyears=pygem_prms['climate'][
+                                        'ref_spinupyears'
+                                    ],
                                 )
                                 _, diag = ev_model.run_until_and_store(nyears)
                                 ev_model.mb_model.glac_wide_volume_annual = (
