@@ -175,20 +175,9 @@ def run(args):
         ]
 
         # instantiate variables that will hold all concatenated data for GCMs/realizations
-        # monthly vars
-        reg_glac_allgcms_runoff_monthly = None
-        reg_offglac_allgcms_runoff_monthly = None
-        reg_glac_allgcms_acc_monthly = None
-        reg_glac_allgcms_melt_monthly = None
-        reg_glac_allgcms_refreeze_monthly = None
-        reg_glac_allgcms_frontalablation_monthly = None
-        reg_glac_allgcms_massbaltotal_monthly = None
-        reg_glac_allgcms_prec_monthly = None
-        reg_glac_allgcms_mass_monthly = None
-
-        # annual vars
-        reg_glac_allgcms_area_annual = None
-        reg_glac_allgcms_mass_annual = None
+        reg_all_gcms_data = {}
+        for var in vars:
+            reg_all_gcms_data[var] = []
 
         ### LEVEL II ###
         # for each batch, loop through GCM(s) and realization(s)
@@ -226,23 +215,9 @@ def run(args):
                     )
 
                 # instantiate variables that will hold concatenated data for the current GCM
-                # monthly vars
-                reg_glac_gcm_runoff_monthly = None
-                reg_offglac_gcm_runoff_monthly = None
-                reg_glac_gcm_acc_monthly = None
-                reg_glac_gcm_melt_monthly = None
-                reg_glac_gcm_refreeze_monthly = None
-                reg_glac_gcm_frontalablation_monthly = None
-                reg_glac_gcm_snowline_monthly = None
-                reg_glac_gcm_massbaltotal_monthly = None
-                reg_glac_gcm_prec_monthly = None
-                reg_glac_gcm_mass_monthly = None
-
-                # annual vars
-                reg_glac_gcm_area_annual = None
-                reg_glac_gcm_mass_annual = None
-                reg_glac_gcm_ELA_annual = None
-                reg_glac_gcm_mass_bsl_annual = None
+                reg_gcm_data = {}
+                for var in vars:
+                    reg_gcm_data[var] = []
 
                 ### LEVEL IV ###
                 # loop through each glacier in batch list
@@ -255,297 +230,34 @@ def run(args):
                     # try to load all glaciers in region
                     try:
                         # open netcdf file
-                        ds_glac = xr.open_dataset(glacno_fp)
-                        # get monthly vars
-                        glac_runoff_monthly = ds_glac.glac_runoff_monthly.values
-                        offglac_runoff_monthly = ds_glac.offglac_runoff_monthly.values
-                        # try extra vars
-                        try:
-                            glac_acc_monthly = ds_glac.glac_acc_monthly.values
-                            glac_melt_monthly = ds_glac.glac_melt_monthly.values
-                            glac_refreeze_monthly = ds_glac.glac_refreeze_monthly.values
-                            glac_frontalablation_monthly = (
-                                ds_glac.glac_frontalablation_monthly.values
-                            )
-                            glac_snowline_monthly = ds_glac.glac_snowline_monthly.values
-                            glac_massbaltotal_monthly = (
-                                ds_glac.glac_massbaltotal_monthly.values
-                            )
-                            glac_prec_monthly = ds_glac.glac_prec_monthly.values
-                            glac_mass_monthly = ds_glac.glac_mass_monthly.values
-                        except:
-                            glac_acc_monthly = np.full((1, len(time_values)), np.nan)
-                            glac_melt_monthly = np.full((1, len(time_values)), np.nan)
-                            glac_refreeze_monthly = np.full(
-                                (1, len(time_values)), np.nan
-                            )
-                            glac_frontalablation_monthly = np.full(
-                                (1, len(time_values)), np.nan
-                            )
-                            glac_snowline_monthly = np.full(
-                                (1, len(time_values)), np.nan
-                            )
-                            glac_massbaltotal_monthly = np.full(
-                                (1, len(time_values)), np.nan
-                            )
-                            glac_prec_monthly = np.full((1, len(time_values)), np.nan)
-                            glac_mass_monthly = np.full((1, len(time_values)), np.nan)
-                        # get annual vars
-                        glac_area_annual = ds_glac.glac_area_annual.values
-                        glac_mass_annual = ds_glac.glac_mass_annual.values
-                        glac_ELA_annual = ds_glac.glac_ELA_annual.values
-                        glac_mass_bsl_annual = ds_glac.glac_mass_bsl_annual.values
+                        with xr.open_dataset(glacno_fp) as ds_glac:
+                            for var in vars:
+                                try:
+                                    arr = getattr(ds_glac, var).values
+                                except AttributeError:
+                                    if 'monthly' in var:
+                                        arr = np.full((1, len(time_values)), np.nan)
+                                    elif 'annual' in var:
+                                        arr = np.full((1, year_values.shape[0]), np.nan)
+                                reg_gcm_data[var].append(arr)
 
                     # if glacier output DNE in sim output file, create empty nan arrays to keep record of missing glaciers
                     except:
-                        # monthly vars
-                        glac_runoff_monthly = np.full((1, len(time_values)), np.nan)
-                        offglac_runoff_monthly = np.full((1, len(time_values)), np.nan)
-                        glac_acc_monthly = np.full((1, len(time_values)), np.nan)
-                        glac_melt_monthly = np.full((1, len(time_values)), np.nan)
-                        glac_refreeze_monthly = np.full((1, len(time_values)), np.nan)
-                        glac_frontalablation_monthly = np.full(
-                            (1, len(time_values)), np.nan
-                        )
-                        glac_snowline_monthly = np.full((1, len(time_values)), np.nan)
-                        glac_massbaltotal_monthly = np.full(
-                            (1, len(time_values)), np.nan
-                        )
-                        glac_prec_monthly = np.full((1, len(time_values)), np.nan)
-                        glac_mass_monthly = np.full((1, len(time_values)), np.nan)
-                        # annual vars
-                        glac_area_annual = np.full((1, year_values.shape[0]), np.nan)
-                        glac_mass_annual = np.full((1, year_values.shape[0]), np.nan)
-                        glac_ELA_annual = np.full((1, year_values.shape[0]), np.nan)
-                        glac_mass_bsl_annual = np.full(
-                            (1, year_values.shape[0]), np.nan
-                        )
+                        for var in vars:
+                            if 'monthly' in var:
+                                arr = np.full((1, len(time_values)), np.nan)
+                            elif 'annual' in var:
+                                arr = np.full((1, year_values.shape[0]), np.nan)
+                            reg_gcm_data[var].append(arr)
 
-                    # append each glacier output to master regional set of arrays
-                    if reg_glac_gcm_mass_annual is None:
-                        # monthly vars
-                        reg_glac_gcm_runoff_monthly = glac_runoff_monthly
-                        reg_offglac_gcm_runoff_monthly = offglac_runoff_monthly
-                        reg_glac_gcm_acc_monthly = glac_acc_monthly
-                        reg_glac_gcm_melt_monthly = glac_melt_monthly
-                        reg_glac_gcm_refreeze_monthly = glac_refreeze_monthly
-                        reg_glac_gcm_frontalablation_monthly = (
-                            glac_frontalablation_monthly
-                        )
-                        reg_glac_gcm_snowline_monthly = glac_snowline_monthly
-                        reg_glac_gcm_massbaltotal_monthly = glac_massbaltotal_monthly
-                        reg_glac_gcm_prec_monthly = glac_prec_monthly
-                        reg_glac_gcm_mass_monthly = glac_mass_monthly
-                        # annual vars
-                        reg_glac_gcm_area_annual = glac_area_annual
-                        reg_glac_gcm_mass_annual = glac_mass_annual
-                        reg_glac_gcm_ELA_annual = glac_ELA_annual
-                        reg_glac_gcm_mass_bsl_annual = glac_mass_bsl_annual
-                    # otherwise concatenate existing arrays
-                    else:
-                        # monthly vars
-                        reg_glac_gcm_runoff_monthly = np.concatenate(
-                            (reg_glac_gcm_runoff_monthly, glac_runoff_monthly), axis=0
-                        )
-                        reg_offglac_gcm_runoff_monthly = np.concatenate(
-                            (reg_offglac_gcm_runoff_monthly, offglac_runoff_monthly),
-                            axis=0,
-                        )
-                        reg_glac_gcm_acc_monthly = np.concatenate(
-                            (reg_glac_gcm_acc_monthly, glac_acc_monthly), axis=0
-                        )
-                        reg_glac_gcm_melt_monthly = np.concatenate(
-                            (reg_glac_gcm_melt_monthly, glac_melt_monthly), axis=0
-                        )
-                        reg_glac_gcm_refreeze_monthly = np.concatenate(
-                            (reg_glac_gcm_refreeze_monthly, glac_refreeze_monthly),
-                            axis=0,
-                        )
-                        reg_glac_gcm_frontalablation_monthly = np.concatenate(
-                            (
-                                reg_glac_gcm_frontalablation_monthly,
-                                glac_frontalablation_monthly,
-                            ),
-                            axis=0,
-                        )
-                        reg_glac_gcm_snowline_monthly = np.concatenate(
-                            (reg_glac_gcm_snowline_monthly, glac_snowline_monthly),
-                            axis=0,
-                        )
-                        reg_glac_gcm_massbaltotal_monthly = np.concatenate(
-                            (
-                                reg_glac_gcm_massbaltotal_monthly,
-                                glac_massbaltotal_monthly,
-                            ),
-                            axis=0,
-                        )
-                        reg_glac_gcm_prec_monthly = np.concatenate(
-                            (reg_glac_gcm_prec_monthly, glac_prec_monthly), axis=0
-                        )
-                        reg_glac_gcm_mass_monthly = np.concatenate(
-                            (reg_glac_gcm_mass_monthly, glac_mass_monthly), axis=0
-                        )
-                        # annual vars
-                        reg_glac_gcm_area_annual = np.concatenate(
-                            (reg_glac_gcm_area_annual, glac_area_annual), axis=0
-                        )
-                        reg_glac_gcm_mass_annual = np.concatenate(
-                            (reg_glac_gcm_mass_annual, glac_mass_annual), axis=0
-                        )
-                        reg_glac_gcm_ELA_annual = np.concatenate(
-                            (reg_glac_gcm_ELA_annual, glac_ELA_annual), axis=0
-                        )
-                        reg_glac_gcm_mass_bsl_annual = np.concatenate(
-                            (reg_glac_gcm_mass_bsl_annual, glac_mass_bsl_annual), axis=0
-                        )
+                # stack all individual glacier data for each var, for the current GCM and append as 2D array to list of reg_all_gcms_data[var]
+                for var in vars:
+                    reg_gcm_data[var] = np.vstack(reg_gcm_data[var])
+                    reg_all_gcms_data[var].append(reg_gcm_data[var])
 
-                # aggregate gcms
-                if reg_glac_allgcms_runoff_monthly is None:
-                    # monthly vars
-                    reg_glac_allgcms_runoff_monthly = reg_glac_gcm_runoff_monthly[
-                        np.newaxis, :, :
-                    ]
-                    reg_offglac_allgcms_runoff_monthly = reg_offglac_gcm_runoff_monthly[
-                        np.newaxis, :, :
-                    ]
-                    reg_glac_allgcms_acc_monthly = reg_glac_gcm_acc_monthly[
-                        np.newaxis, :, :
-                    ]
-                    reg_glac_allgcms_melt_monthly = reg_glac_gcm_melt_monthly[
-                        np.newaxis, :, :
-                    ]
-                    reg_glac_allgcms_refreeze_monthly = reg_glac_gcm_refreeze_monthly[
-                        np.newaxis, :, :
-                    ]
-                    reg_glac_allgcms_frontalablation_monthly = (
-                        reg_glac_gcm_frontalablation_monthly[np.newaxis, :, :]
-                    )
-                    reg_glac_allgcms_snowline_monthly = reg_glac_gcm_snowline_monthly[
-                        np.newaxis, :, :
-                    ]
-                    reg_glac_allgcms_massbaltotal_monthly = (
-                        reg_glac_gcm_massbaltotal_monthly[np.newaxis, :, :]
-                    )
-                    reg_glac_allgcms_prec_monthly = reg_glac_gcm_prec_monthly[
-                        np.newaxis, :, :
-                    ]
-                    reg_glac_allgcms_mass_monthly = reg_glac_gcm_mass_monthly[
-                        np.newaxis, :, :
-                    ]
-                    # annual vars
-                    reg_glac_allgcms_area_annual = reg_glac_gcm_area_annual[
-                        np.newaxis, :, :
-                    ]
-                    reg_glac_allgcms_mass_annual = reg_glac_gcm_mass_annual[
-                        np.newaxis, :, :
-                    ]
-                    reg_glac_allgcms_ELA_annual = reg_glac_gcm_ELA_annual[
-                        np.newaxis, :, :
-                    ]
-                    reg_glac_allgcms_mass_bsl_annual = reg_glac_gcm_mass_bsl_annual[
-                        np.newaxis, :, :
-                    ]
-                else:
-                    # monthly vrs
-                    reg_glac_allgcms_runoff_monthly = np.concatenate(
-                        (
-                            reg_glac_allgcms_runoff_monthly,
-                            reg_glac_gcm_runoff_monthly[np.newaxis, :, :],
-                        ),
-                        axis=0,
-                    )
-                    reg_offglac_allgcms_runoff_monthly = np.concatenate(
-                        (
-                            reg_offglac_allgcms_runoff_monthly,
-                            reg_offglac_gcm_runoff_monthly[np.newaxis, :, :],
-                        ),
-                        axis=0,
-                    )
-                    reg_glac_allgcms_acc_monthly = np.concatenate(
-                        (
-                            reg_glac_allgcms_acc_monthly,
-                            reg_glac_gcm_acc_monthly[np.newaxis, :, :],
-                        ),
-                        axis=0,
-                    )
-                    reg_glac_allgcms_melt_monthly = np.concatenate(
-                        (
-                            reg_glac_allgcms_melt_monthly,
-                            reg_glac_gcm_melt_monthly[np.newaxis, :, :],
-                        ),
-                        axis=0,
-                    )
-                    reg_glac_allgcms_refreeze_monthly = np.concatenate(
-                        (
-                            reg_glac_allgcms_refreeze_monthly,
-                            reg_glac_gcm_refreeze_monthly[np.newaxis, :, :],
-                        ),
-                        axis=0,
-                    )
-                    reg_glac_allgcms_frontalablation_monthly = np.concatenate(
-                        (
-                            reg_glac_allgcms_frontalablation_monthly,
-                            reg_glac_gcm_frontalablation_monthly[np.newaxis, :, :],
-                        ),
-                        axis=0,
-                    )
-                    reg_glac_allgcms_snowline_monthly = np.concatenate(
-                        (
-                            reg_glac_allgcms_snowline_monthly,
-                            reg_glac_gcm_snowline_monthly[np.newaxis, :, :],
-                        ),
-                        axis=0,
-                    )
-                    reg_glac_allgcms_massbaltotal_monthly = np.concatenate(
-                        (
-                            reg_glac_allgcms_massbaltotal_monthly,
-                            reg_glac_gcm_massbaltotal_monthly[np.newaxis, :, :],
-                        ),
-                        axis=0,
-                    )
-                    reg_glac_allgcms_prec_monthly = np.concatenate(
-                        (
-                            reg_glac_allgcms_prec_monthly,
-                            reg_glac_gcm_prec_monthly[np.newaxis, :, :],
-                        ),
-                        axis=0,
-                    )
-                    reg_glac_allgcms_mass_monthly = np.concatenate(
-                        (
-                            reg_glac_allgcms_mass_monthly,
-                            reg_glac_gcm_mass_monthly[np.newaxis, :, :],
-                        ),
-                        axis=0,
-                    )
-                    # annual vars
-                    reg_glac_allgcms_area_annual = np.concatenate(
-                        (
-                            reg_glac_allgcms_area_annual,
-                            reg_glac_gcm_area_annual[np.newaxis, :, :],
-                        ),
-                        axis=0,
-                    )
-                    reg_glac_allgcms_mass_annual = np.concatenate(
-                        (
-                            reg_glac_allgcms_mass_annual,
-                            reg_glac_gcm_mass_annual[np.newaxis, :, :],
-                        ),
-                        axis=0,
-                    )
-                    reg_glac_allgcms_ELA_annual = np.concatenate(
-                        (
-                            reg_glac_allgcms_ELA_annual,
-                            reg_glac_gcm_ELA_annual[np.newaxis, :, :],
-                        ),
-                        axis=0,
-                    )
-                    reg_glac_allgcms_mass_bsl_annual = np.concatenate(
-                        (
-                            reg_glac_allgcms_mass_bsl_annual,
-                            reg_glac_gcm_mass_bsl_annual[np.newaxis, :, :],
-                        ),
-                        axis=0,
-                    )
+        # stack all gcms/realizations
+        for var in vars:
+            reg_all_gcms_data[var] = np.stack(reg_all_gcms_data[var],axis=0)        
 
         # ===== CREATE NETCDF FILES=====
 
@@ -595,7 +307,7 @@ def run(args):
                     data_vars=dict(
                         glac_runoff_monthly=(
                             coord_order,
-                            reg_glac_allgcms_runoff_monthly,
+                            reg_all_gcms_data[var],
                         ),
                         crs=np.nan,
                     ),
@@ -616,7 +328,7 @@ def run(args):
                     data_vars=dict(
                         offglac_runoff_monthly=(
                             coord_order,
-                            reg_offglac_allgcms_runoff_monthly,
+                            reg_all_gcms_data[var],
                         ),
                         crs=np.nan,
                     ),
@@ -635,7 +347,7 @@ def run(args):
             elif var == 'glac_acc_monthly':
                 ds = xr.Dataset(
                     data_vars=dict(
-                        glac_acc_monthly=(coord_order, reg_glac_allgcms_acc_monthly),
+                        glac_acc_monthly=(coord_order, reg_all_gcms_data[var]),
                         crs=np.nan,
                     ),
                     coords=coords_dict,
@@ -653,7 +365,7 @@ def run(args):
             elif var == 'glac_melt_monthly':
                 ds = xr.Dataset(
                     data_vars=dict(
-                        glac_melt_monthly=(coord_order, reg_glac_allgcms_melt_monthly),
+                        glac_melt_monthly=(coord_order, reg_all_gcms_data[var]),
                         crs=np.nan,
                     ),
                     coords=coords_dict,
@@ -672,7 +384,7 @@ def run(args):
                     data_vars=dict(
                         glac_refreeze_monthly=(
                             coord_order,
-                            reg_glac_allgcms_refreeze_monthly,
+                            reg_all_gcms_data[var],
                         ),
                         crs=np.nan,
                     ),
@@ -692,7 +404,7 @@ def run(args):
                     data_vars=dict(
                         glac_frontalablation_monthly=(
                             coord_order,
-                            reg_glac_allgcms_frontalablation_monthly,
+                            reg_all_gcms_data[var],
                         ),
                         crs=np.nan,
                     ),
@@ -723,7 +435,7 @@ def run(args):
                     data_vars=dict(
                         glac_snowline_monthly=(
                             coord_order,
-                            reg_glac_allgcms_snowline_monthly,
+                            reg_all_gcms_data[var],
                         ),
                         crs=np.nan,
                     ),
@@ -746,7 +458,7 @@ def run(args):
                     data_vars=dict(
                         glac_massbaltotal_monthly=(
                             coord_order,
-                            reg_glac_allgcms_massbaltotal_monthly,
+                            reg_all_gcms_data[var],
                         ),
                         crs=np.nan,
                     ),
@@ -767,7 +479,7 @@ def run(args):
             elif var == 'glac_prec_monthly':
                 ds = xr.Dataset(
                     data_vars=dict(
-                        glac_prec_monthly=(coord_order, reg_glac_allgcms_prec_monthly),
+                        glac_prec_monthly=(coord_order, reg_all_gcms_data[var]),
                         crs=np.nan,
                     ),
                     coords=coords_dict,
@@ -787,7 +499,7 @@ def run(args):
             elif var == 'glac_mass_monthly':
                 ds = xr.Dataset(
                     data_vars=dict(
-                        glac_mass_monthly=(coord_order, reg_glac_allgcms_mass_monthly),
+                        glac_mass_monthly=(coord_order, reg_all_gcms_data[var]),
                         crs=np.nan,
                     ),
                     coords=coords_dict,
@@ -805,7 +517,7 @@ def run(args):
             elif var == 'glac_area_annual':
                 ds = xr.Dataset(
                     data_vars=dict(
-                        glac_area_annual=(coord_order, reg_glac_allgcms_area_annual),
+                        glac_area_annual=(coord_order, reg_all_gcms_data[var]),
                         crs=np.nan,
                     ),
                     coords=coords_dict,
@@ -821,7 +533,7 @@ def run(args):
             elif var == 'glac_mass_annual':
                 ds = xr.Dataset(
                     data_vars=dict(
-                        glac_mass_annual=(coord_order, reg_glac_allgcms_mass_annual),
+                        glac_mass_annual=(coord_order, reg_all_gcms_data[var]),
                         crs=np.nan,
                     ),
                     coords=coords_dict,
@@ -839,7 +551,7 @@ def run(args):
             elif var == 'glac_ELA_annual':
                 ds = xr.Dataset(
                     data_vars=dict(
-                        glac_ELA_annual=(coord_order, reg_glac_allgcms_ELA_annual),
+                        glac_ELA_annual=(coord_order, reg_all_gcms_data[var]),
                         crs=np.nan,
                     ),
                     coords=coords_dict,
@@ -861,7 +573,7 @@ def run(args):
                     data_vars=dict(
                         glac_mass_bsl_annual=(
                             coord_order,
-                            reg_glac_allgcms_mass_bsl_annual,
+                            reg_all_gcms_data[var],
                         ),
                         crs=np.nan,
                     ),
