@@ -257,7 +257,7 @@ def run(args):
 
         # stack all gcms/realizations
         for var in vars:
-            reg_all_gcms_data[var] = np.stack(reg_all_gcms_data[var],axis=0)        
+            reg_all_gcms_data[var] = np.stack(reg_all_gcms_data[var], axis=0)
 
         # ===== CREATE NETCDF FILES=====
 
