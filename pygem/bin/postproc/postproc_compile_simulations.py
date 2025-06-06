@@ -55,6 +55,96 @@ rgi_reg_dict = {
     19: 'Antarctic & Subantarctic',
 }
 
+# define metadata for each variable
+var_metadata = {
+    'glac_runoff_monthly': {
+        'long_name': 'glacier-wide runoff',
+        'units': 'm3',
+        'temporal_resolution': 'monthly',
+        'comment': 'runoff from the glacier terminus, which moves over time',
+    },
+    'offglac_runoff_monthly': {
+        'long_name': 'off-glacier-wide runoff',
+        'units': 'm3',
+        'temporal_resolution': 'monthly',
+        'comment': 'off-glacier runoff from area where glacier no longer exists',
+    },
+    'glac_acc_monthly': {
+        'long_name': 'glacier-wide accumulation, in water equivalent',
+        'units': 'm3',
+        'temporal_resolution': 'monthly',
+        'comment': 'only the solid precipitation',
+    },
+    'glac_melt_monthly': {
+        'long_name': 'glacier-wide melt, in water equivalent',
+        'units': 'm3',
+        'temporal_resolution': 'monthly',
+    },
+    'glac_refreeze_monthly': {
+        'long_name': 'glacier-wide refreeze, in water equivalent',
+        'units': 'm3',
+        'temporal_resolution': 'monthly',
+    },
+    'glac_frontalablation_monthly': {
+        'long_name': 'glacier-wide frontal ablation, in water equivalent',
+        'units': 'm3',
+        'temporal_resolution': 'monthly',
+        'comment': (
+            'mass losses from calving, subaerial frontal melting, sublimation above the waterline and '
+            'subaqueous frontal melting below the waterline; positive values indicate mass lost like melt'
+        ),
+    },
+    'glac_snowline_monthly': {
+        'long_name': 'transient snowline altitude above mean sea level',
+        'units': 'm',
+        'temporal_resolution': 'monthly',
+        'comment': 'transient snowline is altitude separating snow from ice/firn',
+    },
+    'glac_massbaltotal_monthly': {
+        'long_name': 'glacier-wide total mass balance, in water equivalent',
+        'units': 'm3',
+        'temporal_resolution': 'monthly',
+        'comment': 'total mass balance is the sum of the climatic mass balance and frontal ablation',
+    },
+    'glac_prec_monthly': {
+        'long_name': 'glacier-wide precipitation (liquid)',
+        'units': 'm3',
+        'temporal_resolution': 'monthly',
+        'comment': 'only the liquid precipitation, solid precipitation excluded',
+    },
+    'glac_mass_monthly': {
+        'long_name': 'glacier mass',
+        'units': 'kg',
+        'temporal_resolution': 'monthly',
+        'comment': (
+            'mass of ice based on area and ice thickness at start of the year and the monthly total mass balance'
+        ),
+    },
+    'glac_area_annual': {
+        'long_name': 'glacier area',
+        'units': 'm2',
+        'temporal_resolution': 'annual',
+        'comment': 'area at start of the year',
+    },
+    'glac_mass_annual': {
+        'long_name': 'glacier mass',
+        'units': 'kg',
+        'temporal_resolution': 'annual',
+        'comment': 'mass of ice based on area and ice thickness at start of the year',
+    },
+    'glac_ELA_annual': {
+        'long_name': 'annual equilibrium line altitude above mean sea level',
+        'units': 'm',
+        'temporal_resolution': 'annual',
+        'comment': 'equilibrium line altitude is the elevation where the climatic mass balance is zero',
+    },
+    'glac_mass_bsl_annual': {
+        'long_name': 'glacier mass below sea leve',
+        'units': 'kg',
+        'temporal_resolution': 'annual',
+        'comment': 'mass of ice below sea level based on area and ice thickness at start of the year',
+    },
+}
 
 def run(args):
     # unpack arguments
@@ -277,11 +367,15 @@ def run(args):
         }
         # loop through variables
         for var in vars:
-            # get common coords
+
+            # get time dimension
             if 'annual' in var:
                 tvals = year_values
             else:
                 tvals = time_values
+            
+            # build coordinate dictionary and coordinate order
+            # store realizations along Climate_Model dimension
             if realizations[0]:
                 coords_dict = dict(
                     RGIId=(['glacier'], rgiid_list),
@@ -291,6 +385,7 @@ def run(args):
                     time=tvals,
                 )
                 coord_order = ['realization', 'glacier', 'time']
+            # if no realizations, store gcms along Climate_Model dimension
             else:
                 coords_dict = dict(
                     RGIId=(['glacier'], rgiid_list),
@@ -301,294 +396,20 @@ def run(args):
                 )
                 coord_order = ['model', 'glacier', 'time']
 
-            # glac_runoff_monthly
-            if var == 'glac_runoff_monthly':
+            # pull variable metadata from var_metadata dictionary
+            if var in var_metadata:
+                meta = var_metadata[var]
+                # build xarray dataset
                 ds = xr.Dataset(
-                    data_vars=dict(
-                        glac_runoff_monthly=(
-                            coord_order,
-                            reg_all_gcms_data[var],
-                        ),
-                        crs=np.nan,
-                    ),
+                    data_vars={var: (coord_order, reg_all_gcms_data[var]), 'crs': np.nan},
                     coords=coords_dict,
                     attrs=attrs_dict,
                 )
-                ds.glac_runoff_monthly.attrs['long_name'] = 'glacier-wide runoff'
-                ds.glac_runoff_monthly.attrs['units'] = 'm3'
-                ds.glac_runoff_monthly.attrs['temporal_resolution'] = 'monthly'
-                ds.glac_runoff_monthly.attrs['comment'] = (
-                    'runoff from the glacier terminus, which moves over time'
-                )
-                ds.glac_runoff_monthly.attrs['grid_mapping'] = 'crs'
-
-            # offglac_runoff_monthly
-            elif var == 'offglac_runoff_monthly':
-                ds = xr.Dataset(
-                    data_vars=dict(
-                        offglac_runoff_monthly=(
-                            coord_order,
-                            reg_all_gcms_data[var],
-                        ),
-                        crs=np.nan,
-                    ),
-                    coords=coords_dict,
-                    attrs=attrs_dict,
-                )
-                ds.offglac_runoff_monthly.attrs['long_name'] = 'off-glacier-wide runoff'
-                ds.offglac_runoff_monthly.attrs['units'] = 'm3'
-                ds.offglac_runoff_monthly.attrs['temporal_resolution'] = 'monthly'
-                ds.offglac_runoff_monthly.attrs['comment'] = (
-                    'off-glacier runoff from area where glacier no longer exists'
-                )
-                ds.offglac_runoff_monthly.attrs['grid_mapping'] = 'crs'
-
-            # glac_acc_monthly
-            elif var == 'glac_acc_monthly':
-                ds = xr.Dataset(
-                    data_vars=dict(
-                        glac_acc_monthly=(coord_order, reg_all_gcms_data[var]),
-                        crs=np.nan,
-                    ),
-                    coords=coords_dict,
-                    attrs=attrs_dict,
-                )
-                ds.glac_acc_monthly.attrs['long_name'] = (
-                    'glacier-wide accumulation, in water equivalent'
-                )
-                ds.glac_acc_monthly.attrs['units'] = 'm3'
-                ds.glac_acc_monthly.attrs['temporal_resolution'] = 'monthly'
-                ds.glac_acc_monthly.attrs['comment'] = 'only the solid precipitation'
-                ds.glac_acc_monthly.attrs['grid_mapping'] = 'crs'
-
-            # glac_melt_monthly
-            elif var == 'glac_melt_monthly':
-                ds = xr.Dataset(
-                    data_vars=dict(
-                        glac_melt_monthly=(coord_order, reg_all_gcms_data[var]),
-                        crs=np.nan,
-                    ),
-                    coords=coords_dict,
-                    attrs=attrs_dict,
-                )
-                ds.glac_melt_monthly.attrs['long_name'] = (
-                    'glacier-wide melt, in water equivalent'
-                )
-                ds.glac_melt_monthly.attrs['units'] = 'm3'
-                ds.glac_melt_monthly.attrs['temporal_resolution'] = 'monthly'
-                ds.glac_melt_monthly.attrs['grid_mapping'] = 'crs'
-
-            # glac_refreeze_monthly
-            elif var == 'glac_refreeze_monthly':
-                ds = xr.Dataset(
-                    data_vars=dict(
-                        glac_refreeze_monthly=(
-                            coord_order,
-                            reg_all_gcms_data[var],
-                        ),
-                        crs=np.nan,
-                    ),
-                    coords=coords_dict,
-                    attrs=attrs_dict,
-                )
-                ds.glac_refreeze_monthly.attrs['long_name'] = (
-                    'glacier-wide refreeze, in water equivalent'
-                )
-                ds.glac_refreeze_monthly.attrs['units'] = 'm3'
-                ds.glac_refreeze_monthly.attrs['temporal_resolution'] = 'monthly'
-                ds.glac_refreeze_monthly.attrs['grid_mapping'] = 'crs'
-
-            # glac_frontalablation_monthly
-            elif var == 'glac_frontalablation_monthly':
-                ds = xr.Dataset(
-                    data_vars=dict(
-                        glac_frontalablation_monthly=(
-                            coord_order,
-                            reg_all_gcms_data[var],
-                        ),
-                        crs=np.nan,
-                    ),
-                    coords=dict(
-                        RGIId=(['glacier'], rgiid_list),
-                        Climate_Model=(['model'], gcms),
-                        lon=(['glacier'], cenlon_list),
-                        lat=(['glacier'], cenlat_list),
-                        time=time_values,
-                    ),
-                    attrs=attrs_dict,
-                )
-                ds.glac_frontalablation_monthly.attrs['long_name'] = (
-                    'glacier-wide frontal ablation, in water equivalent'
-                )
-                ds.glac_frontalablation_monthly.attrs['units'] = 'm3'
-                ds.glac_frontalablation_monthly.attrs['temporal_resolution'] = 'monthly'
-                ds.glac_frontalablation_monthly.attrs['comment'] = (
-                    'mass losses from calving, subaerial frontal melting, \
-                    sublimation above the waterline and subaqueous frontal melting below the waterline; \
-                    positive values indicate mass lost like melt'
-                )
-                ds.glac_frontalablation_monthly.attrs['grid_mapping'] = 'crs'
-
-            # glac_snowline_monthly
-            elif var == 'glac_snowline_monthly':
-                ds = xr.Dataset(
-                    data_vars=dict(
-                        glac_snowline_monthly=(
-                            coord_order,
-                            reg_all_gcms_data[var],
-                        ),
-                        crs=np.nan,
-                    ),
-                    coords=coords_dict,
-                    attrs=attrs_dict,
-                )
-                ds.glac_snowline_monthly.attrs['long_name'] = (
-                    'transient snowline altitude above mean sea level'
-                )
-                ds.glac_snowline_monthly.attrs['units'] = 'm'
-                ds.glac_snowline_monthly.attrs['temporal_resolution'] = 'monthly'
-                ds.glac_snowline_monthly.attrs['comment'] = (
-                    'transient snowline is altitude separating snow from ice/firn'
-                )
-                ds.glac_snowline_monthly.attrs['grid_mapping'] = 'crs'
-
-            # glac_massbaltotal_monthly
-            elif var == 'glac_massbaltotal_monthly':
-                ds = xr.Dataset(
-                    data_vars=dict(
-                        glac_massbaltotal_monthly=(
-                            coord_order,
-                            reg_all_gcms_data[var],
-                        ),
-                        crs=np.nan,
-                    ),
-                    coords=coords_dict,
-                    attrs=attrs_dict,
-                )
-                ds.glac_massbaltotal_monthly.attrs['long_name'] = (
-                    'glacier-wide total mass balance, in water equivalent'
-                )
-                ds.glac_massbaltotal_monthly.attrs['units'] = 'm3'
-                ds.glac_massbaltotal_monthly.attrs['temporal_resolution'] = 'monthly'
-                ds.glac_massbaltotal_monthly.attrs['comment'] = (
-                    'total mass balance is the sum of the climatic mass balance and frontal ablation'
-                )
-                ds.glac_massbaltotal_monthly.attrs['grid_mapping'] = 'crs'
-
-            # glac_prec_monthly
-            elif var == 'glac_prec_monthly':
-                ds = xr.Dataset(
-                    data_vars=dict(
-                        glac_prec_monthly=(coord_order, reg_all_gcms_data[var]),
-                        crs=np.nan,
-                    ),
-                    coords=coords_dict,
-                    attrs=attrs_dict,
-                )
-                ds.glac_prec_monthly.attrs['long_name'] = (
-                    'glacier-wide precipitation (liquid)'
-                )
-                ds.glac_prec_monthly.attrs['units'] = 'm3'
-                ds.glac_prec_monthly.attrs['temporal_resolution'] = 'monthly'
-                ds.glac_prec_monthly.attrs['comment'] = (
-                    'only the liquid precipitation, solid precipitation excluded'
-                )
-                ds.glac_prec_monthly.attrs['grid_mapping'] = 'crs'
-
-            # glac_mass_monthly
-            elif var == 'glac_mass_monthly':
-                ds = xr.Dataset(
-                    data_vars=dict(
-                        glac_mass_monthly=(coord_order, reg_all_gcms_data[var]),
-                        crs=np.nan,
-                    ),
-                    coords=coords_dict,
-                    attrs=attrs_dict,
-                )
-                ds.glac_mass_monthly.attrs['long_name'] = 'glacier mass'
-                ds.glac_mass_monthly.attrs['units'] = 'kg'
-                ds.glac_mass_monthly.attrs['temporal_resolution'] = 'monthly'
-                ds.glac_mass_monthly.attrs['comment'] = (
-                    'mass of ice based on area and ice thickness at start of the year and the monthly total mass balance'
-                )
-                ds.glac_mass_monthly.attrs['grid_mapping'] = 'crs'
-
-            # glac_area_annual
-            elif var == 'glac_area_annual':
-                ds = xr.Dataset(
-                    data_vars=dict(
-                        glac_area_annual=(coord_order, reg_all_gcms_data[var]),
-                        crs=np.nan,
-                    ),
-                    coords=coords_dict,
-                    attrs=attrs_dict,
-                )
-                ds.glac_area_annual.attrs['long_name'] = 'glacier area'
-                ds.glac_area_annual.attrs['units'] = 'm2'
-                ds.glac_area_annual.attrs['temporal_resolution'] = 'annual'
-                ds.glac_area_annual.attrs['comment'] = 'area at start of the year'
-                ds.glac_area_annual.attrs['grid_mapping'] = 'crs'
-
-            # glac_mass_annual
-            elif var == 'glac_mass_annual':
-                ds = xr.Dataset(
-                    data_vars=dict(
-                        glac_mass_annual=(coord_order, reg_all_gcms_data[var]),
-                        crs=np.nan,
-                    ),
-                    coords=coords_dict,
-                    attrs=attrs_dict,
-                )
-                ds.glac_mass_annual.attrs['long_name'] = 'glacier mass'
-                ds.glac_mass_annual.attrs['units'] = 'kg'
-                ds.glac_mass_annual.attrs['temporal_resolution'] = 'annual'
-                ds.glac_mass_annual.attrs['comment'] = (
-                    'mass of ice based on area and ice thickness at start of the year'
-                )
-                ds.glac_mass_annual.attrs['grid_mapping'] = 'crs'
-
-            # glac_ELA_annual
-            elif var == 'glac_ELA_annual':
-                ds = xr.Dataset(
-                    data_vars=dict(
-                        glac_ELA_annual=(coord_order, reg_all_gcms_data[var]),
-                        crs=np.nan,
-                    ),
-                    coords=coords_dict,
-                    attrs=attrs_dict,
-                )
-                ds.glac_ELA_annual.attrs['long_name'] = (
-                    'annual equilibrium line altitude above mean sea level'
-                )
-                ds.glac_ELA_annual.attrs['units'] = 'm'
-                ds.glac_ELA_annual.attrs['temporal_resolution'] = 'annual'
-                ds.glac_ELA_annual.attrs['comment'] = (
-                    'equilibrium line altitude is the elevation where the climatic mass balance is zero'
-                )
-                ds.glac_ELA_annual.attrs['grid_mapping'] = 'crs'
-
-            # glac_mass_bsl_annual
-            elif var == 'glac_mass_bsl_annual':
-                ds = xr.Dataset(
-                    data_vars=dict(
-                        glac_mass_bsl_annual=(
-                            coord_order,
-                            reg_all_gcms_data[var],
-                        ),
-                        crs=np.nan,
-                    ),
-                    coords=coords_dict,
-                    attrs=attrs_dict,
-                )
-                ds.glac_mass_bsl_annual.attrs['long_name'] = (
-                    'glacier mass below sea leve'
-                )
-                ds.glac_mass_bsl_annual.attrs['units'] = 'kg'
-                ds.glac_mass_bsl_annual.attrs['temporal_resolution'] = 'annual'
-                ds.glac_mass_bsl_annual.attrs['comment'] = (
-                    'mass of ice below sea level based on area and ice thickness at start of the year'
-                )
-                ds.glac_mass_bsl_annual.attrs['grid_mapping'] = 'crs'
+                # add variable attributes
+                for attr_key in ['long_name', 'units', 'temporal_resolution', 'comment']:
+                    if attr_key in meta:
+                        ds[var].attrs[attr_key] = meta[attr_key]
+                ds[var].attrs['grid_mapping'] = 'crs'
 
             # crs attributes - same for all vars
             ds.crs.attrs['grid_mapping_name'] = 'latitude_longitude'
