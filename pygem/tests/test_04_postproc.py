@@ -13,6 +13,8 @@ from pygem.setup.config import ConfigManager
 def rootdir():
     config_manager = ConfigManager()
     pygem_prms = config_manager.read_config()
+    # need to remove '_tw' suffix from root since we'll use results from sample_data produced in simple_test.ipynb
+    pygem_prms['root'] = pygem_prms['root'].replace('sample_data_tw', 'sample_data')
     return pygem_prms['root']
 
 
