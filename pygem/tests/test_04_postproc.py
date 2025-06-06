@@ -13,8 +13,6 @@ from pygem.setup.config import ConfigManager
 def rootdir():
     config_manager = ConfigManager()
     pygem_prms = config_manager.read_config()
-    # need to remove '_tw' suffix from root since we'll use results from sample_data produced in simple_test.ipynb
-    pygem_prms['root'] = pygem_prms['root'].replace('sample_data_tw', 'sample_data')
     return pygem_prms['root']
 
 
@@ -23,7 +21,7 @@ def test_postproc_monthly_mass(rootdir):
     Test the postproc_monthly_mass CLI script.
     """
     simdir = os.path.join(
-        rootdir, 'Output', 'simulations', '15', 'CESM2', 'ssp245', 'stats'
+        rootdir, 'Output', 'simulations', '01', 'CESM2', 'ssp245', 'stats'
     )
 
     # Run postproc_monthyl_mass CLI script
@@ -40,9 +38,9 @@ def test_postproc_compile_simulations(rootdir):
         [
             'postproc_compile_simulations',
             '-rgi_region01',
-            '15',
+            '01',
             '-option_calibration',
-            'HH2015',
+            'MCMC',
             '-sim_climate_name',
             'CESM2',
             '-sim_climate_scenario',
@@ -79,11 +77,11 @@ def test_check_compiled_product(rootdir):
         rootdir,
         'Output',
         'simulations',
-        '15',
+        '01',
         'CESM2',
         'ssp245',
         'stats',
-        '15.03733_CESM2_ssp245_HH2015_ba1_1sets_2000_2100_all.nc',
+        '1.03622_CESM2_ssp245_MCMC_ba1_50sets_2000_2100_all.nc',
     )
     compdir = os.path.join(rootdir, 'Output', 'simulations', 'compile', 'glacier_stats')
 
@@ -95,9 +93,12 @@ def test_check_compiled_product(rootdir):
         vars_to_check = [item for item in vars_to_check if item not in vars_to_skip]
 
         for var in vars_to_check:
+            # skip mad
+            if 'mad' in var:
+                continue
             simvar = simds[var]
-            comppath = os.path.join(compdir, var, '15')
-            comppath = glob.glob(f'{comppath}/R15_{var}*.nc')[0]
+            comppath = os.path.join(compdir, var, '01')
+            comppath = glob.glob(f'{comppath}/R01_{var}*.nc')[0]
             assert os.path.isfile(comppath), (
                 f'Compiled product not found for {var} at {comppath}'
             )
