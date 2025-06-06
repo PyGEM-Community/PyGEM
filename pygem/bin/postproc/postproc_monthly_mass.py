@@ -225,7 +225,7 @@ def main():
     simpath = None
     if args.simdir:
         # get list of sims
-        simpath = glob.glob(args.simdir + '*.nc')
+        simpath = glob.glob(args.simdir + '/*.nc')
     else:
         if args.simpath:
             simpath = args.simpath

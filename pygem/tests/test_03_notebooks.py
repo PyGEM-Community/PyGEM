@@ -3,6 +3,14 @@ import subprocess
 
 import pytest
 
+from pygem.setup.config import ConfigManager
+
+# instantiate ConfigManager
+config_manager = ConfigManager()
+# update export_extra_vars to True before running tests
+config_manager.update_config({'sim.out.export_extra_vars': True})
+
+
 # Get all notebooks in the PyGEM-notebooks repository
 nb_dir = os.environ.get('PYGEM_NOTEBOOKS_DIRPATH') or os.path.join(
     os.path.expanduser('~'), 'PyGEM-notebooks'
