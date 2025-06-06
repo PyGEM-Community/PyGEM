@@ -62,7 +62,6 @@ def test_postproc_compile_simulations(rootdir):
 def test_check_compiled_product(rootdir):
     """
     Verify the contents of the files created by postproc_compile_simulations.
-    There should be a single glacier with non-nan values in each dataset (1.03622)
     """
     # skip variables that are not in the compiled products
     vars_to_skip = [
