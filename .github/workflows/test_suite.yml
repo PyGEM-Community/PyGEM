@@ -69,4 +69,8 @@ jobs:
       - name: 'Run tests'
         run: |
           python3 -m coverage erase
-          python3 -m pytest --cov=pygem -v --durations=20 pygem/tests
+          # run each test file explicitly in the desired order
+          python3 -m pytest --cov=pygem -v --durations=20 pygem/tests/test_01_basics.py
+          python3 -m pytest --cov=pygem -v --durations=20 pygem/tests/test_02_config.py
+          python3 -m pytest --cov=pygem -v --durations=20 pygem/tests/test_03_notebooks.py
+          python3 -m pytest --cov=pygem -v --durations=20 pygem/tests/test_04_postproc.py
