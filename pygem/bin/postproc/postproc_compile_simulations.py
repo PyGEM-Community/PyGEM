@@ -146,6 +146,7 @@ var_metadata = {
     },
 }
 
+
 def run(args):
     # unpack arguments
     (
@@ -367,13 +368,12 @@ def run(args):
         }
         # loop through variables
         for var in vars:
-
             # get time dimension
             if 'annual' in var:
                 tvals = year_values
             else:
                 tvals = time_values
-            
+
             # build coordinate dictionary and coordinate order
             # store realizations along Climate_Model dimension
             if realizations[0]:
@@ -401,12 +401,20 @@ def run(args):
                 meta = var_metadata[var]
                 # build xarray dataset
                 ds = xr.Dataset(
-                    data_vars={var: (coord_order, reg_all_gcms_data[var]), 'crs': np.nan},
+                    data_vars={
+                        var: (coord_order, reg_all_gcms_data[var]),
+                        'crs': np.nan,
+                    },
                     coords=coords_dict,
                     attrs=attrs_dict,
                 )
                 # add variable attributes
-                for attr_key in ['long_name', 'units', 'temporal_resolution', 'comment']:
+                for attr_key in [
+                    'long_name',
+                    'units',
+                    'temporal_resolution',
+                    'comment',
+                ]:
                     if attr_key in meta:
                         ds[var].attrs[attr_key] = meta[attr_key]
                 ds[var].attrs['grid_mapping'] = 'crs'
