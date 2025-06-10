@@ -225,7 +225,7 @@ def main():
     simpath = None
     if args.simdir:
         # get list of sims
-        simpath = glob.glob(args.simdir + '*.nc')
+        simpath = glob.glob(args.simdir + '/*.nc')
     else:
         if args.simpath:
             simpath = args.simpath
@@ -238,8 +238,8 @@ def main():
             ncores = 1
 
         # Parallel processing
-        print('Processing with ' + str(args.ncores) + ' cores...')
-        with multiprocessing.Pool(args.ncores) as p:
+        print('Processing with ' + str(ncores) + ' cores...')
+        with multiprocessing.Pool(ncores) as p:
             p.map(run, simpath)
 
     print('Total processing time:', time.time() - time_start, 's')
