@@ -305,15 +305,12 @@ def reg_calving_flux(
                 nyears = int(dates_table.shape[0] / 12)
             else:
                 assert True == False, 'Adjust nyears for non-monthly timestep'
-            mb_years = np.arange(nyears)
 
             # Perform inversion
             # - find_inversion_calving_from_any_mb will do the inversion with calving, but if it fails
             #   then it will do the inversion assuming land-terminating
             if invert_standard:
-                apparent_mb_from_any_mb(
-                    gdir, mb_model=mbmod_inv, mb_years=np.arange(nyears)
-                )
+                apparent_mb_from_any_mb(gdir, mb_model=mbmod_inv)
                 tasks.prepare_for_inversion(gdir)
                 tasks.mass_conservation_inversion(
                     gdir, glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier, fs=fs
@@ -322,7 +319,6 @@ def reg_calving_flux(
                 tasks.find_inversion_calving_from_any_mb(
                     gdir,
                     mb_model=mbmod_inv,
-                    mb_years=mb_years,
                     glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier,
                     fs=fs,
                 )
@@ -346,7 +342,7 @@ def reg_calving_flux(
 
             ev_model = FluxBasedModel(
                 nfls,
-                y0=0,
+                y0=args.ref_startyear,
                 mb_model=mbmod,
                 glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier,
                 fs=fs,
@@ -354,7 +350,7 @@ def reg_calving_flux(
                 water_level=water_level,
             )
             try:
-                diag = ev_model.run_until_and_store(nyears)
+                diag = ev_model.run_until_and_store(args.ref_endyear + 1)
                 ev_model.mb_model.glac_wide_volume_annual[-1] = diag.volume_m3[-1]
                 ev_model.mb_model.glac_wide_area_annual[-1] = diag.area_m2[-1]
 
@@ -438,13 +434,13 @@ def reg_calving_flux(
                     ev_model = MassRedistributionCurveModel(
                         nfls,
                         mb_model=mbmod,
-                        y0=0,
+                        y0=args.ref_startyear,
                         glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier,
                         fs=fs,
                         is_tidewater=gdir.is_tidewater,
                         water_level=water_level,
                     )
-                    _, diag = ev_model.run_until_and_store(nyears)
+                    _, diag = ev_model.run_until_and_store(args.ref_endyear + 1)
                     ev_model.mb_model.glac_wide_volume_annual = diag.volume_m3.values
                     ev_model.mb_model.glac_wide_area_annual = diag.area_m2.values
 
