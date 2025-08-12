@@ -20,7 +20,7 @@ from pygem.massbalance import PyGEMMassBalance_wrapper
 
 # from pygem.glacierdynamics import MassRedistributionCurveModel
 from pygem.oggm_compat import update_cfg
-from pygem.shop import debris
+from pygem.shop import debris, mbdata
 
 cfg.initialize()
 cfg.PATHS['working_dir'] = (
@@ -119,6 +119,7 @@ def run(glac_no, ncores=1, debug=False):
     #####################
     task_list = [
         tasks.process_climate_data,  # process climate_hisotrical data to gdir
+        mbdata.mb_df_to_gdir,  # process mass balance calibration data to gdir
         debris.debris_to_gdir,  # process debris data to gdir
         debris.debris_binned,  # add debris to inversion flowlines
     ]
