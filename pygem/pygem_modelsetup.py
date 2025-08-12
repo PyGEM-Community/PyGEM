@@ -378,7 +378,6 @@ def selectglaciersrgitable(
             rgi_glac_number = glac_no_byregion[region]
 
         fp = glob.glob(f'{rgi_fp}/{str(region).zfill(2)}*.csv')
-        print(fp)
         if len(fp) != 1:
             raise FileNotFoundError(
                 f'No RGI file found for region {region} in {rgi_fp}. {doc_meessage} <a href="{doc_url}">{doc_url}</a>'
@@ -393,6 +392,7 @@ def selectglaciersrgitable(
             warnings.warn(
                 f'Only one glacier in region {region}.\n{doc_meessage} {doc_url}',
                 UserWarning,
+                stacklevel=2,
             )
         # Populate glacer_table with the glaciers of interest
         if rgi_regionsO2 == 'all' and rgi_glac_number == 'all':
