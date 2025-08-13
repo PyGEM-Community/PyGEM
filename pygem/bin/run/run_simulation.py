@@ -988,9 +988,7 @@ def run(list_packed_vars):
                             or not pygem_prms['setup']['include_frontalablation']
                         ):
                             # Arbitrariliy shift the MB profile up (or down) until mass balance is zero (equilibrium for inversion)
-                            apparent_mb_from_any_mb(
-                                gdir, mb_model=mbmod_inv, mb_years=np.arange(nyears_ref)
-                            )
+                            apparent_mb_from_any_mb(gdir, mb_model=mbmod_inv)
                             tasks.prepare_for_inversion(gdir)
                             tasks.mass_conservation_inversion(
                                 gdir,
@@ -1005,28 +1003,26 @@ def run(list_packed_vars):
                             tasks.find_inversion_calving_from_any_mb(
                                 gdir,
                                 mb_model=mbmod_inv,
-                                mb_years=np.arange(nyears_ref),
                                 glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier,
                                 fs=fs,
                             )
 
                         # ----- INDENTED TO BE JUST WITH DYNAMICS -----
                         tasks.init_present_time_glacier(gdir)  # adds bins below
-                        if pygem_prms['mb']['include_debris']:
-                            debris.debris_binned(
-                                gdir, fl_str='model_flowlines'
-                            )  # add debris enhancement factors to flowlines
+
+                        if not os.path.isfile(gdir.get_filepath('model_flowlines')):
+                            tasks.compute_downstream_line(gdir)
+                            tasks.compute_downstream_bedshape(gdir)
+                            tasks.init_present_time_glacier(gdir)  # adds bins below
 
                         try:
+                            if pygem_prms['mb']['include_debris']:
+                                debris.debris_binned(
+                                    gdir, fl_str='model_flowlines'
+                                )  # add debris enhancement factors to flowlines
                             nfls = gdir.read_pickle('model_flowlines')
-                        except FileNotFoundError as e:
-                            if 'model_flowlines.pkl' in str(e):
-                                tasks.compute_downstream_line(gdir)
-                                tasks.compute_downstream_bedshape(gdir)
-                                tasks.init_present_time_glacier(gdir)  # adds bins below
-                                nfls = gdir.read_pickle('model_flowlines')
-                            else:
-                                raise
+                        except:
+                            raise
 
                         # Water Level
                         # Check that water level is within given bounds
@@ -1061,7 +1057,7 @@ def run(list_packed_vars):
                         # FluxBasedModel is old numerical scheme but includes frontal ablation
                         ev_model = FluxBasedModel(
                             nfls,
-                            y0=0,
+                            y0=args.sim_startyear,
                             mb_model=mbmod,
                             glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier,
                             fs=fs,
@@ -1074,7 +1070,7 @@ def run(list_packed_vars):
                             plt.show()
 
                         try:
-                            diag = ev_model.run_until_and_store(nyears)
+                            diag = ev_model.run_until_and_store(args.sim_endyear + 1)
                             ev_model.mb_model.glac_wide_volume_annual[-1] = (
                                 diag.volume_m3[-1]
                             )
@@ -1179,13 +1175,15 @@ def run(list_packed_vars):
                                 ev_model = MassRedistributionCurveModel(
                                     nfls,
                                     mb_model=mbmod,
-                                    y0=0,
+                                    y0=args.sim_startyear,
                                     glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier,
                                     fs=fs,
                                     is_tidewater=gdir.is_tidewater,
                                     water_level=water_level,
                                 )
-                                _, diag = ev_model.run_until_and_store(nyears)
+                                _, diag = ev_model.run_until_and_store(
+                                    args.sim_endyear + 1
+                                )
                                 ev_model.mb_model.glac_wide_volume_annual = (
                                     diag.volume_m3.values
                                 )
@@ -1235,13 +1233,15 @@ def run(list_packed_vars):
                                 ev_model = MassRedistributionCurveModel(
                                     nfls,
                                     mb_model=mbmod,
-                                    y0=0,
+                                    y0=args.sim_startyear,
                                     glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier,
                                     fs=fs,
                                     is_tidewater=gdir.is_tidewater,
                                     water_level=water_level,
                                 )
-                                _, diag = ev_model.run_until_and_store(nyears)
+                                _, diag = ev_model.run_until_and_store(
+                                    args.sim_endyear + 1
+                                )
                                 ev_model.mb_model.glac_wide_volume_annual = (
                                     diag.volume_m3.values
                                 )
@@ -1291,7 +1291,7 @@ def run(list_packed_vars):
                         ev_model = MassRedistributionCurveModel(
                             nfls,
                             mb_model=mbmod,
-                            y0=0,
+                            y0=args.sim_startyear,
                             glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier,
                             fs=fs,
                             is_tidewater=gdir.is_tidewater,
@@ -1304,7 +1304,7 @@ def run(list_packed_vars):
                             graphics.plot_modeloutput_section(ev_model)
                             plt.show()
                         try:
-                            _, diag = ev_model.run_until_and_store(nyears)
+                            _, diag = ev_model.run_until_and_store(args.sim_endyear + 1)
                             #                            print('shape of volume:', ev_model.mb_model.glac_wide_volume_annual.shape, diag.volume_m3.shape)
                             ev_model.mb_model.glac_wide_volume_annual = (
                                 diag.volume_m3.values
@@ -1395,7 +1395,7 @@ def run(list_packed_vars):
                         # ----- MODEL RUN WITH CONSTANT GLACIER AREA -----
                         years = np.arange(args.sim_startyear, args.sim_endyear + 1)
                         mb_all = []
-                        for year in years - years[0]:
+                        for year in years:
                             mb_annual = mbmod.get_annual_mb(
                                 nfls[0].surface_h,
                                 fls=nfls,
