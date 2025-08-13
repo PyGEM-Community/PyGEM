@@ -9,7 +9,8 @@ List of functions used to set up different aspects of the model
 """
 
 # Built-in libaries
-import os
+import glob
+import warnings
 from datetime import datetime
 
 import numpy as np
@@ -351,6 +352,10 @@ def selectglaciersrgitable(
     Output: Pandas DataFrame of the glacier statistics for each glacier in the model run
     (rows = GlacNo, columns = glacier statistics)
     """
+    doc_url = 'https://pygem.readthedocs.io/en/latest/model_inputs.html#model-inputs'
+    doc_meessage = (
+        'Has the full dataset been downloaded? See documentation for more information:'
+    )
     if glac_no is not None:
         glac_no_byregion = {}
         rgi_regionsO1 = [int(i.split('.')[0]) for i in glac_no]
@@ -372,16 +377,23 @@ def selectglaciersrgitable(
         if glac_no is not None:
             rgi_glac_number = glac_no_byregion[region]
 
-        #        if len(rgi_glac_number) < 50:
-
-        for i in os.listdir(rgi_fp):
-            if i.startswith(str(region).zfill(2)) and i.endswith('.csv'):
-                rgi_fn = i
+        fp = glob.glob(f'{rgi_fp}/{str(region).zfill(2)}*.csv')
+        if len(fp) != 1:
+            raise FileNotFoundError(
+                f'No RGI file found for region {region} in {rgi_fp}. {doc_meessage} <a href="{doc_url}">{doc_url}</a>'
+            )
+        fp = fp[0]
         try:
-            csv_regionO1 = pd.read_csv(rgi_fp + rgi_fn)
+            csv_regionO1 = pd.read_csv(fp)
         except:
-            csv_regionO1 = pd.read_csv(rgi_fp + rgi_fn, encoding='latin1')
-
+            csv_regionO1 = pd.read_csv(fp, encoding='latin1')
+        # warn if RGI table only has one glacier - maybe the full dataset wasn't downloaded after initialization
+        if rgi_glac_number == 'all' and len(csv_regionO1) == 1:
+            warnings.warn(
+                f'Only one glacier in region {region}.\n{doc_meessage} {doc_url}',
+                UserWarning,
+                stacklevel=2,
+            )
         # Populate glacer_table with the glaciers of interest
         if rgi_regionsO2 == 'all' and rgi_glac_number == 'all':
             if debug:

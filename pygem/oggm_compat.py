@@ -15,11 +15,10 @@ import netCDF4
 # External libraries
 import numpy as np
 import pandas as pd
-from oggm import cfg, tasks, utils, workflow
+from oggm import cfg, workflow
 
 # from oggm import tasks
 from oggm.cfg import SEC_IN_YEAR
-from oggm.core import flowline
 from oggm.core.massbalance import MassBalanceModel
 
 from pygem.setup.config import ConfigManager
@@ -95,7 +94,7 @@ def single_flowline_glacier_directory(
     # check if gdir is already processed
     if not reset:
         try:
-            gdir = utils.GlacierDirectory(rgi_id)
+            gdir = workflow.init_glacier_directories([rgi_id])[0]
             gdir.read_pickle('inversion_flowlines')
 
         except:
@@ -191,7 +190,7 @@ def single_flowline_glacier_directory_with_calving(
     # check if gdir is already processed
     if not reset:
         try:
-            gdir = utils.GlacierDirectory(rgi_id)
+            gdir = workflow.init_glacier_directories([rgi_id])[0]
             gdir.read_pickle('inversion_flowlines')
 
         except:
@@ -227,52 +226,32 @@ def single_flowline_glacier_directory_with_calving(
     return gdir
 
 
-def l3_proc(gdir):
+def update_cfg(updates, dict_name='PARAMS'):
     """
-    OGGGM L3 preprocessing steps
+    Update keys in the OGGMs config.
+
+    Parameters:
+    dict (str): The dictionary in the config to update.
+    updates (dict): Key-Value pairs to be updated.
+
+    Returns:
+    None: The function updates `cfg` in place.
     """
-    # process climate_hisotrical data to gdir
-    workflow.execute_entity_task(tasks.process_climate_data, gdir)
-
-    # process mb_calib data from geodetic mass balance
-    workflow.execute_entity_task(
-        tasks.mb_calibration_from_geodetic_mb,
-        gdir,
-        informed_threestep=True,
-        overwrite_gdir=True,
-    )
-
-    # glacier bed inversion
-    workflow.execute_entity_task(tasks.apparent_mb_from_any_mb, gdir)
-    workflow.calibrate_inversion_from_consensus(
-        gdir,
-        apply_fs_on_mismatch=True,
-        error_on_mismatch=True,  # if you running many glaciers some might not work
-        filter_inversion_output=True,  # this partly filters the overdeepening due to
-        # the equilibrium assumption for retreating glaciers (see. Figure 5 of Maussion et al. 2019)
-        volume_m3_reference=None,  # here you could provide your own total volume estimate in m3
-    )
-    # after inversion, merge data from preprocessing tasks form mode_flowlines
-    workflow.execute_entity_task(tasks.init_present_time_glacier, gdir)
-
-
-def oggm_spinup(gdir):
-    # perform OGGM dynamic spinup and return flowline model at year 2000
-    # define mb_model for spinup
-    workflow.execute_entity_task(
-        tasks.run_dynamic_spinup,
-        gdir,
-        spinup_start_yr=1979,  # When to start the spinup
-        minimise_for='area',  # what target to match at the RGI date
-        output_filesuffix='_dynamic_area',  # Where to write the output
-        ye=2020,  # When the simulation should stop
-        # first_guess_t_spinup = , could be passed as input argument for each step in the sampler based on prior tbias, current default first guess is -2
-    )
-    fmd_dynamic = flowline.FileModel(
-        gdir.get_filepath('model_geometry', filesuffix='_dynamic_area')
-    )
-    fmd_dynamic.run_until(2000)
-    return fmd_dynamic.fls  # flowlines after dynamic spinup at year 2000
+    try:
+        target_dict = getattr(cfg, dict_name)
+        for key, subdict in updates.items():
+            if (
+                key in target_dict
+                and isinstance(target_dict[key], dict)
+                and isinstance(subdict, dict)
+            ):
+                for subkey, value in subdict.items():
+                    if subkey in cfg[dict][key]:
+                        target_dict[key][subkey] = value
+            elif key in target_dict:
+                target_dict[key] = subdict
+    except Exception as err:
+        print(err)
 
 
 def create_empty_glacier_directory(rgi_id):

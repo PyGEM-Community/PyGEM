@@ -237,7 +237,7 @@ def plot_nfls_section(nfls):
     plt.show()
 
 
-def reg_vol_comparison(gdirs, mbmods, nyears, a_multiplier=1, fs=0, debug=False):
+def reg_vol_comparison(gdirs, mbmods, a_multiplier=1, fs=0, debug=False):
     """Calculate the modeled volume [km3] and consensus volume [km3] for the given set of glaciers"""
 
     reg_vol_km3_consensus = 0
@@ -248,7 +248,7 @@ def reg_vol_comparison(gdirs, mbmods, nyears, a_multiplier=1, fs=0, debug=False)
         mbmod_inv = mbmods[nglac]
 
         # Arbitrariliy shift the MB profile up (or down) until mass balance is zero (equilibrium for inversion)
-        apparent_mb_from_any_mb(gdir, mb_model=mbmod_inv, mb_years=np.arange(nyears))
+        apparent_mb_from_any_mb(gdir, mb_model=mbmod_inv)
 
         tasks.prepare_for_inversion(gdir)
         tasks.mass_conservation_inversion(
@@ -468,7 +468,6 @@ def main():
         reg_vol_km3_mod, reg_vol_km3_con = reg_vol_comparison(
             gdirs,
             mbmods,
-            nyears,
             a_multiplier=args.a_multiplier,
             fs=args.fs,
             debug=debug,
@@ -477,7 +476,6 @@ def main():
         reg_vol_km3_mod_bndlow, reg_vol_km3_con = reg_vol_comparison(
             gdirs,
             mbmods,
-            nyears,
             a_multiplier=args.a_multiplier_bndlow,
             fs=args.fs,
             debug=debug,
@@ -486,7 +484,6 @@ def main():
         reg_vol_km3_mod_bndhigh, reg_vol_km3_con = reg_vol_comparison(
             gdirs,
             mbmods,
-            nyears,
             a_multiplier=args.a_multiplier_bndhigh,
             fs=args.fs,
             debug=debug,
@@ -512,7 +509,6 @@ def main():
                 reg_vol_km3_mod, reg_vol_km3_con = reg_vol_comparison(
                     gdirs,
                     mbmods,
-                    nyears,
                     a_multiplier=a_multiplier,
                     fs=args.fs,
                     debug=debug,
@@ -531,7 +527,6 @@ def main():
             reg_vol_km3_mod, reg_vol_km3_con = reg_vol_comparison(
                 gdirs,
                 mbmods,
-                nyears,
                 a_multiplier=a_multiplier_opt,
                 fs=args.fs,
                 debug=debug,

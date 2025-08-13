@@ -215,8 +215,7 @@ def mb_mwea_calc(
     mbmod = PyGEMMassBalance(
         gdir, modelprms, glacier_rgi_table, fls=fls, option_areaconstant=True
     )
-    years = np.arange(0, int(gdir.dates_table.shape[0] / 12))
-    for year in years:
+    for year in gdir.dates_table.year.unique():
         mbmod.get_annual_mb(fls[0].surface_h, fls=fls, fl_id=0, year=year)
 
     # Option for must melt condition
