@@ -23,6 +23,7 @@ import multiprocessing
 import os
 import sys
 import time
+import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -457,6 +458,7 @@ def run(list_packed_vars):
         gcm_elev_adj = gcm_elev
         gcm_temp_adj = gcm_temp[:, sim_idx_start:]
         gcm_prec_adj = gcm_prec[:, sim_idx_start:]
+        gcm_prec_biasadj_frac = np.ones(gcm_prec_adj.shape[0])
     # Bias correct based on reference climate data
     else:
         # OPTION 1: Adjust temp using Huss and Hock (2015), prec similar but addresses for variance and outliers
@@ -472,14 +474,16 @@ def run(list_packed_vars):
                 args.ref_startyear,
             )
             # Precipitation bias correction
-            gcm_prec_adj, gcm_elev_adj = gcmbiasadj.prec_biasadj_opt1(
-                ref_prec,
-                ref_elev,
-                gcm_prec,
-                dates_table_ref,
-                dates_table_full,
-                args.sim_startyear,
-                args.ref_startyear,
+            gcm_prec_adj, gcm_elev_adj, gcm_prec_biasadj_frac = (
+                gcmbiasadj.prec_biasadj_opt1(
+                    ref_prec,
+                    ref_elev,
+                    gcm_prec,
+                    dates_table_ref,
+                    dates_table_full,
+                    args.sim_startyear,
+                    args.ref_startyear,
+                )
             )
         # OPTION 2: Adjust temp and prec using Huss and Hock (2015)
         elif args.option_bias_adjustment == 2:
@@ -494,12 +498,14 @@ def run(list_packed_vars):
                 args.ref_startyear,
             )
             # Precipitation bias correction
-            gcm_prec_adj, gcm_elev_adj = gcmbiasadj.prec_biasadj_HH2015(
-                ref_prec,
-                ref_elev,
-                gcm_prec,
-                dates_table_ref,
-                dates_table_full,
+            gcm_prec_adj, gcm_elev_adj, gcm_prec_biasadj_frac = (
+                gcmbiasadj.prec_biasadj_HH2015(
+                    ref_prec,
+                    ref_elev,
+                    gcm_prec,
+                    dates_table_ref,
+                    dates_table_full,
+                )
             )
         # OPTION 3: Adjust temp and prec using quantile delta mapping, Cannon et al. (2015)
         elif args.option_bias_adjustment == 3:
@@ -524,6 +530,7 @@ def run(list_packed_vars):
                 args.sim_startyear,
                 args.ref_startyear,
             )
+            gcm_prec_biasadj_frac = np.ones(gcm_prec_adj.shape[0])
 
     # assert that the gcm_elev_adj is not None
     assert gcm_elev_adj is not None, 'No GCM elevation data'
@@ -640,6 +647,12 @@ def run(list_packed_vars):
                 'prec': gcm_prec_adj[glac, :],
                 'lr': gcm_lr[glac, :],
             }
+            fact = gcm_prec_biasadj_frac[glac]
+            if fact < 0.5 or fact > 2:
+                warnings.warn(
+                    f'GCM precipitation bias adustment factor for {glacier_str} greater than 2 ({round(fact, 2)})',
+                    Warning,
+                )
             gdir.dates_table = dates_table
 
             glacier_area_km2 = fls[0].widths_m * fls[0].dx_meter / 1e6

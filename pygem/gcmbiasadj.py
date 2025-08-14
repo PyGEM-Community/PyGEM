@@ -298,11 +298,8 @@ def prec_biasadj_HH2015(
     gcm_prec_biasadj_subset = gcm_prec_biasadj[
         :, gcm_subset_idx_start : gcm_subset_idx_end + 1
     ][:, gcm_spinupyears * 12 :]
-    gcm_prec_biasadj_frac = gcm_prec_biasadj_subset.sum(axis=1) / ref_prec_nospinup.sum(
+    gcm_prec_biasadj_frac = gcm_prec_biasadj_subset.sum(axis=1) / gcm_prec_nospinup.sum(
         axis=1
-    )
-    assert np.min(gcm_prec_biasadj_frac) > 0.5 and np.max(gcm_prec_biasadj_frac) < 2, (
-        'Error with gcm precipitation bias adjustment: total ref and gcm prec differ by more than factor of 2'
     )
     assert gcm_prec_biasadj.max() <= 10, (
         'gcm_prec_adj (precipitation bias adjustment) too high, needs to be modified'
@@ -311,7 +308,7 @@ def prec_biasadj_HH2015(
         'gcm_prec_adj is producing a negative precipitation value'
     )
 
-    return gcm_prec_biasadj, gcm_elev_biasadj
+    return gcm_prec_biasadj, gcm_elev_biasadj, gcm_prec_biasadj_frac
 
 
 def prec_biasadj_opt1(
@@ -454,11 +451,8 @@ def prec_biasadj_opt1(
     gcm_prec_biasadj_subset = gcm_prec_biasadj[
         :, gcm_subset_idx_start : gcm_subset_idx_end + 1
     ][:, gcm_spinupyears * 12 :]
-    gcm_prec_biasadj_frac = gcm_prec_biasadj_subset.sum(axis=1) / ref_prec_nospinup.sum(
+    gcm_prec_biasadj_frac = gcm_prec_biasadj_subset.sum(axis=1) / gcm_prec_nospinup.sum(
         axis=1
-    )
-    assert np.min(gcm_prec_biasadj_frac) > 0.5 and np.max(gcm_prec_biasadj_frac) < 2, (
-        'Error with gcm precipitation bias adjustment: total ref and gcm prec differ by more than factor of 2'
     )
     assert gcm_prec_biasadj.max() <= 10, (
         'gcm_prec_adj (precipitation bias adjustment) too high, needs to be modified'
@@ -467,7 +461,7 @@ def prec_biasadj_opt1(
         'gcm_prec_adj is producing a negative precipitation value'
     )
 
-    return gcm_prec_biasadj, gcm_elev_biasadj
+    return gcm_prec_biasadj, gcm_elev_biasadj, gcm_prec_biasadj_frac
 
 
 def temp_biasadj_QDM(
