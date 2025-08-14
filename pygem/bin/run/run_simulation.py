@@ -652,6 +652,7 @@ def run(list_packed_vars):
                 warnings.warn(
                     f'GCM precipitation bias adustment factor for {glacier_str} greater than 2 ({round(fact, 2)})',
                     Warning,
+                    stacklevel=2,
                 )
             gdir.dates_table = dates_table
 
