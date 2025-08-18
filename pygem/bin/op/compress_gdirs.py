@@ -16,12 +16,12 @@ import oggm.cfg as cfg
 from oggm import utils, workflow
 
 # pygem imports
-import pygem.setup.config as config
+from pygem.setup.config import ConfigManager
 
-# check for config
-config.ensure_config()
+# instantiate ConfigManager
+config_manager = ConfigManager()
 # read the config
-pygem_prms = config.read_config()
+pygem_prms = config_manager.read_config()
 
 # Initialize OGGM subprocess
 cfg.initialize(logging_level='WARNING')

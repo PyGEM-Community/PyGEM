@@ -6,12 +6,12 @@ import numpy as np
 import pandas as pd
 
 # pygem imports
-import pygem.setup.config as config
+from pygem.setup.config import ConfigManager
 
-# check for config
-config.ensure_config()
+# instantiate ConfigManager
+config_manager = ConfigManager()
 # read the config
-pygem_prms = config.read_config()
+pygem_prms = config_manager.read_config()
 from oggm import cfg, tasks, workflow
 
 import pygem.pygem_modelsetup as modelsetup
