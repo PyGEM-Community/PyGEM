@@ -75,8 +75,6 @@ def temp_biasadj_HH2015(
     dates_table,
     sim_startyear,
     ref_startyear,
-    ref_spinupyears=0,
-    gcm_spinupyears=0,
     debug=False,
 ):
     """
@@ -113,28 +111,20 @@ def temp_biasadj_HH2015(
     )[0][0]
     gcm_temp_subset = gcm_temp[:, gcm_subset_idx_start : gcm_subset_idx_end + 1]
 
-    # Remove spinup years, so adjustment performed over calibration period
-    ref_temp_nospinup = ref_temp[:, ref_spinupyears * 12 :]
-    gcm_temp_nospinup = gcm_temp_subset[:, gcm_spinupyears * 12 :]
-
     # Roll months so they are aligned with simulation months
     roll_amt = -1 * (12 - gcm_subset_idx_start % 12)
     if roll_amt == -12:
         roll_amt = 0
 
     # Mean monthly temperature
-    ref_temp_monthly_avg = np.roll(
-        monthly_avg_2darray(ref_temp_nospinup), roll_amt, axis=1
-    )
+    ref_temp_monthly_avg = np.roll(monthly_avg_2darray(ref_temp), roll_amt, axis=1)
     gcm_temp_monthly_avg = np.roll(
-        monthly_avg_2darray(gcm_temp_nospinup), roll_amt, axis=1
+        monthly_avg_2darray(gcm_temp_subset), roll_amt, axis=1
     )
     # Standard deviation monthly temperature
-    ref_temp_monthly_std = np.roll(
-        monthly_std_2darray(ref_temp_nospinup), roll_amt, axis=1
-    )
+    ref_temp_monthly_std = np.roll(monthly_std_2darray(ref_temp), roll_amt, axis=1)
     gcm_temp_monthly_std = np.roll(
-        monthly_std_2darray(gcm_temp_nospinup), roll_amt, axis=1
+        monthly_std_2darray(gcm_temp_subset), roll_amt, axis=1
     )
 
     # Monthly bias adjustment (additive)
@@ -182,21 +172,17 @@ def temp_biasadj_HH2015(
     # Assert that mean temperatures for all the glaciers must be more-or-less equal
     gcm_temp_biasadj_subset = gcm_temp_biasadj[
         :, gcm_subset_idx_start : gcm_subset_idx_end + 1
-    ][:, ref_spinupyears * 12 :]
+    ]
 
     if sim_startyear == ref_startyear:
         if debug:
             print(
-                (
-                    np.mean(gcm_temp_biasadj_subset, axis=1)
-                    - np.mean(ref_temp[:, ref_spinupyears * 12 :], axis=1)
-                )
+                (np.mean(gcm_temp_biasadj_subset, axis=1) - np.mean(ref_temp, axis=1))
             )
         assert (
             np.max(
                 np.abs(
-                    np.mean(gcm_temp_biasadj_subset, axis=1)
-                    - np.mean(ref_temp[:, ref_spinupyears * 12 :], axis=1)
+                    np.mean(gcm_temp_biasadj_subset, axis=1) - np.mean(ref_temp, axis=1)
                 )
             )
             < 1
@@ -206,10 +192,7 @@ def temp_biasadj_HH2015(
     else:
         if debug:
             print(
-                (
-                    np.mean(gcm_temp_biasadj_subset, axis=1)
-                    - np.mean(ref_temp[:, ref_spinupyears * 12 :], axis=1)
-                )
+                (np.mean(gcm_temp_biasadj_subset, axis=1) - np.mean(ref_temp, axis=1))
             )
 
     return gcm_temp_biasadj, gcm_elev_biasadj
@@ -223,8 +206,6 @@ def prec_biasadj_HH2015(
     dates_table,
     sim_startyear,
     ref_startyear,
-    ref_spinupyears=0,
-    gcm_spinupyears=0,
 ):
     """
     Huss and Hock (2015) precipitation bias correction based on mean (multiplicative)
@@ -256,20 +237,14 @@ def prec_biasadj_HH2015(
     )[0][0]
     gcm_prec_subset = gcm_prec[:, gcm_subset_idx_start : gcm_subset_idx_end + 1]
 
-    # Remove spinup years, so adjustment performed over calibration period
-    ref_prec_nospinup = ref_prec[:, ref_spinupyears * 12 :]
-    gcm_prec_nospinup = gcm_prec_subset[:, gcm_spinupyears * 12 :]
-
     # Roll months so they are aligned with simulation months
     roll_amt = -1 * (12 - gcm_subset_idx_start % 12)
 
     # PRECIPITATION BIAS CORRECTIONS
     # Monthly mean precipitation
-    ref_prec_monthly_avg = np.roll(
-        monthly_avg_2darray(ref_prec_nospinup), roll_amt, axis=1
-    )
+    ref_prec_monthly_avg = np.roll(monthly_avg_2darray(ref_prec), roll_amt, axis=1)
     gcm_prec_monthly_avg = np.roll(
-        monthly_avg_2darray(gcm_prec_nospinup), roll_amt, axis=1
+        monthly_avg_2darray(gcm_prec_subset), roll_amt, axis=1
     )
     bias_adj_prec_monthly = ref_prec_monthly_avg / gcm_prec_monthly_avg
 
@@ -297,13 +272,8 @@ def prec_biasadj_HH2015(
     # Assertion that bias adjustment does not drastically modify the precipitation and are reasonable
     gcm_prec_biasadj_subset = gcm_prec_biasadj[
         :, gcm_subset_idx_start : gcm_subset_idx_end + 1
-    ][:, gcm_spinupyears * 12 :]
-    gcm_prec_biasadj_frac = gcm_prec_biasadj_subset.sum(axis=1) / ref_prec_nospinup.sum(
-        axis=1
-    )
-    assert np.min(gcm_prec_biasadj_frac) > 0.5 and np.max(gcm_prec_biasadj_frac) < 2, (
-        'Error with gcm precipitation bias adjustment: total ref and gcm prec differ by more than factor of 2'
-    )
+    ]
+    gcm_prec_biasadj_frac = gcm_prec_biasadj_subset.sum(axis=1) / ref_prec.sum(axis=1)
     assert gcm_prec_biasadj.max() <= 10, (
         'gcm_prec_adj (precipitation bias adjustment) too high, needs to be modified'
     )
@@ -311,7 +281,7 @@ def prec_biasadj_HH2015(
         'gcm_prec_adj is producing a negative precipitation value'
     )
 
-    return gcm_prec_biasadj, gcm_elev_biasadj
+    return gcm_prec_biasadj, gcm_elev_biasadj, gcm_prec_biasadj_frac
 
 
 def prec_biasadj_opt1(
@@ -322,8 +292,6 @@ def prec_biasadj_opt1(
     dates_table,
     sim_startyear,
     ref_startyear,
-    ref_spinupyears=0,
-    gcm_spinupyears=0,
 ):
     """
     Precipitation bias correction based on mean with limited maximum
@@ -355,20 +323,14 @@ def prec_biasadj_opt1(
     )[0][0]
     gcm_prec_subset = gcm_prec[:, gcm_subset_idx_start : gcm_subset_idx_end + 1]
 
-    # Remove spinup years, so adjustment performed over calibration period
-    ref_prec_nospinup = ref_prec[:, ref_spinupyears * 12 :]
-    gcm_prec_nospinup = gcm_prec_subset[:, gcm_spinupyears * 12 :]
-
     # Roll months so they are aligned with simulation months
     roll_amt = -1 * (12 - gcm_subset_idx_start % 12)
 
     # PRECIPITATION BIAS CORRECTIONS
     # Monthly mean precipitation
-    ref_prec_monthly_avg = np.roll(
-        monthly_avg_2darray(ref_prec_nospinup), roll_amt, axis=1
-    )
+    ref_prec_monthly_avg = np.roll(monthly_avg_2darray(ref_prec), roll_amt, axis=1)
     gcm_prec_monthly_avg = np.roll(
-        monthly_avg_2darray(gcm_prec_nospinup), roll_amt, axis=1
+        monthly_avg_2darray(gcm_prec_subset), roll_amt, axis=1
     )
     bias_adj_prec_monthly = ref_prec_monthly_avg / gcm_prec_monthly_avg
 
@@ -391,9 +353,7 @@ def prec_biasadj_opt1(
     )
 
     # Adjust variance based on zscore and reference standard deviation
-    ref_prec_monthly_std = np.roll(
-        monthly_std_2darray(ref_prec_nospinup), roll_amt, axis=1
-    )
+    ref_prec_monthly_std = np.roll(monthly_std_2darray(ref_prec), roll_amt, axis=1)
     gcm_prec_biasadj_raw_monthly_avg = monthly_avg_2darray(
         gcm_prec_biasadj_raw[:, 0 : ref_prec.shape[1]]
     )
@@ -415,9 +375,9 @@ def prec_biasadj_opt1(
     # Identify outliers using reference's monthly maximum adjusted for future increases
     ref_prec_monthly_max = np.roll(
         (
-            ref_prec_nospinup.reshape(-1, 12)
+            ref_prec.reshape(-1, 12)
             .transpose()
-            .reshape(-1, int(ref_prec_nospinup.shape[1] / 12))
+            .reshape(-1, int(ref_prec.shape[1] / 12))
             .max(1)
             .reshape(12, -1)
             .transpose()
@@ -453,13 +413,8 @@ def prec_biasadj_opt1(
     # Assertion that bias adjustment does not drastically modify the precipitation and are reasonable
     gcm_prec_biasadj_subset = gcm_prec_biasadj[
         :, gcm_subset_idx_start : gcm_subset_idx_end + 1
-    ][:, gcm_spinupyears * 12 :]
-    gcm_prec_biasadj_frac = gcm_prec_biasadj_subset.sum(axis=1) / ref_prec_nospinup.sum(
-        axis=1
-    )
-    assert np.min(gcm_prec_biasadj_frac) > 0.5 and np.max(gcm_prec_biasadj_frac) < 2, (
-        'Error with gcm precipitation bias adjustment: total ref and gcm prec differ by more than factor of 2'
-    )
+    ]
+    gcm_prec_biasadj_frac = gcm_prec_biasadj_subset.sum(axis=1) / ref_prec.sum(axis=1)
     assert gcm_prec_biasadj.max() <= 10, (
         'gcm_prec_adj (precipitation bias adjustment) too high, needs to be modified'
     )
@@ -467,7 +422,7 @@ def prec_biasadj_opt1(
         'gcm_prec_adj is producing a negative precipitation value'
     )
 
-    return gcm_prec_biasadj, gcm_elev_biasadj
+    return gcm_prec_biasadj, gcm_elev_biasadj, gcm_prec_biasadj_frac
 
 
 def temp_biasadj_QDM(
@@ -478,8 +433,6 @@ def temp_biasadj_QDM(
     dates_table,
     sim_startyear,
     ref_startyear,
-    ref_spinupyears=0,
-    gcm_spinupyears=0,
 ):
     """
     Cannon et al. (2015) temperature bias correction based on quantile delta mapping
@@ -524,9 +477,9 @@ def temp_biasadj_QDM(
     )[0][0]
     gcm_temp_historic = gcm_temp[:, gcm_subset_idx_start : gcm_subset_idx_end + 1]
 
-    # Remove spinup years, so adjustment performed over calibration period
-    ref_temp_nospinup = ref_temp[:, ref_spinupyears * 12 :] + 273.15
-    gcm_temp_nospinup = gcm_temp_historic[:, gcm_spinupyears * 12 :] + 273.15
+    # Convert to Kelvin
+    ref_temp = ref_temp + 273.15
+    gcm_temp_historic = gcm_temp_historic + 273.15
 
     # if/else statement for whether or not the full GCM period is the same as the simulation period
     #   create GCM subset for applying bias-correction (e.g., 2000-2100),
@@ -570,8 +523,8 @@ def temp_biasadj_QDM(
             for ival, projected_value in enumerate(bc_temp_loop):
                 percentile = percentileofscore(bc_temp_loop, projected_value)
                 bias_correction_factor = np.percentile(
-                    ref_temp_nospinup, percentile
-                ) / np.percentile(gcm_temp_nospinup, percentile)
+                    ref_temp, percentile
+                ) / np.percentile(gcm_temp_historic, percentile)
                 bc_temp_loop_corrected[ival] = projected_value * bias_correction_factor
             # append the values from each time period to a list
             gcm_temp_biasadj.append(bc_temp_loop_corrected)
@@ -602,8 +555,6 @@ def prec_biasadj_QDM(
     dates_table,
     sim_startyear,
     ref_startyear,
-    ref_spinupyears=0,
-    gcm_spinupyears=0,
 ):
     """
     Cannon et al. (2015) precipitation bias correction based on quantile delta mapping
@@ -649,10 +600,6 @@ def prec_biasadj_QDM(
     )[0][0]
     gcm_prec_historic = gcm_prec[:, gcm_subset_idx_start : gcm_subset_idx_end + 1]
 
-    # Remove spinup years, so adjustment performed over calibration period
-    ref_prec_nospinup = ref_prec[:, ref_spinupyears * 12 :]
-    gcm_prec_nospinup = gcm_prec_historic[:, gcm_spinupyears * 12 :]
-
     # if/else statement for whether or not the full GCM period is the same as the simulation period
     #   create GCM subset for applying bias-correction (e.g., 2000-2100),
     #   that does not include the earlier reference years (e.g., 1981-2000)
@@ -693,8 +640,8 @@ def prec_biasadj_QDM(
             for ival, projected_value in enumerate(bc_prec_loop):
                 percentile = percentileofscore(bc_prec_loop, projected_value)
                 bias_correction_factor = np.percentile(
-                    ref_prec_nospinup, percentile
-                ) / np.percentile(gcm_prec_nospinup, percentile)
+                    ref_prec, percentile
+                ) / np.percentile(gcm_prec_historic, percentile)
                 bc_prec_loop_corrected[ival] = projected_value * bias_correction_factor
             # append the values from each time period to a list
             gcm_prec_biasadj.append(bc_prec_loop_corrected)
