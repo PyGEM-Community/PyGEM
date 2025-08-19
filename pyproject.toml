@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pygem"
-version = "1.0.3"
+version = "1.0.4"
 description = "Python Glacier Evolution Model (PyGEM)"
 authors = ["David Rounce <drounce@cmu.edu>,Brandon Tober <btober@cmu.edu>"]
 license = "MIT License"
