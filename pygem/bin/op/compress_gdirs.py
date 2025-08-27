@@ -9,7 +9,6 @@ compress OGGM glacier directories
 """
 
 import argparse
-import multiprocessing as mp
 
 import geopandas as gpd
 import oggm.cfg as cfg
@@ -46,7 +45,10 @@ def compress_region(region):
     workflow.execute_entity_task(utils.gdir_to_tar, gdirs, delete=True)
 
     # Tar the bundles
-    utils.base_dir_to_tar(cfg.PATHS['working_dir'], delete=True)
+    utils.base_dir_to_tar(
+        f'{cfg.PATHS["working_dir"]}/per_glacier/RGI60-{str(region).zfill(2)}',
+        delete=True,
+    )
 
 
 def main():
@@ -70,10 +72,10 @@ def main():
     )
     args = parser.parse_args()
 
-    n_processes = min(len(args.regions), args.ncores)
+    cfg.PARAMS['mp_processes'] = args.ncores
 
-    with mp.Pool(processes=n_processes) as pool:
-        pool.map(compress_region, args.regions)
+    for reg in args.rgi_region01:
+        compress_region(reg)
 
 
 if __name__ == '__main__':
