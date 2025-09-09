@@ -8,8 +8,9 @@ Distrubted under the MIT lisence
 Model statistics module
 """
 
-import numpy as np
 import arviz as az
+import numpy as np
+
 
 def effective_n(x):
     """
@@ -33,11 +34,11 @@ def effective_n(x):
         # detrend trace using mean to be consistent with statistics
         # definition of autocorrelation
         x = np.asarray(x)
-        x = (x - x.mean())
+        x = x - x.mean()
         # compute autocorrelation (note: only need second half since
         # they are symmetric)
         rho = np.correlate(x, x, mode='full')
-        rho = rho[len(rho)//2:]
+        rho = rho[len(rho) // 2 :]
         # normalize the autocorrelation values
         #  note: rho[0] is the variance * n_samples, so this is consistent
         #  with the statistics definition of autocorrelation on wikipedia
@@ -51,15 +52,17 @@ def effective_n(x):
         n = len(x)
         while not negative_autocorr and (t < n):
             if not t % 2:
-                negative_autocorr = sum(rho_norm[t-1:t+1]) < 0
+                negative_autocorr = sum(rho_norm[t - 1 : t + 1]) < 0
             t += 1
-        return int(n / (1 + 2*rho_norm[1:t].sum()))
+        return int(n / (1 + 2 * rho_norm[1:t].sum()))
     except:
         return None
-    
 
-def mcmc_stats(chains_dict, 
-               params=['tbias','kp','ddfsnow','ddfice','rhoabl', 'rhoacc','mb_mwea']):
+
+def mcmc_stats(
+    chains_dict,
+    params=['tbias', 'kp', 'ddfsnow', 'ddfice', 'rhoabl', 'rhoacc', 'mb_mwea'],
+):
     """
     Compute per-chain and overall summary stats for MCMC samples.
 
@@ -118,17 +121,17 @@ def mcmc_stats(chains_dict,
             idata = az.from_dict(posterior={param: samples})
             # calculate the Gelman-Rubin statistic (rhat)
             r_hat = float(az.rhat(idata).to_array().values[0])
-        else :
+        else:
             r_hat = None
 
         summary_stats[param] = {
-            "mean": means,
-            "std": stds,
-            "median": medians,
-            "q25": q25,
-            "q75": q75,
-            "ess": ess,
-            "r_hat": r_hat
+            'mean': means,
+            'std': stds,
+            'median': medians,
+            'q25': q25,
+            'q75': q75,
+            'ess': ess,
+            'r_hat': r_hat,
         }
 
     chains_dict['_summary_stats_'] = summary_stats

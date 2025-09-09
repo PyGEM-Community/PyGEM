@@ -606,7 +606,7 @@ def run(list_packed_vars):
         rgiid = main_glac_rgi.loc[main_glac_rgi.index.values[glac], 'RGIId']
 
         try:
-        # for batman in [0]:
+            # for batman in [0]:
 
             # ===== Load glacier data: area (km2), ice thickness (m), width (km) =====
             if (
