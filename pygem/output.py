@@ -90,6 +90,7 @@ class single_glacier:
     sim_endyear: int
     option_calibration: str
     option_bias_adjustment: str
+    extra_vars: bool = False
 
     def __post_init__(self):
         """
@@ -492,7 +493,7 @@ class glacierwide_stats(single_glacier):
             }
 
         # optionally store extra variables
-        if pygem_prms['sim']['out']['export_extra_vars']:
+        if self.extra_vars:
             self.output_coords_dict['glac_prec_monthly'] = collections.OrderedDict(
                 [('glac', self.glac_values), ('time', self.time_values)]
             )
@@ -791,8 +792,8 @@ class binned_stats(single_glacier):
         Flag indicating whether additional binned components are included in the dataset.
     """
 
-    nbins: int
-    binned_components: bool
+    nbins: int = 0
+    binned_components: bool = False
 
     def __post_init__(self):
         """
