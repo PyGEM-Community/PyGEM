@@ -1779,6 +1779,7 @@ def run(list_packed_vars):
                             sim_endyear=args.sim_endyear,
                             option_calibration=args.option_calibration,
                             option_bias_adjustment=args.option_bias_adjustment,
+                            extra_vars=args.export_extra_vars,
                         )
                         for n_iter in range(nsims):
                             # pass model params for iteration and update output dataset model params
@@ -1878,6 +1879,7 @@ def run(list_packed_vars):
                         sim_endyear=args.sim_endyear,
                         option_calibration=args.option_calibration,
                         option_bias_adjustment=args.option_bias_adjustment,
+                        extra_vars=args.export_extra_vars,
                     )
                     # create and return xarray dataset
                     output_stats.create_xr_ds()

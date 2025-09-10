@@ -46,6 +46,7 @@ from pygem.oggm_compat import (
     single_flowline_glacier_directory,
     single_flowline_glacier_directory_with_calving,
 )
+from pygem.utils.stats import mcmc_stats
 
 # from oggm.core import climate
 # from oggm.core.flowline import FluxBasedModel
@@ -2134,6 +2135,9 @@ def run(list_packed_vars):
                     modelprms_export['mb_obs_mwea'] = [float(mb_obs_mwea)]
                     modelprms_export['mb_obs_mwea_err'] = [float(mb_obs_mwea_err)]
                     modelprms_export['priors'] = priors
+
+                    # compute stats on mcmc parameters
+                    modelprms_export = mcmc_stats(modelprms_export)
 
                     modelprms_fn = glacier_str + '-modelprms_dict.json'
                     modelprms_fp = [
