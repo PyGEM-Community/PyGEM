@@ -42,7 +42,7 @@ config_manager = ConfigManager()
 pygem_prms = config_manager.read_config()
 # oggm imports
 from oggm import cfg, graphics, tasks, utils
-from oggm.core.flowline import FluxBasedModel
+from oggm.core.flowline import FluxBasedModel, SemiImplicitModel
 from oggm.core.massbalance import apparent_mb_from_any_mb
 
 import pygem.gcmbiasadj as gcmbiasadj
@@ -1067,17 +1067,24 @@ def run(list_packed_vars):
                         if debug:
                             print('OGGM GLACIER DYNAMICS!')
 
-                        # new numerical scheme is SemiImplicitModel() but doesn't have frontal ablation yet
-                        # FluxBasedModel is old numerical scheme but includes frontal ablation
-                        ev_model = FluxBasedModel(
-                            nfls,
-                            y0=args.sim_startyear,
-                            mb_model=mbmod,
-                            glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier,
-                            fs=fs,
-                            is_tidewater=gdir.is_tidewater,
-                            water_level=water_level,
-                        )
+                        # FluxBasedModel is older numerical scheme but includes frontal ablation
+                        if gdir.is_tidewater:
+                            ev_model = FluxBasedModel(
+                                nfls,
+                                y0=args.sim_startyear,
+                                mb_model=mbmod,
+                                glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier,
+                                fs=fs,
+                                is_tidewater=gdir.is_tidewater,
+                                water_level=water_level)
+                        # SemiImplicitModel is newer numerical solver, but does not yet include frontal ablation
+                        else:
+                            ev_model = SemiImplicitModel(
+                                nfls,
+                                y0=args.sim_startyear, 
+                                mb_model=mbmod,
+                                glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier,
+                                fs=fs)
 
                         if debug:
                             graphics.plot_modeloutput_section(ev_model)
