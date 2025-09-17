@@ -1076,15 +1076,17 @@ def run(list_packed_vars):
                                 glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier,
                                 fs=fs,
                                 is_tidewater=gdir.is_tidewater,
-                                water_level=water_level)
+                                water_level=water_level,
+                            )
                         # SemiImplicitModel is newer numerical solver, but does not yet include frontal ablation
                         else:
                             ev_model = SemiImplicitModel(
                                 nfls,
-                                y0=args.sim_startyear, 
+                                y0=args.sim_startyear,
                                 mb_model=mbmod,
                                 glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier,
-                                fs=fs)
+                                fs=fs,
+                            )
 
                         if debug:
                             graphics.plot_modeloutput_section(ev_model)
