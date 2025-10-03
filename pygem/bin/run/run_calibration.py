@@ -171,6 +171,11 @@ def getparser():
         help='Flag to keep glacier lists ordered (default is false)',
     )
     parser.add_argument(
+        '-spinup',
+        action='store_true',
+        help='Flag to use spinup flowlines (default is false)',
+    )
+    parser.add_argument(
         '-p', '--progress_bar', action='store_true', help='Flag to show progress bar'
     )
     parser.add_argument('-v', '--debug', action='store_true', help='Flag for debugging')
