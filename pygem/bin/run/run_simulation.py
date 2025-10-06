@@ -269,10 +269,10 @@ def getparser():
         help='glacier dynamics scheme (options: ``OGGM`, `MassRedistributionCurves`, `None`)',
     )
     parser.add_argument(
-        '-use_reg_glena',
+        '-use_regional_glen_a',
         action='store',
         type=bool,
-        default=pygem_prms['sim']['oggm_dynamics']['use_reg_glena'],
+        default=pygem_prms['sim']['oggm_dynamics']['use_regional_glen_a'],
         help='Take the glacier flow parameterization from regionally calibrated priors (boolean: `0` or `1`, `True` or `False`)',
     )
     parser.add_argument(
@@ -839,9 +839,9 @@ def run(list_packed_vars):
                     if debug:
                         print('cfl number:', cfg.PARAMS['cfl_number'])
 
-                    if args.use_reg_glena:
+                    if args.use_regional_glen_a:
                         glena_df = pd.read_csv(
-                            f'{pygem_prms["root"]}/{pygem_prms["sim"]["oggm_dynamics"]["glen_a_reg_relpath"]}'
+                            f'{pygem_prms["root"]}/{pygem_prms["sim"]["oggm_dynamics"]["glen_a_regional_relpath"]}'
                         )
                         glena_O1regions = [int(x) for x in glena_df.O1Region.values]
                         assert glacier_rgi_table.O1Region in glena_O1regions, (

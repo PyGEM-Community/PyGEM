@@ -186,7 +186,7 @@ def run(
             # get glen_a and fs values from prior calibration or manual entry
             if pygem_prms['sim']['oggm_dynamics']['use_reg_glen_a']:
                 glena_df = pd.read_csv(
-                    f'{pygem_prms["root"]}/{pygem_prms["sim"]["oggm_dynamics"]["glen_a_reg_relpath"]}'
+                    f'{pygem_prms["root"]}/{pygem_prms["sim"]["oggm_dynamics"]["glen_a_regional_relpath"]}'
                 )
                 glena_O1regions = [int(x) for x in glena_df.O1Region.values]
                 assert gdir.glacier_rgi_table.O1Region in glena_O1regions, (
