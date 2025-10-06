@@ -451,7 +451,7 @@ class GCM:
         main_glac_rgi,
         dates_table,
         realizations=['r1i1p1f1', 'r4i1p1f1'],
-        upscale_var_timestep=False  
+        upscale_var_timestep=False,  
     ):
         """
         Import time series of variables and extract nearest neighbor.
