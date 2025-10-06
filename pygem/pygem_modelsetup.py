@@ -100,8 +100,9 @@ def datesmodelrun(
         dates_table['month'] = dates_table['date'].dt.month
         dates_table['day'] = dates_table['date'].dt.day
         dates_table['daysinmonth'] = dates_table['date'].dt.daysinmonth
+        dates_table['timestep'] = np.arange(len(dates_table['date']))
         # Set date as index
-        dates_table.set_index('date', inplace=True)
+        dates_table.set_index('timestep', inplace=True)
         # Remove leap year days if user selected this with option_leapyear
         if pygem_prms['time']['option_leapyear'] == 0:
             # First, change 'daysinmonth' number
@@ -119,9 +120,8 @@ def datesmodelrun(
     # Water year for northern hemisphere using USGS definition (October 1 - September 30th),
     # e.g., water year for 2000 is from October 1, 1999 - September 30, 2000
     dates_table['wateryear'] = dates_table['year']
-    for step in range(dates_table.shape[0]):
-        if dates_table.loc[step, 'month'] >= 10:
-            dates_table.loc[step, 'wateryear'] = dates_table.loc[step, 'year'] + 1
+    dates_table.loc[dates_table['month'] >= 10, 'wateryear'] = dates_table['year'] + 1
+
     # Add column for seasons
     # create a season dictionary to assist groupby functions
     seasondict = {}

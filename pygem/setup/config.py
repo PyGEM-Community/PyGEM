@@ -157,6 +157,7 @@ class ConfigManager:
         'climate.sim_wateryear': str,
         'climate.constantarea_years': int,
         'climate.paths': dict,
+        'climate.paths.era5_fullpath': bool,
         'climate.paths.era5_relpath': str,
         'climate.paths.era5_temp_fn': str,
         'climate.paths.era5_tempstd_fn': str,
