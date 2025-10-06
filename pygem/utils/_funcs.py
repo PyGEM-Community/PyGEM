@@ -8,8 +8,9 @@ Distrubted under the MIT lisence
 Functions that didn't fit into other modules
 """
 
-import json
 import argparse
+import json
+
 import numpy as np
 
 from pygem.setup.config import ConfigManager
@@ -18,6 +19,7 @@ from pygem.setup.config import ConfigManager
 config_manager = ConfigManager()
 # read the config
 pygem_prms = config_manager.read_config()
+
 
 def str2bool(v):
     """
@@ -36,6 +38,7 @@ def str2bool(v):
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
+
 
 def annualweightedmean_array(var, dates_table):
     """
