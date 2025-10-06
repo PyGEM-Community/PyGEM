@@ -559,7 +559,7 @@ def main():
 
         try:
             glena_df = pd.read_csv(
-                f'{pygem_prms["root"]}/{pygem_prms["out"]["glena_reg_relpath"]}'
+                f'{pygem_prms["root"]}/{pygem_prms["out"]["glen_a_reg_relpath"]}'
             )
 
             # Add or overwrite existing file
@@ -578,7 +578,7 @@ def main():
         glena_df = glena_df.sort_values('O1Region', ascending=True)
         glena_df.reset_index(inplace=True, drop=True)
         glena_df.to_csv(
-            f'{pygem_prms["root"]}/{pygem_prms["out"]["glena_reg_relpath"]}',
+            f'{pygem_prms["root"]}/{pygem_prms["out"]["glen_a_reg_relpath"]}',
             index=False,
         )
 

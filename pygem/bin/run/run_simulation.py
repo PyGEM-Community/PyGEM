@@ -841,7 +841,7 @@ def run(list_packed_vars):
 
                     if args.use_reg_glena:
                         glena_df = pd.read_csv(
-                            f'{pygem_prms["root"]}/{pygem_prms["sim"]["oggm_dynamics"]["glena_reg_relpath"]}'
+                            f'{pygem_prms["root"]}/{pygem_prms["sim"]["oggm_dynamics"]["glen_a_reg_relpath"]}'
                         )
                         glena_O1regions = [int(x) for x in glena_df.O1Region.values]
                         assert glacier_rgi_table.O1Region in glena_O1regions, (

@@ -263,7 +263,7 @@ def reg_calving_flux(
             if pygem_prms['sim']['oggm_dynamics']['use_reg_glena']:
                 glena_df = pd.read_csv(
                     pygem_prms['root']
-                    + pygem_prms['sim']['oggm_dynamics']['glena_reg_relpath']
+                    + pygem_prms['sim']['oggm_dynamics']['glen_a_reg_relpath']
                 )
                 glena_idx = np.where(glena_df.O1Region == glacier_rgi_table.O1Region)[
                     0
