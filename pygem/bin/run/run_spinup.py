@@ -28,11 +28,12 @@ from pygem.oggm_compat import (
 
 
 def run(glacno_list, mb_model_params, debug=False, **kwargs):
+    # remove None kwargs
+    kwargs = {k: v for k, v in kwargs.items() if v is not None}
+
     main_glac_rgi = modelsetup.selectglaciersrgitable(glac_no=glacno_list)
     # model dates
-    dt = modelsetup.datesmodelrun(
-        startyear=1940, endyear=2019
-    )  # will have to cover the time period of inversion (2000-2019) and spinup (1979-~2010 by default)
+    dt = modelsetup.datesmodelrun(startyear=1979, endyear=2019)
     # load climate data
     ref_clim = class_climate.GCM(name='ERA5')
 
@@ -213,7 +214,7 @@ def main():
         '-mb_model_params',
         type=str,
         default='regional_priors',
-        options=['regional_priors', 'emulator'],
+        choices=['regional_priors', 'emulator'],
         help='Which mass balance model parameters to use ("regional_priors" or "emulator")',
     )
     args = parser.parse_args()
@@ -257,8 +258,6 @@ def main():
     run_partial = partial(
         run,
         mb_model_params=args.mb_model_params,
-        debug=args.debug,
-        ncores=ncores,
         target_yr=args.target_yr,
         spinup_period=args.spinup_period,
     )
