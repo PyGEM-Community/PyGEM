@@ -3,7 +3,7 @@ Python Glacier Evolution Model (PyGEM)
 
 copyright © 2018 David Rounce <drounce@cmu.edu>
 
-Distrubted under the MIT lisence
+Distributed under the MIT license
 
 Find the optimal values of glens_a_multiplier to match the consensus ice thickness estimates
 """

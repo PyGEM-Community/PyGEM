@@ -3,7 +3,7 @@ Python Glacier Evolution Model (PyGEM)
 
 copyright © 2018 David Rounce <drounce@cmu.edu>
 
-Distrubted under the MIT lisence
+Distributed under the MIT license
 
 Process the WGMS data to connect with RGIIds and evaluate potential precipitation biases
 

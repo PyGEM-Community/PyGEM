@@ -3,7 +3,7 @@ Python Glacier Evolution Model (PyGEM)
 
 copyright © 2018 David Rounce <drounce@cmu.edu
 
-Distrubted under the MIT lisence
+Distributed under the MIT license
 
 List of functions used to set up different aspects of the model
 """

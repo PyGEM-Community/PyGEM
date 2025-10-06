@@ -3,7 +3,7 @@ Python Glacier Evolution Model (PyGEM)
 
 copyright © 2018 David Rounce <drounce@cmu.edu>
 
-Distrubted under the MIT lisence
+Distributed under the MIT license
 
 script to check for failed glaciers for a given simulation and export a pickle file containing a list of said glacier numbers to be reprocessed
 """
