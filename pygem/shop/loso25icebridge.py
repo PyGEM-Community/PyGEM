@@ -573,6 +573,7 @@ class oib:
                       ...
                       [sigma_bin1_dateM, sigma_bin2_dateM, ..., sigma_binN_dateM]],
         }
+        Note: dates are stored as strings in 'YYYY-MM-DD' format. Each list within 'dh' and 'sigma' should be length N-1, where N is the number of bin edges.
         """
         # Ensure output directory exists
         os.makedirs(outdir, exist_ok=True)
