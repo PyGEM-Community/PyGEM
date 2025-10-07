@@ -42,9 +42,7 @@ class oib:
     ):
         self.oib_datpath = oib_datpath
         if os.path.isfile(rgi7_rgi6_linksfp):
-            self.rgi7_6_df = pd.read_csv(
-                rgi7_rgi6_linksfp
-            )
+            self.rgi7_6_df = pd.read_csv(rgi7_rgi6_linksfp)
             self.rgi7_6_df['rgi7_id'] = (
                 self.rgi7_6_df['rgi7_id'].str.split('RGI2000-v7.0-G-').str[1]
             )
@@ -552,9 +550,11 @@ class oib:
             self.set_diffs(oib_diffs_filt)
         else:
             return oib_diffs_filt
-        
-    def save_elevchange1d(self, 
-                          outdir=f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["elev_change_1d"]["elev_change_1d_relpath"]}'):
+
+    def save_elevchange1d(
+        self,
+        outdir=f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["elev_change_1d"]["elev_change_1d_relpath"]}',
+    ):
         """
         Save elevation change data in a format compatible with elevchange1d module.
 
@@ -582,7 +582,10 @@ class oib:
         # Prepare data for saving
         elev_change_data = {
             'bin_edges': self.bin_edges.tolist(),
-            'dates': [(dt[0].strftime('%Y-%m-%d'), dt[1].strftime('%Y-%m-%d')) for dt in self.dbl_diffs['dates']],
+            'dates': [
+                (dt[0].strftime('%Y-%m-%d'), dt[1].strftime('%Y-%m-%d'))
+                for dt in self.dbl_diffs['dates']
+            ],
             'dh': self.dbl_diffs['dh'].tolist(),
             'sigma': self.dbl_diffs['sigma'].tolist(),
         }
