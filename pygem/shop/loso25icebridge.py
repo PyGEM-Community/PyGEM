@@ -38,12 +38,12 @@ class oib:
         oib_datpath,
         rgi6id='',
         rgi7id='',
-        rgi7_rgi6_linksfn='RGI2000-v7.0-G-01_alaska-rgi6_links.csv',
+        rgi7_rgi6_linksfp='RGI2000-v7.0-G-01_alaska-rgi6_links.csv',
     ):
         self.oib_datpath = oib_datpath
-        if rgi7_rgi6_linksfn in os.listdir(f'{self.oib_datpath}/'):
+        if os.path.isfile(rgi7_rgi6_linksfp):
             self.rgi7_6_df = pd.read_csv(
-                f'{self.oib_datpath}/../RGI2000-v7.0-G-01_alaska-rgi6_links.csv'
+                rgi7_rgi6_linksfp
             )
             self.rgi7_6_df['rgi7_id'] = (
                 self.rgi7_6_df['rgi7_id'].str.split('RGI2000-v7.0-G-').str[1]
@@ -579,7 +579,6 @@ class oib:
         """
         # Ensure output directory exists
         os.makedirs(outdir, exist_ok=True)
-
         # Prepare data for saving
         elev_change_data = {
             'bin_edges': self.bin_edges.tolist(),
@@ -589,9 +588,9 @@ class oib:
         }
 
         # Save to JSON file
-        outfp = os.path.join(outdir, f'/{self.rgi6id}_elev_change_1d_.json')
+        outfp = os.path.join(outdir, f'{self.rgi6id}_elev_change_1d.json')
         with open(outfp, 'w') as f:
-            json.dump(elev_change_data, f, indent=0)
+            json.dump(elev_change_data, f)
 
 
 def _split_by_uppercase(text):
