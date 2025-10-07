@@ -184,7 +184,7 @@ def run(
             fs = gdir.get_diagnostics()['inversion_fs']
         else:
             # get glen_a and fs values from prior calibration or manual entry
-            if pygem_prms['sim']['oggm_dynamics']['use_reg_glen_a']:
+            if pygem_prms['sim']['oggm_dynamics']['use_regional_glen_a']:
                 glena_df = pd.read_csv(
                     f'{pygem_prms["root"]}/{pygem_prms["sim"]["oggm_dynamics"]["glen_a_regional_relpath"]}'
                 )
@@ -312,7 +312,7 @@ def main():
         '-calibrate_regional_glen_a',
         type=str2bool,
         default=True,
-        help="If True (False) run ice thickness inversion and regionally calibrate (use previously calibrated or user-input) Glen's A values. Default is True.",
+        help="If True (False) run ice thickness inversion and regionally calibrate (use previously calibrated or user-input) Glen's A values. Default is True",
     )
     parser.add_argument(
         '-ncores',
