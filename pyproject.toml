@@ -64,6 +64,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
 line-length = 88  # Default
+ignore = ["B905"]
 
 [tool.ruff.format]
 quote-style = "single"
