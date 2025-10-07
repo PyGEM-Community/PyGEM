@@ -13,7 +13,7 @@
 #########################################################
 
 # ===== ROOT PATH =====
-root: /Users/albinwells/Desktop/PyGEM-files/PyGEM_data/full_data/climate_data/ # note, this parameter must be modfied as to point to the appropriate location. all other paths are assumed relative to this (inputs and outputs).
+root: /path/to/pygem/data/                        # note, this parameter must be modfied as to point to the appropriate location. all other paths are assumed relative to this (inputs and outputs).
 
 # ===== USER INFO =====
 user:
@@ -66,22 +66,14 @@ climate:
   # ===== CLIMATE DATA FILEPATHS AND FILENAMES =====
   paths:
     # ERA5 (default reference climate data)
-    era5_fullpath: True # bool. 'True' ignores 'root' and 'era5_relpath' for ERA5 data and assumes below filenames are absolute
+    era5_fullpath: False # bool. 'True' ignores 'root' and 'era5_relpath' for ERA5 data and assumes below filenames are absolute
     era5_relpath: /climate_data/ERA5/
-
-    era5_temp_fn: /Volumes/TOSHIBA_EXT/era5_data/daily_data/NH/era5_t2m_daily_YYYY.nc
-    era5_tempstd_fn: /Users/albinwells/Desktop/PyGEM-files/PyGEM_data/full_data/climate_data/ERA5/ERA5_tempstd_monthly.nc
-    era5_prec_fn: /Volumes/TOSHIBA_EXT/era5_data/daily_data/NH/era5_tp_daily_YYYY.nc
-    era5_elev_fn: /Users/albinwells/Desktop/PyGEM-files/PyGEM_data/full_data/climate_data/ERA5/ERA5_geopotential.nc
-    era5_pressureleveltemp_fn: /Users/albinwells/Desktop/PyGEM-files/PyGEM_data/full_data/climate_data/ERA5/ERA5_pressureleveltemp_monthly.nc
-    era5_lr_fn: /Users/albinwells/Desktop/PyGEM-files/PyGEM_data/full_data/climate_data/ERA5/ERA5_lapserates_monthly.nc
-    
-    # era5_temp_fn: ERA5_temp_monthly.nc
-    # era5_tempstd_fn: ERA5_tempstd_monthly.nc
-    # era5_prec_fn: ERA5_totalprecip_monthly.nc
-    # era5_elev_fn: ERA5_geopotential.nc
-    # era5_pressureleveltemp_fn: ERA5_pressureleveltemp_monthly.nc
-    # era5_lr_fn: ERA5_lapserates_monthly.nc
+    era5_temp_fn: ERA5_temp_monthly.nc
+    era5_tempstd_fn: ERA5_tempstd_monthly.nc
+    era5_prec_fn: ERA5_totalprecip_monthly.nc
+    era5_elev_fn: ERA5_geopotential.nc
+    era5_pressureleveltemp_fn: ERA5_pressureleveltemp_monthly.nc
+    era5_lr_fn: ERA5_lapserates_monthly.nc
 
     # CMIP5 (GCM data)
     cmip5_relpath: /climate_data/cmip5/
@@ -334,7 +326,7 @@ time:
   wateryear_month_start: 10                       # water year starting month
   winter_month_start: 10                          # first month of winter (for HMA winter is October 1 - April 30)
   summer_month_start: 5                           # first month of summer (for HMA summer is May 1 - Sept 30)
-  timestep: daily                                 # time step ('monthly' or 'daily')
+  timestep: monthly                                 # time step ('monthly' or 'daily')
 
 # ===== MODEL CONSTANTS =====
 constants:
