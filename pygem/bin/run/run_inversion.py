@@ -185,21 +185,25 @@ def run(
         else:
             # get glen_a and fs values from prior calibration or manual entry
             if pygem_prms['sim']['oggm_dynamics']['use_regional_glen_a']:
-                glena_df = pd.read_csv(
+                glen_a_df = pd.read_csv(
                     f'{pygem_prms["root"]}/{pygem_prms["sim"]["oggm_dynamics"]["glen_a_regional_relpath"]}'
                 )
-                glena_O1regions = [int(x) for x in glena_df.O1Region.values]
-                assert gdir.glacier_rgi_table.O1Region in glena_O1regions, (
+                glen_a_O1regions = [int(x) for x in glen_a_df.O1Region.values]
+                assert gdir.glacier_rgi_table.O1Region in glen_a_O1regions, (
                     '{0:0.5f}'.format(gd.glacier_rgi_table['RGIId_float'])
                     + ' O1 region not in glen_a_df'
                 )
-                glena_idx = np.where(
-                    glena_O1regions == gdir.glacier_rgi_table.O1Region
+                glen_a_idx = np.where(
+                    glen_a_O1regions == gdir.glacier_rgi_table.O1Region
                 )[0][0]
-                glen_a = (
-                    cfg.PARAMS['glen_a'] * glena_df.loc[glena_idx, 'glens_a_multiplier']
-                )
-                fs = glena_df.loc[glena_idx, 'fs']
+                glen_a_multiplier = glen_a_df.loc[glen_a_idx, 'glens_a_multiplier']
+                fs = glen_a_df.loc[glen_a_idx, 'fs']
+            else:
+                glen_a_multiplier = pygem_prms['sim']['oggm_dynamics'][
+                    'glen_a_multiplier'
+                ]
+                fs = pygem_prms['sim']['oggm_dynamics']['fs']
+            glen_a = cfg.PARAMS['glen_a'] * glen_a_multiplier
 
         # non-tidewater
         if (
@@ -207,7 +211,7 @@ def run(
             or not pygem_prms['setup']['include_frontalablation']
         ):
             if calibrate_regional_glen_a:
-                # nothing else to do here
+                # nothing else to do here - already ran inversion when calibrating Glen's A
                 continue
 
             # run inversion using regionally calibrated Glen's A values
