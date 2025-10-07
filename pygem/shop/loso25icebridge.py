@@ -21,11 +21,13 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-# Local libraries
-import pygem.setup.config as config
+# pygem imports
+from pygem.setup.config import ConfigManager
 
-# Read the config
-pygem_prms = config.read_config()  # This reads the configuration file
+# instantiate ConfigManager
+config_manager = ConfigManager()
+# read the config
+pygem_prms = config_manager.read_config()
 
 __all__ = ['oib']
 
@@ -39,7 +41,7 @@ class oib:
         rgi7_rgi6_linksfn='RGI2000-v7.0-G-01_alaska-rgi6_links.csv',
     ):
         self.oib_datpath = oib_datpath
-        if rgi7_rgi6_linksfn in os.listdir(f'{self.oib_datpath}/../'):
+        if rgi7_rgi6_linksfn in os.listdir(f'{self.oib_datpath}/'):
             self.rgi7_6_df = pd.read_csv(
                 f'{self.oib_datpath}/../RGI2000-v7.0-G-01_alaska-rgi6_links.csv'
             )

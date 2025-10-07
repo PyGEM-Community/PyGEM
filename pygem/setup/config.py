@@ -263,7 +263,7 @@ class ConfigManager:
         'calib.data.icethickness': dict,
         'calib.data.icethickness.h_ref_relpath': str,
         'calib.icethickness_cal_frac_byarea': float,
-        'calib.data.elev_change_1d': (str, type(None)),
+        'calib.data.elev_change_1d.elev_change_1d_relpath': (str, type(None)),
         'sim': dict,
         'sim.option_dynamics': (str, type(None)),
         'sim.option_bias_adjustment': int,
