@@ -3,11 +3,12 @@ Python Glacier Evolution Model (PyGEM)
 
 copyright © 2018 David Rounce <drounce@cmu.edu>
 
-Distrubted under the MIT lisence
+Distributed under the MIT license
 
 Functions that didn't fit into other modules
 """
 
+import argparse
 import json
 
 import numpy as np
@@ -18,6 +19,25 @@ from pygem.setup.config import ConfigManager
 config_manager = ConfigManager()
 # read the config
 pygem_prms = config_manager.read_config()
+
+
+def str2bool(v):
+    """
+    Convert a string to a boolean.
+
+    Accepts: "yes", "true", "t", "1" → True;
+             "no", "false", "f", "0" → False.
+
+    Raises an error if input is unrecognized.
+    """
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', '1', 'y'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', '0', 'n'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
 def annualweightedmean_array(var, dates_table):

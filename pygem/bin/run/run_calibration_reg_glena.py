@@ -3,7 +3,7 @@ Python Glacier Evolution Model (PyGEM)
 
 copyright © 2018 David Rounce <drounce@cmu.edu>
 
-Distrubted under the MIT lisence
+Distributed under the MIT license
 
 Find the optimal values of glens_a_multiplier to match the consensus ice thickness estimates
 """
@@ -559,7 +559,7 @@ def main():
 
         try:
             glena_df = pd.read_csv(
-                f'{pygem_prms["root"]}/{pygem_prms["out"]["glena_reg_relpath"]}'
+                f'{pygem_prms["root"]}/{pygem_prms["out"]["glen_a_regional_relpath"]}'
             )
 
             # Add or overwrite existing file
@@ -578,7 +578,7 @@ def main():
         glena_df = glena_df.sort_values('O1Region', ascending=True)
         glena_df.reset_index(inplace=True, drop=True)
         glena_df.to_csv(
-            f'{pygem_prms["root"]}/{pygem_prms["out"]["glena_reg_relpath"]}',
+            f'{pygem_prms["root"]}/{pygem_prms["out"]["glen_a_regional_relpath"]}',
             index=False,
         )
 

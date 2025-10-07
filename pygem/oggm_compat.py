@@ -3,7 +3,7 @@ Python Glacier Evolution Model (PyGEM)
 
 copyright © 2018 David Rounce <drounce@cmu.edu
 
-Distrubted under the MIT lisence
+Distributed under the MIT license
 
 PYGEM-OGGGM COMPATIBILITY FUNCTIONS
 """
@@ -19,6 +19,7 @@ from oggm import cfg, workflow
 
 # from oggm import tasks
 from oggm.cfg import SEC_IN_YEAR
+from oggm.core.flowline import FileModel
 from oggm.core.massbalance import MassBalanceModel
 
 from pygem.setup.config import ConfigManager
@@ -224,6 +225,40 @@ def single_flowline_glacier_directory_with_calving(
         )
 
     return gdir
+
+
+def get_spinup_flowlines(gdir, y0=None):
+    """Get OGGM spinup flowlines at a desired year.
+
+    Parameters
+    ----------
+    gdir : GlacierDirectory
+        the glacier to compute
+    y0 : int
+        the year at which to get the flowlines (None for last year)
+
+    Returns
+    -------
+    flowline object
+    """
+    # instantiate flowline.FileModel object from model_geometry_dynamic_spinup
+    fmd_dynamic = FileModel(
+        gdir.get_filepath('model_geometry', filesuffix='_dynamic_spinup_pygem_mb')
+    )
+    # run FileModel to startyear (it will be initialized at `spinup_start_yr`)
+    fmd_dynamic.run_until(y0)
+    # write flowlines
+    gdir.write_pickle(
+        fmd_dynamic.fls, 'model_flowlines', filesuffix=f'_dynamic_spinup_pygem_mb_{y0}'
+    )
+    # add debris
+    debris.debris_binned(
+        gdir, fl_str='model_flowlines', filesuffix=f'_dynamic_spinup_pygem_mb_{y0}'
+    )
+    # return flowlines
+    return gdir.read_pickle(
+        'model_flowlines', filesuffix=f'_dynamic_spinup_pygem_mb_{y0}'
+    )
 
 
 def update_cfg(updates, dict_name='PARAMS'):

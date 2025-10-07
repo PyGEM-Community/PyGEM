@@ -22,6 +22,7 @@ nb_dir = os.environ.get('PYGEM_NOTEBOOKS_DIRPATH') or os.path.join(
 notebooks = [
     'simple_test.ipynb',
     'advanced_test.ipynb',
+    'advanced_test_spinup.ipynb',
     'advanced_test_tw.ipynb',
 ]
 

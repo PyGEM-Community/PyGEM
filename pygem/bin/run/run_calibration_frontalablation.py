@@ -3,7 +3,7 @@ Python Glacier Evolution Model (PyGEM)
 
 copyright © 2018 David Rounce <drounce@cmu.edu>
 
-Distrubted under the MIT lisence
+Distributed under the MIT license
 
 Calibrate frontal ablation parameters for tidewater glaciers
 """
@@ -260,10 +260,10 @@ def reg_calving_flux(
             cfg.PARAMS['calving_k'] = calving_k
             cfg.PARAMS['inversion_calving_k'] = cfg.PARAMS['calving_k']
 
-            if pygem_prms['sim']['oggm_dynamics']['use_reg_glena']:
+            if pygem_prms['sim']['oggm_dynamics']['use_regional_glen_a']:
                 glena_df = pd.read_csv(
                     pygem_prms['root']
-                    + pygem_prms['sim']['oggm_dynamics']['glena_reg_relpath']
+                    + pygem_prms['sim']['oggm_dynamics']['glen_a_regional_relpath']
                 )
                 glena_idx = np.where(glena_df.O1Region == glacier_rgi_table.O1Region)[
                     0

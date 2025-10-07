@@ -3,7 +3,7 @@ Python Glacier Evolution Model (PyGEM)
 
 copyright © 2018 David Rounce <drounce@cmu.edu>
 
-Distrubted under the MIT lisence
+Distributed under the MIT license
 
 Run model calibration
 """
@@ -37,15 +37,10 @@ config_manager = ConfigManager()
 # read the config
 pygem_prms = config_manager.read_config()
 
+import pygem.oggm_compat as oggm_compat
 import pygem.pygem_modelsetup as modelsetup
 from pygem import class_climate, mcmc
 from pygem.massbalance import PyGEMMassBalance
-
-# from pygem.glacierdynamics import MassRedistributionCurveModel
-from pygem.oggm_compat import (
-    single_flowline_glacier_directory,
-    single_flowline_glacier_directory_with_calving,
-)
 from pygem.utils.stats import mcmc_stats
 
 # from oggm.core import climate
@@ -174,6 +169,11 @@ def getparser():
         '-option_ordered',
         action='store_true',
         help='Flag to keep glacier lists ordered (default is false)',
+    )
+    parser.add_argument(
+        '-spinup',
+        action='store_true',
+        help='Flag to use spinup flowlines (default is false)',
     )
     parser.add_argument(
         '-p', '--progress_bar', action='store_true', help='Flag to show progress bar'
@@ -605,11 +605,13 @@ def run(list_packed_vars):
                 glacier_rgi_table['TermType'] not in [1, 5]
                 or not pygem_prms['setup']['include_frontalablation']
             ):
-                gdir = single_flowline_glacier_directory(glacier_str)
+                gdir = oggm_compat.single_flowline_glacier_directory(glacier_str)
                 gdir.is_tidewater = False
             else:
                 # set reset=True to overwrite non-calving directory that may already exist
-                gdir = single_flowline_glacier_directory_with_calving(glacier_str)
+                gdir = oggm_compat.single_flowline_glacier_directory_with_calving(
+                    glacier_str
+                )
                 gdir.is_tidewater = True
 
             fls = gdir.read_pickle('inversion_flowlines')
@@ -703,6 +705,10 @@ def run(list_packed_vars):
             assert os.path.exists(mbdata_fn), (
                 'Mass balance data missing. Check dataset and column names'
             )
+
+        # if spinup, grab appropriate flowlines
+        if args.spinup:
+            fls = oggm_compat.get_spinup_flowlines(gdir, y0=args.ref_startyear)
 
         # ----- CALIBRATION OPTIONS ------
         if (fls is not None) and (gdir.mbdata is not None) and (glacier_area.sum() > 0):

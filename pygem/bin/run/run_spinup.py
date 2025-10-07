@@ -27,12 +27,13 @@ from pygem.oggm_compat import (
 )
 
 
-def run(glacno_list, spinup_start_yr, **kwargs):
+def run(glacno_list, mb_model_params, debug=False, **kwargs):
+    # remove None kwargs
+    kwargs = {k: v for k, v in kwargs.items() if v is not None}
+
     main_glac_rgi = modelsetup.selectglaciersrgitable(glac_no=glacno_list)
     # model dates
-    dt = modelsetup.datesmodelrun(
-        startyear=spinup_start_yr, endyear=2019
-    )  # will have to cover the time period of inversion (2000-2019) and spinup (1979-~2010 by default)
+    dt = modelsetup.datesmodelrun(startyear=1979, endyear=2019)
     # load climate data
     ref_clim = class_climate.GCM(name='ERA5')
 
@@ -91,22 +92,44 @@ def run(glacno_list, spinup_start_yr, **kwargs):
             }
             gd.dates_table = dt
 
-            # get modelprms from regional priors
-            priors_idx = np.where(
-                (priors_df.O1Region == gd.glacier_rgi_table['O1Region'])
-                & (priors_df.O2Region == gd.glacier_rgi_table['O2Region'])
-            )[0][0]
-            tbias_mu = float(priors_df.loc[priors_idx, 'tbias_mean'])
-            kp_mu = float(priors_df.loc[priors_idx, 'kp_mean'])
-            gd.modelprms = {
-                'kp': kp_mu,
-                'tbias': tbias_mu,
-                'ddfsnow': pygem_prms['calib']['MCMC_params']['ddfsnow_mu'],
-                'ddfice': pygem_prms['calib']['MCMC_params']['ddfsnow_mu']
-                / pygem_prms['sim']['params']['ddfsnow_iceratio'],
-                'precgrad': pygem_prms['sim']['params']['precgrad'],
-                'tsnow_threshold': pygem_prms['sim']['params']['tsnow_threshold'],
-            }
+            if mb_model_params == 'regional_priors':
+                # get modelprms from regional priors
+                priors_idx = np.where(
+                    (priors_df.O1Region == gd.glacier_rgi_table['O1Region'])
+                    & (priors_df.O2Region == gd.glacier_rgi_table['O2Region'])
+                )[0][0]
+                tbias_mu = float(priors_df.loc[priors_idx, 'tbias_mean'])
+                kp_mu = float(priors_df.loc[priors_idx, 'kp_mean'])
+                gd.modelprms = {
+                    'kp': kp_mu,
+                    'tbias': tbias_mu,
+                    'ddfsnow': pygem_prms['calib']['MCMC_params']['ddfsnow_mu'],
+                    'ddfice': pygem_prms['calib']['MCMC_params']['ddfsnow_mu']
+                    / pygem_prms['sim']['params']['ddfsnow_iceratio'],
+                    'precgrad': pygem_prms['sim']['params']['precgrad'],
+                    'tsnow_threshold': pygem_prms['sim']['params']['tsnow_threshold'],
+                }
+            elif mb_model_params == 'emulator':
+                # get modelprms from emulator mass balance calibration
+                modelprms_fn = glacier_str + '-modelprms_dict.json'
+                modelprms_fp = (
+                    pygem_prms['root']
+                    + '/Output/calibration/'
+                    + glacier_str.split('.')[0].zfill(2)
+                    + '/'
+                ) + modelprms_fn
+                with open(modelprms_fp, 'r') as f:
+                    modelprms_dict = json.load(f)
+
+                modelprms_all = modelprms_dict['emulator']
+                gd.modelprms = {
+                    'kp': modelprms_all['kp'][0],
+                    'tbias': modelprms_all['tbias'][0],
+                    'ddfsnow': modelprms_all['ddfsnow'][0],
+                    'ddfice': modelprms_all['ddfice'][0],
+                    'tsnow_threshold': modelprms_all['tsnow_threshold'][0],
+                    'precgrad': modelprms_all['precgrad'][0],
+                }
 
             # update cfg.PARAMS
             update_cfg({'continue_on_error': True}, 'PARAMS')
@@ -116,10 +139,10 @@ def run(glacno_list, spinup_start_yr, **kwargs):
             workflow.execute_entity_task(
                 tasks.run_dynamic_spinup,
                 gd,
-                spinup_start_yr=spinup_start_yr,  # When to start the spinup
+                # spinup_start_yr=spinup_start_yr,  # When to start the spinup
                 minimise_for='area',  # what target to match at the RGI date
                 # target_yr=target_yr, # The year at which we want to match area or volume. If None, gdir.rgi_date + 1 is used (the default)
-                # ye=,  # When the simulation should stop
+                # ye=ye,  # When the simulation should stop
                 output_filesuffix='_dynamic_spinup_pygem_mb',
                 store_fl_diagnostics=True,
                 store_model_geometry=True,
@@ -169,10 +192,15 @@ def main():
             action='store',
             type=str,
             default=None,
-            help='filepath containing list of rgi_glac_number, helpful for running batches on spc',
+            help='Filepath containing list of rgi_glac_number, helpful for running batches on spc',
         ),
     )
-    parser.add_argument('-spinup_start_yr', type=int, default=1979)
+    parser.add_argument(
+        '-spinup_period',
+        type=int,
+        default=None,
+        help='Fixed spinup period (years). If not provided, OGGM default is used.',
+    )
     parser.add_argument('-target_yr', type=int, default=None)
     parser.add_argument('-ye', type=int, default=2020)
     parser.add_argument(
@@ -180,7 +208,14 @@ def main():
         action='store',
         type=int,
         default=1,
-        help='number of simultaneous processes (cores) to use',
+        help='Number of simultaneous processes (cores) to use',
+    )
+    parser.add_argument(
+        '-mb_model_params',
+        type=str,
+        default='regional_priors',
+        choices=['regional_priors', 'emulator'],
+        help='Which mass balance model parameters to use ("regional_priors" or "emulator")',
     )
     args = parser.parse_args()
 
@@ -221,7 +256,10 @@ def main():
 
     # set up partial function with debug argument
     run_partial = partial(
-        run, spinup_start_yr=args.spinup_start_yr, target_yr=args.target_yr, ye=args.ye
+        run,
+        mb_model_params=args.mb_model_params,
+        target_yr=args.target_yr,
+        spinup_period=args.spinup_period,
     )
     # parallel processing
     print(f'Processing with {ncores} cores... \n{glac_no_lsts}')

@@ -226,8 +226,8 @@ sim:
   oggm_dynamics:
     cfl_number: 0.02                              # Time step threshold (seconds)
     cfl_number_calving: 0.01                      # Time step threshold for marine-terimating glaciers (seconds)
-    use_reg_glena: true
-    glena_reg_relpath: /Output/calibration/glena_region.csv
+    use_regional_glen_a: true
+    glen_a_regional_relpath: /Output/calibration/glena_region.csv
     # glen_a multiplier if not using regionally calibrated glens_a
     fs: 0
     glen_a_multiplier: 1
