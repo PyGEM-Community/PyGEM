@@ -151,6 +151,7 @@ calib:
   
   # MCMC params
   MCMC_params:
+    option_calib_elev_change_1d: false            # option to calibrate against 1d elevation change data (true or false)
     option_use_emulator: true                     # use emulator or full model (if true, calibration must have first been run with option_calibretion=='emulator')
     emulator_sims: 100
     tbias_step: 0.1
@@ -184,7 +185,7 @@ calib:
     kp_sigma: 1.5                                 # precipitation factor standard deviation of normal distribution
     kp_bndlow: 0.5                                # precipitation factor lower bound
     kp_bndhigh: 1.5                               # precipitation factor upper bound
-  
+
   # calibration datasets
   data:
     # mass balance data

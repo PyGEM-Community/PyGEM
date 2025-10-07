@@ -171,6 +171,11 @@ def getparser():
         help='Flag to keep glacier lists ordered (default is false)',
     )
     parser.add_argument(
+        '-option_calib_elev_change_1d',
+        action='store_true',
+        help='Flag to calibrate against 1D elevation change data (default is false)',
+    )
+    parser.add_argument(
         '-spinup',
         action='store_true',
         help='Flag to use spinup flowlines (default is false)',

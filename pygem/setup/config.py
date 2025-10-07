@@ -223,6 +223,7 @@ class ConfigManager:
         'calib.emulator_params.ftol_opt': float,
         'calib.emulator_params.eps_opt': float,
         'calib.MCMC_params': dict,
+        'calib.MCMC_params.option_calib_elev_change_1d': bool,
         'calib.MCMC_params.option_use_emulator': bool,
         'calib.MCMC_params.emulator_sims': int,
         'calib.MCMC_params.tbias_step': float,
