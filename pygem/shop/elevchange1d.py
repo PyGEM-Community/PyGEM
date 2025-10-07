@@ -49,10 +49,9 @@ def elev_change_1d_to_gdir(
         where to write the data
     """
     # get dataset file path
-    elev_change_1d_fp = f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["elev_change_1d"]["elev_change_1d_relpath"]}/{gdir.rgi_id.split("-")[1]}__elev_change_1d.json'
-
+    elev_change_1d_fp = f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["elev_change_1d"]["elev_change_1d_relpath"]}/{gdir.rgi_id.split("-")[1]}_elev_change_1d.json'
     # check for glacier elevation change data
-    if elev_change_1d_fp in os.listdir(elev_change_1d_fp):
+    if os.path.isfile(elev_change_1d_fp):
         # copy file to glacier directory
         shutil.copyfile(
             elev_change_1d_fp,

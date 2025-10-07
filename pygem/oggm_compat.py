@@ -25,7 +25,7 @@ from oggm.core.massbalance import MassBalanceModel
 from pygem.setup.config import ConfigManager
 
 # from oggm.shop import rgitopo
-from pygem.shop import debris, icethickness, mbdata
+from pygem.shop import debris, elevchange1d, icethickness, mbdata
 
 # instantiate ConfigManager
 config_manager = ConfigManager()
@@ -127,6 +127,9 @@ def single_flowline_glacier_directory(
     ):
         workflow.execute_entity_task(debris.debris_to_gdir, gdir)
         workflow.execute_entity_task(debris.debris_binned, gdir)
+    # 1d elevation change calibration data
+    if not os.path.isfile(gdir.get_filepath('elev_change_1d')):
+        workflow.execute_entity_task(elevchange1d.elev_change_1d_to_gdir, gdir)
 
     return gdir
 
@@ -223,6 +226,9 @@ def single_flowline_glacier_directory_with_calving(
         workflow.execute_entity_task(
             mbdata.mb_df_to_gdir, gdir, **{'facorrected': facorrected}
         )
+    # 1d elevation change calibration data
+    if not os.path.isfile(gdir.get_filepath('elev_change_1d')):
+        workflow.execute_entity_task(elevchange1d.elev_change_1d_to_gdir, gdir)
 
     return gdir
 
