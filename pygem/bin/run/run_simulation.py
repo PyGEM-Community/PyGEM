@@ -335,6 +335,12 @@ def getparser():
         action='store_true',
         help='Flag to keep glacier lists ordered (default is off)',
     )
+    parser.add_argument(
+        '-spinup',
+        action='store_true',
+        default=False,
+        help='Flag to perform dynamical spinup before calibration',
+    )
     parser.add_argument('-v', '--debug', action='store_true', help='Flag for debugging')
 
     return parser
@@ -860,6 +866,20 @@ def run(list_packed_vars):
                         glen_a_multiplier = pygem_prms['sim']['oggm_dynamics'][
                             'glen_a_multiplier'
                         ]
+                    glen_a = cfg.PARAMS['glen_a'] * glen_a_multiplier
+
+                    # spinup
+                    if args.spinup:
+                        try:
+                            # see if model_flowlines from spinup exist
+                            nfls = gdir.read_pickle(
+                                'model_flowlines',
+                                filesuffix=f'_dynamic_spinup_pygem_mb_{args.sim_startyear}',
+                            )
+                        except:
+                            raise
+                        glen_a = gdir.get_diagnostics()['inversion_glen_a']
+                        fs = gdir.get_diagnostics()['inversion_fs']
 
                 # Time attributes and values
                 if pygem_prms['climate']['sim_wateryear'] == 'hydro':
@@ -978,65 +998,59 @@ def run(list_packed_vars):
                         else:
                             inversion_filter = False
 
-                        # Perform inversion based on PyGEM MB using reference directory
-                        mbmod_inv = PyGEMMassBalance(
-                            gdir_ref,
-                            modelprms,
-                            glacier_rgi_table,
-                            fls=fls,
-                            option_areaconstant=True,
-                            inversion_filter=inversion_filter,
-                        )
-                        #                        if debug:
-                        #                            h, w = gdir.get_inversion_flowline_hw()
-                        #                            mb_t0 = (mbmod_inv.get_annual_mb(h, year=0, fl_id=0, fls=fls) * cfg.SEC_IN_YEAR *
-                        #                                     pygem_prms['constants']['density_ice'] / pygem_prms['constants']['density_water'])
-                        #                            plt.plot(mb_t0, h, '.')
-                        #                            plt.ylabel('Elevation')
-                        #                            plt.xlabel('Mass balance (mwea)')
-                        #                            plt.show()
-
-                        # Non-tidewater glaciers
-                        if (
-                            not gdir.is_tidewater
-                            or not pygem_prms['setup']['include_frontalablation']
-                        ):
-                            # Arbitrariliy shift the MB profile up (or down) until mass balance is zero (equilibrium for inversion)
-                            apparent_mb_from_any_mb(gdir, mb_model=mbmod_inv)
-                            tasks.prepare_for_inversion(gdir)
-                            tasks.mass_conservation_inversion(
-                                gdir,
-                                glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier,
-                                fs=fs,
+                        # run inversion
+                        if not args.spinup:
+                            # Perform inversion based on PyGEM MB using reference directory
+                            mbmod_inv = PyGEMMassBalance(
+                                gdir_ref,
+                                modelprms,
+                                glacier_rgi_table,
+                                fls=fls,
+                                option_areaconstant=True,
+                                inversion_filter=inversion_filter,
                             )
 
-                        # Tidewater glaciers
-                        else:
-                            cfg.PARAMS['use_kcalving_for_inversion'] = True
-                            cfg.PARAMS['use_kcalving_for_run'] = True
-                            tasks.find_inversion_calving_from_any_mb(
-                                gdir,
-                                mb_model=mbmod_inv,
-                                glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier,
-                                fs=fs,
-                            )
+                            # Non-tidewater glaciers
+                            if (
+                                not gdir.is_tidewater
+                                or not pygem_prms['setup']['include_frontalablation']
+                            ):
+                                # Arbitrariliy shift the MB profile up (or down) until mass balance is zero (equilibrium for inversion)
+                                apparent_mb_from_any_mb(gdir, mb_model=mbmod_inv)
+                                tasks.prepare_for_inversion(gdir)
+                                tasks.mass_conservation_inversion(
+                                    gdir,
+                                    glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier,
+                                    fs=fs,
+                                )
 
-                        # ----- INDENTED TO BE JUST WITH DYNAMICS -----
-                        tasks.init_present_time_glacier(gdir)  # adds bins below
+                            # Tidewater glaciers
+                            else:
+                                cfg.PARAMS['use_kcalving_for_inversion'] = True
+                                cfg.PARAMS['use_kcalving_for_run'] = True
+                                tasks.find_inversion_calving_from_any_mb(
+                                    gdir,
+                                    mb_model=mbmod_inv,
+                                    glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier,
+                                    fs=fs,
+                                )
 
-                        if not os.path.isfile(gdir.get_filepath('model_flowlines')):
-                            tasks.compute_downstream_line(gdir)
-                            tasks.compute_downstream_bedshape(gdir)
+                            # ----- INDENTED TO BE JUST WITH DYNAMICS -----
                             tasks.init_present_time_glacier(gdir)  # adds bins below
 
-                        try:
-                            if pygem_prms['mb']['include_debris']:
-                                debris.debris_binned(
-                                    gdir, fl_str='model_flowlines'
-                                )  # add debris enhancement factors to flowlines
-                            nfls = gdir.read_pickle('model_flowlines')
-                        except:
-                            raise
+                            if not os.path.isfile(gdir.get_filepath('model_flowlines')):
+                                tasks.compute_downstream_line(gdir)
+                                tasks.compute_downstream_bedshape(gdir)
+                                tasks.init_present_time_glacier(gdir)  # adds bins below
+
+                            try:
+                                if pygem_prms['mb']['include_debris']:
+                                    debris.debris_binned(
+                                        gdir, fl_str='model_flowlines'
+                                    )  # add debris enhancement factors to flowlines
+                                nfls = gdir.read_pickle('model_flowlines')
+                            except:
+                                raise
 
                         # Water Level
                         # Check that water level is within given bounds
