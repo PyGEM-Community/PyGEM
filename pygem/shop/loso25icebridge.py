@@ -33,9 +33,9 @@ __all__ = ['oib']
 class oib:
     def __init__(
         self,
+        oib_datpath,
         rgi6id='',
         rgi7id='',
-        oib_datpath=f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["oib"]["oib_relpath"]}',
         rgi7_rgi6_linksfn='RGI2000-v7.0-G-01_alaska-rgi6_links.csv',
     ):
         self.oib_datpath = oib_datpath
@@ -550,6 +550,45 @@ class oib:
             self.set_diffs(oib_diffs_filt)
         else:
             return oib_diffs_filt
+        
+    def save_elevchange1d(self, 
+                          outdir=f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["elev_change_1d"]["elev_change_1d_relpath"]}'):
+        """
+        Save elevation change data in a format compatible with elevchange1d module.
+
+        Parameters
+        ----------
+        outdir : str
+            Directory to save the elevation change data.
+
+        format will be a JSON file with the following structure:
+        {   'bin_edges': [edge0, edge1, ..., edgeN],
+            'dates': [(date1_start, date1_end), (date2_start, date2_end), ... (dateM_start, dateM_end)],
+            'dh': [[dh_bin1_date1, dh_bin2_date1, ..., dh_binN_date1],
+                   [dh_bin1_date2, dh_bin2_date2, ..., dh_binN_date2],
+                   ...
+                   [dh_bin1_dateM, dh_bin2_dateM, ..., dh_binN_dateM]],
+            'sigma': [[sigma_bin1_date1, sigma_bin2_date1, ..., sigma_binN_date1],
+                      [sigma_bin1_date2, sigma_bin2_date2, ..., sigma_binN_date2],
+                      ...
+                      [sigma_bin1_dateM, sigma_bin2_dateM, ..., sigma_binN_dateM]],
+        }
+        """
+        # Ensure output directory exists
+        os.makedirs(outdir, exist_ok=True)
+
+        # Prepare data for saving
+        elev_change_data = {
+            'bin_edges': self.bin_edges.tolist(),
+            'dates': [(dt[0].strftime('%Y-%m-%d'), dt[1].strftime('%Y-%m-%d')) for dt in self.dbl_diffs['dates']],
+            'dh': self.dbl_diffs['dh'].tolist(),
+            'sigma': self.dbl_diffs['sigma'].tolist(),
+        }
+
+        # Save to JSON file
+        outfp = os.path.join(outdir, f'/{self.rgi6id}_elev_change_1d_.json')
+        with open(outfp, 'w') as f:
+            json.dump(elev_change_data, f, indent=0)
 
 
 def _split_by_uppercase(text):

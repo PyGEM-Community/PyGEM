@@ -198,7 +198,10 @@ calib:
       frontalablation_cal_fn: all-frontalablation_cal_ind.csv                                       # merged frontalablation calibration data (produced by run_calibration_frontalablation.py)
     # ice thickness
     icethickness:
-      h_ref_relpath: /IceThickness_Farinotti/composite_thickness_RGI60-all_regions/ 
+      h_ref_relpath: /IceThickness_Farinotti/composite_thickness_RGI60-all_regions/
+    # 1d elevation change
+    elev_change_1d:
+      elev_change_1d_relpath: /elev_change_1d/                                                      # relative to main data path. per-glacier files within will be expected as <rgi_id>_elev_change_1d_.json (e.g., 1.00570_elev_change_1d_.json)
 
   icethickness_cal_frac_byarea: 0.9               # Regional glacier area fraction that is used to calibrate the ice thickness
                                                   #  e.g., 0.9 means only the largest 90% of glaciers by area will be used to calibrate
