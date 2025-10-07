@@ -581,9 +581,9 @@ def run(list_packed_vars):
     gcm_elev = gcm.importGCMfxnearestneighbor_xarray(
         gcm.elev_fn, gcm.elev_vn, main_glac_rgi
     )
-    # Lapse rate [degC m-1]
+    # Lapse rate [degC m-1] (always monthly)
     gcm_lr, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(
-        gcm.lr_fn, gcm.lr_vn, main_glac_rgi, dates_table
+        gcm.lr_fn, gcm.lr_vn, main_glac_rgi, dates_table, upscale_var_timestep=True
     )
 
     # ===== LOOP THROUGH GLACIERS TO RUN CALIBRATION =====

@@ -66,6 +66,7 @@ climate:
   # ===== CLIMATE DATA FILEPATHS AND FILENAMES =====
   paths:
     # ERA5 (default reference climate data)
+    era5_fullpath: False # bool. 'True' ignores 'root' and 'era5_relpath' for ERA5 data and assumes below filenames are absolute
     era5_relpath: /climate_data/ERA5/
     era5_temp_fn: ERA5_temp_monthly.nc
     era5_tempstd_fn: ERA5_tempstd_monthly.nc
@@ -73,6 +74,7 @@ climate:
     era5_elev_fn: ERA5_geopotential.nc
     era5_pressureleveltemp_fn: ERA5_pressureleveltemp_monthly.nc
     era5_lr_fn: ERA5_lapserates_monthly.nc
+
     # CMIP5 (GCM data)
     cmip5_relpath: /climate_data/cmip5/
     cmip5_fp_var_ending: _r1i1p1_monNG/
@@ -324,7 +326,7 @@ time:
   wateryear_month_start: 10                       # water year starting month
   winter_month_start: 10                          # first month of winter (for HMA winter is October 1 - April 30)
   summer_month_start: 5                           # first month of summer (for HMA summer is May 1 - Sept 30)
-  timestep: monthly                               # time step ('monthly' only option at present)
+  timestep: monthly                                 # time step ('monthly' or 'daily')
 
 # ===== MODEL CONSTANTS =====
 constants:

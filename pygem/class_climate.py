@@ -111,7 +111,8 @@ class GCM:
                     + pygem_prms['climate']['paths']['cesm2_fp_fx_ending']
                 )
                 # Extra information
-                self.timestep = pygem_prms['time']['timestep']
+                # self.timestep = pygem_prms['time']['timestep']
+                self.timestep = 'monthly'  # future scenario is always monthly timestep
                 self.rgi_lat_colname = pygem_prms['rgi']['rgi_lat_colname']
                 self.rgi_lon_colname = pygem_prms['rgi']['rgi_lon_colname']
                 self.sim_climate_scenario = sim_climate_scenario
@@ -164,7 +165,8 @@ class GCM:
                     + pygem_prms['climate']['paths']['gfdl_fp_fx_ending']
                 )
                 # Extra information
-                self.timestep = pygem_prms['time']['timestep']
+                # self.timestep = pygem_prms['time']['timestep']
+                self.timestep = 'monthly'  # future scenario is always monthly timestep
                 self.rgi_lat_colname = pygem_prms['rgi']['rgi_lat_colname']
                 self.rgi_lon_colname = pygem_prms['rgi']['rgi_lon_colname']
                 self.sim_climate_scenario = sim_climate_scenario
@@ -190,12 +192,18 @@ class GCM:
                 self.elev_fn = pygem_prms['climate']['paths']['era5_elev_fn']
                 self.lr_fn = pygem_prms['climate']['paths']['era5_lr_fn']
                 # Variable filepaths
-                self.var_fp = (
-                    pygem_prms['root'] + pygem_prms['climate']['paths']['era5_relpath']
-                )
-                self.fx_fp = (
-                    pygem_prms['root'] + pygem_prms['climate']['paths']['era5_relpath']
-                )
+                if pygem_prms['climate']['paths']['era5_fullpath']:
+                    self.var_fp = ''
+                    self.fx_fp = ''
+                else:
+                    self.var_fp = (
+                        pygem_prms['root']
+                        + pygem_prms['climate']['paths']['era5_relpath']
+                    )
+                    self.fx_fp = (
+                        pygem_prms['root']
+                        + pygem_prms['climate']['paths']['era5_relpath']
+                    )
                 # Extra information
                 self.timestep = pygem_prms['time']['timestep']
                 self.rgi_lat_colname = pygem_prms['rgi']['rgi_lat_colname']
@@ -295,7 +303,8 @@ class GCM:
                         + '/'
                     )
                 # Extra information
-                self.timestep = pygem_prms['time']['timestep']
+                # self.timestep = pygem_prms['time']['timestep']
+                self.timestep = 'monthly'  # future scenario is always monthly timestep
                 self.rgi_lat_colname = pygem_prms['rgi']['rgi_lat_colname']
                 self.rgi_lon_colname = pygem_prms['rgi']['rgi_lon_colname']
                 self.sim_climate_scenario = sim_climate_scenario
@@ -341,7 +350,8 @@ class GCM:
                     + '/'
                 )
                 # Extra information
-                self.timestep = pygem_prms['time']['timestep']
+                # self.timestep = pygem_prms['time']['timestep']
+                self.timestep = 'monthly'  # future scenario is always monthly timestep
                 self.rgi_lat_colname = pygem_prms['rgi']['rgi_lat_colname']
                 self.rgi_lon_colname = pygem_prms['rgi']['rgi_lon_colname']
                 self.sim_climate_scenario = sim_climate_scenario
@@ -443,6 +453,7 @@ class GCM:
         main_glac_rgi,
         dates_table,
         realizations=['r1i1p1f1', 'r4i1p1f1'],
+        upscale_var_timestep=False,
     ):
         """
         Import time series of variables and extract nearest neighbor.
@@ -472,13 +483,99 @@ class GCM:
             timestep, i.e., be from the beginning/middle/end of month)
         """
         # Import netcdf file
-        if not os.path.exists(self.var_fp + filename):
-            if os.path.exists(self.var_fp + filename.replace('r1i1p1f1', 'r4i1p1f1')):
-                filename = filename.replace('r1i1p1f1', 'r4i1p1f1')
-            if os.path.exists(self.var_fp + filename.replace('_native', '')):
-                filename = filename.replace('_native', '')
+        if self.timestep == 'monthly':
+            if not os.path.exists(self.var_fp + filename):
+                if os.path.exists(
+                    self.var_fp + filename.replace('r1i1p1f1', 'r4i1p1f1')
+                ):
+                    filename = filename.replace('r1i1p1f1', 'r4i1p1f1')
+                if os.path.exists(self.var_fp + filename.replace('_native', '')):
+                    filename = filename.replace('_native', '')
 
-        data = xr.open_dataset(self.var_fp + filename)
+            data = xr.open_dataset(self.var_fp + filename)
+        elif self.timestep == 'daily':
+            year_start = pd.Timestamp(dates_table['date'].values[0]).year
+            year_end = pd.Timestamp(dates_table['date'].values[-1]).year
+
+            lats = main_glac_rgi[self.rgi_lat_colname].values
+            lons = main_glac_rgi[self.rgi_lon_colname].values
+            # define lat/lon window around all glaciers in run (bounds expanded to nearest 0.25 degrees)
+            min_lat, max_lat = np.floor(lats.min() * 4) / 4, np.ceil(lats.max() * 4) / 4
+            min_lon, max_lon = np.floor(lons.min() * 4) / 4, np.ceil(lons.max() * 4) / 4
+            if 'YYYY' in filename:
+                datasets = []
+                for yr in range(year_start, year_end + 1):
+                    data_yr = xr.open_dataset(
+                        self.var_fp + filename.replace('YYYY', str(yr))
+                    )
+                    if 'valid_time' in data_yr.coords or 'valid_time' in data_yr.dims:
+                        data_yr = data_yr.rename({'valid_time': self.time_vn})
+
+                    # convert longitude from -180—180 to 0—360
+                    if data_yr.longitude.min() < 0:
+                        data_yr = data_yr.assign_coords(
+                            longitude=(data_yr.longitude % 360)
+                        )
+
+                    # subset for desired lats and lons
+                    data_yr = data_yr.sel(
+                        latitude=slice(max_lat, min_lat),
+                        longitude=slice(min_lon, max_lon),
+                    )
+
+                    # append data to list
+                    datasets.append(data_yr)
+
+                # combine along the time dimension
+                data = xr.concat(datasets, dim=self.time_vn)
+
+            else:
+                data = xr.open_dataset(self.var_fp + filename)
+                data = data.sel(
+                    latitude=slice(max_lat, min_lat), longitude=slice(min_lon, max_lon)
+                )
+
+            # mask out leap days
+            if pygem_prms['time']['option_leapyear'] == 0 and not upscale_var_timestep:
+                time_index = pd.to_datetime(data[self.time_vn].values)
+                mask = ~((time_index.month == 2) & (time_index.day == 29))
+                data = data.isel({self.time_vn: mask})
+
+            # Upscale timestep to match data (e.g., monthly lapserate for daily data)
+            if upscale_var_timestep:
+                # convert time to datetime
+                time_monthly = pd.to_datetime(data[self.time_vn].values)
+                var_monthly = data[vn]  # xarray DataArray with dims (time, lat, lon)
+
+                # create empty DataArray for daily data
+                daily_times = dates_table['date'].values
+                daily_data = xr.DataArray(
+                    np.zeros(
+                        (len(daily_times), len(data.latitude), len(data.longitude))
+                    ),
+                    dims=(self.time_vn, 'latitude', 'longitude'),
+                    coords={
+                        self.time_vn: daily_times,
+                        'latitude': data.latitude,
+                        'longitude': data.longitude,
+                    },
+                    name=vn,
+                )
+
+                # loop through months and fill daily slots
+                for i, t in enumerate(time_monthly):
+                    # find all days in this month
+                    idx = np.where(
+                        (dates_table['year'] == t.year)
+                        & (dates_table['month'] == t.month)
+                    )[0]
+
+                    # assign monthly values to these daily indices
+                    daily_data[idx, :, :] = var_monthly.isel(time=i).values
+
+                # convert to Dataset with data variable vn
+                data = daily_data.to_dataset(name=vn)
+
         glac_variable_series = np.zeros((main_glac_rgi.shape[0], dates_table.shape[0]))
 
         # Check GCM provides required years of data
@@ -525,7 +622,9 @@ class GCM:
                     pd.Series(data[self.time_vn]).apply(
                         lambda x: x.strftime('%Y-%m-%d')
                     )
-                    == dates_table['date'].apply(lambda x: x.strftime('%Y-%m-%d'))[0]
+                    == dates_table['date']
+                    .apply(lambda x: x.strftime('%Y-%m-%d'))
+                    .iloc[0]
                 )
             )[0][0]
             end_idx = (
@@ -533,11 +632,12 @@ class GCM:
                     pd.Series(data[self.time_vn]).apply(
                         lambda x: x.strftime('%Y-%m-%d')
                     )
-                    == dates_table['date'].apply(lambda x: x.strftime('%Y-%m-%d'))[
-                        dates_table.shape[0] - 1
-                    ]
+                    == dates_table['date']
+                    .apply(lambda x: x.strftime('%Y-%m-%d'))
+                    .iloc[-1]
                 )
             )[0][0]
+
         # Extract the time series
         time_series = pd.Series(data[self.time_vn][start_idx : end_idx + 1])
         # Find Nearest Neighbor
@@ -577,6 +677,7 @@ class GCM:
             # Find unique latitude/longitudes
             latlon_nearidx = list(zip(lat_nearidx, lon_nearidx))
             latlon_nearidx_unique = list(set(latlon_nearidx))
+
             # Create dictionary of time series for each unique latitude/longitude
             glac_variable_dict = {}
             for latlon in latlon_nearidx_unique:
@@ -634,4 +735,5 @@ class GCM:
                     )
         elif vn != self.lr_vn:
             print('Check units of air temperature or precipitation')
+
         return glac_variable_series, time_series
