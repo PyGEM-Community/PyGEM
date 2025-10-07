@@ -499,6 +499,7 @@ class GCM:
 
             lats = main_glac_rgi[self.rgi_lat_colname].values
             lons = main_glac_rgi[self.rgi_lon_colname].values
+            # define lat/lon window around all glaciers in run (bounds expanded to nearest 0.25 degrees)
             min_lat, max_lat = np.floor(lats.min() * 4) / 4, np.ceil(lats.max() * 4) / 4
             min_lon, max_lon = np.floor(lons.min() * 4) / 4, np.ceil(lons.max() * 4) / 4
             if 'YYYY' in filename:
