@@ -7,7 +7,6 @@ Distributed under the MIT license
 """
 
 # Built-in libaries
-import json
 import logging
 import os
 
@@ -129,7 +128,7 @@ def mb_df_to_gdir(
             }.items()
             if value is not None
         }
-        
+
         gdir.write_json(mbdata, 'mb_calib_pygem')
 
 

@@ -11,6 +11,7 @@ import datetime
 import json
 import logging
 import os
+
 import pandas as pd
 
 # External libraries
@@ -94,7 +95,7 @@ def elev_change_1d_to_gdir(
         with one row per elevation bin.
         - 'dh' should contain M × (N-1) entries, where N is the number of bin edges and M is the number of periods. Units are in meters.
         - 'dh_sigma' should contain M × (N-1) entries, where N is the number of bin edges and M is the number of periods. Units are in meters.
-    
+
     Parameters
     ----------
     gdir : :py:class:`oggm.GlacierDirectory`
@@ -113,17 +114,17 @@ def elev_change_1d_to_gdir(
         elev_change_1d_fp += '.json'
         with open(elev_change_1d_fp, 'r') as f:
             data = json.load(f)
-    
+
     elif os.path.exists(elev_change_1d_fp + '.csv'):
         elev_change_1d_fp += '.csv'
         data = csv_to_elev_change_1d_dict(elev_change_1d_fp)
-    
+
     else:
-        log.debug(f"No binned elevation change data to load, skipping task.")
+        log.debug('No binned elevation change data to load, skipping task.')
         raise Warning('No binned elevation data to load')  # file not found, skip
 
     validate_elev_change_1d_structure(data)
-    
+
     gdir.write_json(data, 'elev_change_1d')
 
 
@@ -141,6 +142,19 @@ def validate_elev_change_1d_structure(data):
         raise ValueError("'bin_edges' must be a list of at least two numeric values.")
     if not all(isinstance(x, (int, float)) for x in bin_edges):
         raise ValueError("All 'bin_edges' values must be numeric.")
+
+    # Calculate bin_centers if missing
+    if 'bin_centers' not in data:
+        data['bin_centers'] = [
+            0.5 * (bin_edges[i] + bin_edges[i + 1]) for i in range(len(bin_edges) - 1)
+        ]
+
+    # Validate bin_centers
+    bin_centers = data['bin_centers']
+    if not isinstance(bin_centers, list) or len(bin_centers) != len(bin_edges) - 1:
+        raise ValueError("'bin_centers' must be a list of length len(bin_edges)-1.")
+    if not all(isinstance(x, (int, float)) for x in bin_centers):
+        raise ValueError("All 'bin_centers' values must be numeric.")
 
     # Validate dates
     dates = data['dates']
@@ -201,37 +215,41 @@ def csv_to_elev_change_1d_dict(csv_path):
     """
     df = pd.read_csv(csv_path)
 
-    required_cols = {"bin_start", "bin_stop", "date_start", "date_end", "dh", "dh_sigma"}
+    required_cols = {
+        'bin_start',
+        'bin_stop',
+        'date_start',
+        'date_end',
+        'dh',
+        'dh_sigma',
+    }
     if not required_cols.issubset(df.columns):
-        raise ValueError(f"CSV must contain columns: {required_cols}")
+        raise ValueError(f'CSV must contain columns: {required_cols}')
 
     # Ensure sorted bins
-    df = df.sort_values(["bin_start", "date_start", "date_end"]).reset_index(drop=True)
+    df = df.sort_values(['bin_start', 'date_start', 'date_end']).reset_index(drop=True)
 
     # Get all unique bin edges
-    bin_edges = sorted(set(df["bin_start"]).union(df["bin_stop"]))
+    bin_edges = sorted(set(df['bin_start']).union(df['bin_stop']))
 
     # Get all unique date pairs (preserving order)
     date_pairs = (
-        df[["date_start", "date_end"]]
-        .drop_duplicates()
-        .apply(tuple, axis=1)
-        .tolist()
+        df[['date_start', 'date_end']].drop_duplicates().apply(tuple, axis=1).tolist()
     )
 
     # Group by date pairs and collect dh, sigma
     dh_all, sigma_all = [], []
     for ds, de in date_pairs:
-        subset = df[(df["date_start"] == ds) & (df["date_end"] == de)]
-        subset = subset.sort_values("bin_start")
-        dh_all.append(subset["dh"].tolist())
-        sigma_all.append(subset["dh_sigma"].tolist())
+        subset = df[(df['date_start'] == ds) & (df['date_end'] == de)]
+        subset = subset.sort_values('bin_start')
+        dh_all.append(subset['dh'].tolist())
+        sigma_all.append(subset['dh_sigma'].tolist())
 
     data = {
-        "bin_edges": bin_edges,
-        "dates": [(str(ds), str(de)) for ds, de in date_pairs],
-        "dh": dh_all,
-        "sigma": sigma_all,
+        'bin_edges': bin_edges,
+        'dates': [(str(ds), str(de)) for ds, de in date_pairs],
+        'dh': dh_all,
+        'sigma': sigma_all,
     }
 
     return data
