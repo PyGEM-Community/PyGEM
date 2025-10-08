@@ -130,7 +130,7 @@ def reg_calving_flux(
 
     # ===== LOAD CLIMATE DATA =====
     # Climate class
-    assert args.ref_climate_name in ['ERA5', 'ERA-Interim'], (
+    assert args.ref_climate_name == 'ERA5', (
         'Error: Calibration not set up for ' + args.ref_climate_name
     )
     gcm = class_climate.GCM(name=args.ref_climate_name)

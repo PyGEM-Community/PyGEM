@@ -335,7 +335,7 @@ def main():
         # ===== LOAD CLIMATE DATA =====
         # Climate class
         sim_climate_name = args.ref_climate_name
-        assert sim_climate_name in ['ERA5', 'ERA-Interim'], (
+        assert sim_climate_name == 'ERA5', (
             'Error: Calibration not set up for ' + sim_climate_name
         )
         gcm = class_climate.GCM(name=sim_climate_name)

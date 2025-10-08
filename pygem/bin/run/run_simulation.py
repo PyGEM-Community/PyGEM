@@ -7,9 +7,9 @@ Distributed under the MIT license
 
 Run a model simulation
 """
-# Default climate data is ERA-Interim; specify CMIP5 by specifying a filename to the argument:
+# Default climate data is ERA5; specify CMIP5 by specifying a filename to the argument:
 #    (Command line) python run_simulation_list_multiprocess.py -gcm_list_fn=C:\...\gcm_rcpXX_filenames.txt
-#      - Default is running ERA-Interim in parallel with five processors.
+#      - Default is running ERA5 in parallel with five processors.
 #    (Spyder) %run run_simulation_list_multiprocess.py C:\...\gcm_rcpXX_filenames.txt -option_parallels=0
 #      - Spyder cannot run parallels, so always set -option_parallels=0 when testing in Spyder.
 # Spyder cannot run parallels, so always set -option_parallels=0 when testing in Spyder.
@@ -408,7 +408,7 @@ def run(list_packed_vars):
 
     # ===== LOAD CLIMATE DATA =====
     # Climate class
-    if sim_climate_name in ['ERA5', 'ERA-Interim', 'COAWST']:
+    if sim_climate_name in ['ERA5', 'COAWST']:
         gcm = class_climate.GCM(name=sim_climate_name)
         ref_gcm = gcm
         dates_table_ref = dates_table_full
@@ -565,7 +565,7 @@ def run(list_packed_vars):
         ref_tempstd = np.zeros((main_glac_rgi.shape[0], dates_table_ref.shape[0]))
 
     # Lapse rate
-    if sim_climate_name in ['ERA-Interim', 'ERA5']:
+    if sim_climate_name == 'ERA5':
         gcm_lr, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(
             gcm.lr_fn, gcm.lr_vn, main_glac_rgi, dates_table
         )
@@ -1186,7 +1186,6 @@ def run(list_packed_vars):
                                     + '/'
                                 )
                                 if sim_climate_name not in [
-                                    'ERA-Interim',
                                     'ERA5',
                                     'COAWST',
                                 ]:
@@ -1398,7 +1397,6 @@ def run(list_packed_vars):
                                     + '/'
                                 )
                                 if sim_climate_name not in [
-                                    'ERA-Interim',
                                     'ERA5',
                                     'COAWST',
                                 ]:
@@ -2288,7 +2286,7 @@ def run(list_packed_vars):
                 + sim_climate_name
                 + '/'
             )
-            if sim_climate_name not in ['ERA-Interim', 'ERA5', 'COAWST']:
+            if sim_climate_name not in ['ERA5', 'COAWST']:
                 fail_fp += sim_climate_scenario + '/'
             if not os.path.exists(fail_fp):
                 os.makedirs(fail_fp, exist_ok=True)

@@ -208,35 +208,7 @@ class GCM:
                 self.timestep = pygem_prms['time']['timestep']
                 self.rgi_lat_colname = pygem_prms['rgi']['rgi_lat_colname']
                 self.rgi_lon_colname = pygem_prms['rgi']['rgi_lon_colname']
-
-            elif self.name == 'ERA-Interim':
-                # Variable names
-                self.temp_vn = 't2m'
-                self.prec_vn = 'tp'
-                self.elev_vn = 'z'
-                self.lat_vn = 'latitude'
-                self.lon_vn = 'longitude'
-                self.time_vn = 'time'
-                self.lr_vn = 'lapserate'
-                # Variable filenames
-                self.temp_fn = pygem_prms['climate']['paths']['eraint_temp_fn']
-                self.prec_fn = pygem_prms['climate']['paths']['eraint_prec_fn']
-                self.elev_fn = pygem_prms['climate']['paths']['eraint_elev_fn']
-                self.lr_fn = pygem_prms['climate']['paths']['eraint_lr_fn']
-                # Variable filepaths
-                self.var_fp = (
-                    pygem_prms['root']
-                    + pygem_prms['climate']['paths']['eraint_relpath']
-                )
-                self.fx_fp = (
-                    pygem_prms['root']
-                    + pygem_prms['climate']['paths']['eraint_relpath']
-                )
-                # Extra information
-                self.timestep = pygem_prms['time']['timestep']
-                self.rgi_lat_colname = pygem_prms['rgi']['rgi_lat_colname']
-                self.rgi_lon_colname = pygem_prms['rgi']['rgi_lon_colname']
-
+            
             # Standardized CMIP5 format (GCM/RCP)
             elif 'rcp' in sim_climate_scenario:
                 # Variable names
@@ -360,7 +332,7 @@ class GCM:
         """
         Import time invariant (constant) variables and extract nearest neighbor.
 
-        Note: cmip5 data used surface height, while ERA-Interim data is geopotential
+        Note: cmip5 data used surface height, while ERA5 data is geopotential
 
         Parameters
         ----------

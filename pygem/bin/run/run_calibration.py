@@ -564,7 +564,7 @@ def run(list_packed_vars):
 
     # ===== LOAD CLIMATE DATA =====
     # Climate class
-    assert ref_climate_name in ['ERA5', 'ERA-Interim'], (
+    assert ref_climate_name == 'ERA5', (
         'Error: Calibration not set up for ' + ref_climate_name
     )
     gcm = class_climate.GCM(name=ref_climate_name)
