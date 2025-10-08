@@ -74,8 +74,8 @@ def elev_change_1d_to_gdir(
         - Each element in 'dates' defines one elevation change period with a start and end date,
         stored as strings in 'YYYY-MM-DD' format.
         - Each list in 'dh' (and optionally 'dh_sigma') corresponds exactly to one period in 'dates'.
-        - 'dh' should contain M lists of length N-1, where N is the number of bin edges.
-        - 'dh_sigma' should either be M lists of length N-1 (matching 'dh') or a single scalar value.
+        - 'dh' should contain M lists of length N-1, where N is the number of bin edges. Units are in meters.
+        - 'dh_sigma' should either be M lists of length N-1 (matching 'dh') or a single scalar value. Units are in meters.
 
     CSV file structure:
         bin_start, bin_stop, date_start, date_end, dh, dh_sigma
@@ -92,8 +92,8 @@ def elev_change_1d_to_gdir(
         - Dates must be stored as strings in 'YYYY-MM-DD' format.
         - Rows with the same ('date_start', 'date_end') values correspond to a single period,
         with one row per elevation bin.
-        - 'dh' should contain M × (N-1) entries, where N is the number of bin edges and M is the number of periods.
-        - 'dh_sigma' should contain M × (N-1) entries, where N is the number of bin edges and M is the number of periods.
+        - 'dh' should contain M × (N-1) entries, where N is the number of bin edges and M is the number of periods. Units are in meters.
+        - 'dh_sigma' should contain M × (N-1) entries, where N is the number of bin edges and M is the number of periods. Units are in meters.
     
     Parameters
     ----------
