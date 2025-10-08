@@ -2080,7 +2080,6 @@ def run(list_packed_vars):
                         )
 
                         if debug:
-                            # print('\nacceptance ratio:', model.step_method_dict[next(iter(model.stochastics))][0].ratio)
                             print(
                                 'mb_mwea_mean:',
                                 np.round(torch.mean(m_chain[:, -1]).item(), 3),

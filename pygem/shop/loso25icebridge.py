@@ -372,11 +372,13 @@ class oib:
         """
         oib_diffs_rebin = {}
 
-        # aggregate both model and obs to specified bin sizes
         centers = self.get_centers()
+        edges = self.get_edges()
 
-        # get number of bins
-        nbins = int(np.ceil((centers[-1] - centers[0]) / agg))
+        # define new coarser edges (e.g., 0, 100, 200, …)
+        start = np.floor(edges[0] / agg) * agg
+        end = np.ceil(edges[-1] / agg) * agg
+        new_edges = np.arange(start, end + agg, agg)
 
         # suppress warnings for NaN-related operations
         with warnings.catch_warnings():
@@ -395,19 +397,19 @@ class oib:
 
                 # perform binning
                 if i == 0:
-                    y, edges, _ = stats.binned_statistic(
-                        x=centers, values=v[0], statistic=np.nanmedian, bins=nbins
-                    )
+                    y = stats.binned_statistic(
+                        x=centers, values=v[0], statistic=np.nanmedian, bins=new_edges
+                    )[0]
                 else:
                     y = stats.binned_statistic(
-                        x=centers, values=v[0], statistic=np.nanmedian, bins=edges
+                        x=centers, values=v[0], statistic=np.nanmedian, bins=new_edges
                     )[0]
 
                 s = stats.binned_statistic(
-                    x=centers, values=v[1], statistic=np.nanmedian, bins=edges
+                    x=centers, values=v[1], statistic=np.nanmedian, bins=new_edges
                 )[0]
                 c = stats.binned_statistic(
-                    x=centers, values=v[2], statistic=np.nanmedian, bins=edges
+                    x=centers, values=v[2], statistic=np.nanmedian, bins=new_edges
                 )[0]
 
                 # store results
@@ -415,20 +417,23 @@ class oib:
 
             # compute binned area
             area = stats.binned_statistic(
-                x=centers, values=self.get_area(), statistic=np.nanmedian, bins=edges
+                x=centers,
+                values=self.get_area(),
+                statistic=np.nanmedian,
+                bins=new_edges,
             )[0]
 
         # compute new bin centers
-        centers = (edges[:-1] + edges[1:]) / 2
+        centers = (new_edges[:-1] + new_edges[1:]) / 2
 
         # apply changes in-place or return results
         if inplace:
             self.set_diffs(oib_diffs_rebin)
-            self.set_edges(edges)
+            self.set_edges(new_edges)
             self.set_centers(centers)
             self.set_area(area)
         else:
-            return oib_diffs_rebin, edges, centers, area
+            return oib_diffs_rebin, new_edges, centers, area
 
     # double difference all oib diffs from the same season 1+ year apart
     def dbl_diff(self, tolerance_months=0):
@@ -564,18 +569,20 @@ class oib:
             Directory to save the elevation change data.
 
         format will be a JSON file with the following structure:
-        {   'bin_edges': [edge0, edge1, ..., edgeN],
-            'dates': [(date1_start, date1_end), (date2_start, date2_end), ... (dateM_start, dateM_end)],
-            'dh': [[dh_bin1_date1, dh_bin2_date1, ..., dh_binN_date1],
-                   [dh_bin1_date2, dh_bin2_date2, ..., dh_binN_date2],
-                   ...
-                   [dh_bin1_dateM, dh_bin2_dateM, ..., dh_binN_dateM]],
-            'sigma': [[sigma_bin1_date1, sigma_bin2_date1, ..., sigma_binN_date1],
-                      [sigma_bin1_date2, sigma_bin2_date2, ..., sigma_binN_date2],
-                      ...
-                      [sigma_bin1_dateM, sigma_bin2_dateM, ..., sigma_binN_dateM]],
+        {   'bin_edges':    [edge0, edge1, ..., edgeN],
+            'dates':        [(period1_start, period1_end), (period2_start, period2_end), ... (periodM_start, periodM_end)],
+            'dh':           [[dh_bin1_period1, dh_bin2_period1, ..., dh_binN_period1],
+                            [dh_bin1_period2, dh_bin2_period2, ..., dh_binN_period2],
+                            ...
+                            [dh_bin1_periodM, dh_bin2_periodM, ..., dh_binN_periodM]],
+            'sigma':        [[sigma_bin1_period1, sigma_bin2_period1, ..., sigma_binN_period1],
+                            [sigma_bin1_period2, sigma_bin2_period2, ..., sigma_binN_period2],
+                            ...
+                            [sigma_bin1_periodM, sigma_bin2_periodM, ..., sigma_binN_periodM]],
         }
-        Note: dates are stored as strings in 'YYYY-MM-DD' format. Each list within 'dh' and 'sigma' should be length N-1, where N is the number of bin edges.
+        note: 'dates' are tuples (or length-2 sublists) of the start and stop date of an individual elevation change record
+        and are stored as strings in 'YYYY-MM-DD' format. 'dh' should M lists of length N-1,
+        where N is the number of bin edges. 'sigma'  should eaither be M lists of shape N-1 a scalar value.
         """
         # Ensure output directory exists
         os.makedirs(outdir, exist_ok=True)
@@ -586,8 +593,8 @@ class oib:
                 (dt[0].strftime('%Y-%m-%d'), dt[1].strftime('%Y-%m-%d'))
                 for dt in self.dbl_diffs['dates']
             ],
-            'dh': self.dbl_diffs['dh'].tolist(),
-            'sigma': self.dbl_diffs['sigma'].tolist(),
+            'dh': self.dbl_diffs['dh'].T.tolist(),
+            'sigma': self.dbl_diffs['sigma'].T.tolist(),
         }
 
         # Save to JSON file
