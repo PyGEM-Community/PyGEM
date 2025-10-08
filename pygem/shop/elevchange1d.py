@@ -10,6 +10,8 @@ Distributed under the MIT license
 import datetime
 import json
 import logging
+import os
+import pandas as pd
 
 # External libraries
 # Local libraries
@@ -41,52 +43,88 @@ def elev_change_1d_to_gdir(
     gdir,
 ):
     """
-    Add 1d elevation change observations to the given glacier directory
+    Add 1D elevation change observations to the given glacier directory.
 
+    Binned 1D elevation change data should be stored as a JSON or CSV file with the following equivalent formats.
+
+    JSON file structure:
+        {
+            'bin_edges': [edge0, edge1, ..., edgeN],
+            'dates': [
+                (date_start_1, date_end_1),
+                (date_start_2, date_end_2),
+                ...
+                (date_start_M, date_end_M)
+            ],
+            'dh': [
+                [dh_bin1_period1, dh_bin2_period1, ..., dh_binN_period1],
+                [dh_bin1_period2, dh_bin2_period2, ..., dh_binN_period2],
+                ...
+                [dh_bin1_periodM, dh_bin2_periodM, ..., dh_binN_periodM]
+            ],
+            'dh_sigma': [
+                [dh_sigma_bin1_period1, dh_sigma_bin2_period1, ..., dh_sigma_binN_period1],
+                [dh_sigma_bin1_period2, dh_sigma_bin2_period2, ..., dh_sigma_binN_period2],
+                ...
+                [dh_sigma_bin1_periodM, dh_sigma_bin2_periodM, ..., dh_sigma_binN_periodM]
+            ]
+        }
+
+    Notes:
+        - Each element in 'dates' defines one elevation change period with a start and end date,
+        stored as strings in 'YYYY-MM-DD' format.
+        - Each list in 'dh' (and optionally 'dh_sigma') corresponds exactly to one period in 'dates'.
+        - 'dh' should contain M lists of length N-1, where N is the number of bin edges.
+        - 'dh_sigma' should either be M lists of length N-1 (matching 'dh') or a single scalar value.
+
+    CSV file structure:
+        bin_start, bin_stop, date_start, date_end, dh, dh_sigma
+        edge0, edge1, date_start_1, date_end_1, dh_bin1_period1, dh_sigma_bin1_period1
+        edge1, edge2, date_start_1, date_end_1, dh_bin2_period1, dh_sigma_bin2_period1
+        ...
+        edgeN-1, edgeN, date_start_1, date_end_1, dh_binN_period1, dh_sigma_binN_period1
+        edge0, edge1, date_start_2, date_end_2, dh_bin1_period2, dh_sigma_bin1_period2
+        ...
+        edgeN-1, edgeN, date_start_M, date_end_M, dh_binN_periodM, dh_sigma_binN_periodM
+
+    Notes:
+        - Each set of 'date_start' and 'date_end' defines one elevation change period.
+        - Dates must be stored as strings in 'YYYY-MM-DD' format.
+        - Rows with the same ('date_start', 'date_end') values correspond to a single period,
+        with one row per elevation bin.
+        - 'dh' should contain M × (N-1) entries, where N is the number of bin edges and M is the number of periods.
+        - 'dh_sigma' should contain M × (N-1) entries, where N is the number of bin edges and M is the number of periods.
+    
     Parameters
     ----------
     gdir : :py:class:`oggm.GlacierDirectory`
         where to write the data
 
-    expected json structure:
-        {   'bin_edges':    [edge0, edge1, ..., edgeN],
-            'dates':        [(period1_start, period1_end), (period2_start, period2_end), ... (periodM_start, periodM_end)],
-            'dh':           [[dh_bin1_period1, dh_bin2_period1, ..., dh_binN_period1],
-                            [dh_bin1_period2, dh_bin2_period2, ..., dh_binN_period2],
-                            ...
-                            [dh_bin1_periodM, dh_bin2_periodM, ..., dh_binN_periodM]],
-            'sigma':        [[sigma_bin1_period1, sigma_bin2_period1, ..., sigma_binN_period1],
-                            [sigma_bin1_period2, sigma_bin2_period2, ..., sigma_binN_period2],
-                            ...
-                            [sigma_bin1_periodM, sigma_bin2_periodM, ..., sigma_binN_periodM]],
-        }
-        note: 'dates' are tuples (or length-2 sublists) of the start and stop date of an individual elevation change record
-        and are stored as strings in 'YYYY-MM-DD' format. 'dh' should M lists of length N-1,
-        where N is the number of bin edges. 'sigma'  should eaither be M lists of shape N-1 a scalar value.
     """
     # get dataset file path
     elev_change_1d_fp = (
         f'{pygem_prms["root"]}/'
         f'{pygem_prms["calib"]["data"]["elev_change_1d"]["elev_change_1d_relpath"]}/'
-        f'{gdir.rgi_id.split("-")[1]}_elev_change_1d.json'
+        f'{gdir.rgi_id.split("-")[1]}_elev_change_1d'
     )
 
-    try:
+    # Check for both .json and .csv extensions
+    if os.path.exists(elev_change_1d_fp + '.json'):
+        elev_change_1d_fp += '.json'
         with open(elev_change_1d_fp, 'r') as f:
-            # Load JSON
             data = json.load(f)
-
-        validate_elev_change_1d_structure(data)
-
-    except Exception as err:
-        log.error(f'Validation failed for {elev_change_1d_fp}: {err}')
-        # optionally include traceback for debugging
-        log.exception('Full traceback:')
-        raise  # Re-raise so OGGM / your pipeline knows this task failed
-
+    
+    elif os.path.exists(elev_change_1d_fp + '.csv'):
+        elev_change_1d_fp += '.csv'
+        data = csv_to_elev_change_1d_dict(elev_change_1d_fp)
+    
     else:
-        log.info('Binned elevation cahnge data added to glacier directory')
-        gdir.write_json(data, 'elev_change_1d')
+        log.debug(f"No binned elevation change data to load, skipping task.")
+        raise Warning('No binned elevation data to load')  # file not found, skip
+
+    validate_elev_change_1d_structure(data)
+    
+    gdir.write_json(data, 'elev_change_1d')
 
 
 def validate_elev_change_1d_structure(data):
@@ -153,3 +191,47 @@ def validate_elev_change_1d_structure(data):
         raise ValueError("'sigma' must be a list or scalar numeric value.")
 
     return True
+
+
+def csv_to_elev_change_1d_dict(csv_path):
+    """
+    Convert a CSV with columns:
+    bin_start, bin_stop, date_start, date_end, dh, dh_sigma
+    into a dictionary structure matching elev_change_data format.
+    """
+    df = pd.read_csv(csv_path)
+
+    required_cols = {"bin_start", "bin_stop", "date_start", "date_end", "dh", "dh_sigma"}
+    if not required_cols.issubset(df.columns):
+        raise ValueError(f"CSV must contain columns: {required_cols}")
+
+    # Ensure sorted bins
+    df = df.sort_values(["bin_start", "date_start", "date_end"]).reset_index(drop=True)
+
+    # Get all unique bin edges
+    bin_edges = sorted(set(df["bin_start"]).union(df["bin_stop"]))
+
+    # Get all unique date pairs (preserving order)
+    date_pairs = (
+        df[["date_start", "date_end"]]
+        .drop_duplicates()
+        .apply(tuple, axis=1)
+        .tolist()
+    )
+
+    # Group by date pairs and collect dh, sigma
+    dh_all, sigma_all = [], []
+    for ds, de in date_pairs:
+        subset = df[(df["date_start"] == ds) & (df["date_end"] == de)]
+        subset = subset.sort_values("bin_start")
+        dh_all.append(subset["dh"].tolist())
+        sigma_all.append(subset["dh_sigma"].tolist())
+
+    data = {
+        "bin_edges": bin_edges,
+        "dates": [(str(ds), str(de)) for ds, de in date_pairs],
+        "dh": dh_all,
+        "sigma": sigma_all,
+    }
+
+    return data

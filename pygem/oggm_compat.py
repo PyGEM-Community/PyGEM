@@ -23,8 +23,6 @@ from oggm.core.flowline import FileModel
 from oggm.core.massbalance import MassBalanceModel
 
 from pygem.setup.config import ConfigManager
-
-# from oggm.shop import rgitopo
 from pygem.shop import debris, elevchange1d, icethickness, mbdata
 
 # instantiate ConfigManager

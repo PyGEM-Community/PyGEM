@@ -634,10 +634,7 @@ def run(list_packed_vars):
 
             # ----- Calibration data -----
             try:
-                mbdata_fn = gdir.get_filepath('mb_calib_pygem')
-
-                with open(mbdata_fn, 'r') as f:
-                    gdir.mbdata = json.load(f)
+                gdir.mbdata = gdir.read_json('mb_calib_pygem')
 
                 # Tidewater glaciers - use climatic mass balance since calving_k already calibrated separately
                 if gdir.is_tidewater:
@@ -705,11 +702,6 @@ def run(list_packed_vars):
 
         except:
             fls = None
-
-        if debug:
-            assert os.path.exists(mbdata_fn), (
-                'Mass balance data missing. Check dataset and column names'
-            )
 
         # if spinup, grab appropriate flowlines
         if args.spinup:

@@ -129,9 +129,8 @@ def mb_df_to_gdir(
             }.items()
             if value is not None
         }
-        mb_fn = gdir.get_filepath('mb_calib_pygem')
-        with open(mb_fn, 'w') as f:
-            json.dump(mbdata, f)
+        
+        gdir.write_json(mbdata, 'mb_calib_pygem')
 
 
 # @entity_task(log, writes=['mb_obs'])
