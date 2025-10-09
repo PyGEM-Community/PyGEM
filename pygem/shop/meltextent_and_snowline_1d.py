@@ -7,9 +7,9 @@ Distributed under the MIT license
 """
 
 # Built-in libaries
-import os
 import datetime
 import logging
+import os
 
 import pandas as pd
 
@@ -130,16 +130,18 @@ def validate_meltextent_1d_structure(data):
         raise ValueError(f"'direction' must be a series of length {len(dates)}.")
     if not all(isinstance(x, str) for x in direction):
         raise ValueError("All 'direction' values must be strings.")
-    
+
     # Validate reference DEM year
     dem_year = data['ref_dem_year'].dropna().unique()
     if len(dem_year) != 1:
         raise ValueError(
             f"'ref_dem_year' must have exactly one unique value, "
-            f"but found {len(dem_year)}: {dem_year}"
+            f'but found {len(dem_year)}: {dem_year}'
         )
     if not isinstance(dem_year, (int)):
-        raise TypeError(f"'ref_dem_year' must be an integer, but got {dem_year} ({type(dem_year).__name__}).")
+        raise TypeError(
+            f"'ref_dem_year' must be an integer, but got {dem_year} ({type(dem_year).__name__})."
+        )
 
     return True
 
@@ -251,16 +253,18 @@ def validate_snowline_1d_structure(data):
         raise ValueError(f"'direction' must be a series of length {len(dates)}.")
     if not all(isinstance(x, str) for x in direction):
         raise ValueError("All 'direction' values must be strings.")
-    
+
     # Validate reference DEM year
     dem_year = data['ref_dem_year'].dropna().unique()
     if len(dem_year) != 1:
         raise ValueError(
             f"'ref_dem_year' must have exactly one unique value, "
-            f"but found {len(dem_year)}: {dem_year}"
+            f'but found {len(dem_year)}: {dem_year}'
         )
     if not isinstance(dem_year, (int)):
-        raise TypeError(f"'ref_dem_year' must be an integer, but got {dem_year} ({type(dem_year).__name__}).")
+        raise TypeError(
+            f"'ref_dem_year' must be an integer, but got {dem_year} ({type(dem_year).__name__})."
+        )
 
     return True
 

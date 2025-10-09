@@ -44,7 +44,7 @@ def single_flowline_glacier_directory(
     prepro_border=pygem_prms['oggm']['border'],
     logging_level=pygem_prms['oggm']['logging_level'],
     has_internet=pygem_prms['oggm']['has_internet'],
-    working_dir=f"{pygem_prms['root']}/{pygem_prms['oggm']['oggm_gdir_relpath']}",
+    working_dir=f'{pygem_prms["root"]}/{pygem_prms["oggm"]["oggm_gdir_relpath"]}',
 ):
     """Prepare a GlacierDirectory for PyGEM (single flowline to start with)
 
@@ -148,7 +148,7 @@ def single_flowline_glacier_directory_with_calving(
     k_calving=1,
     logging_level=pygem_prms['oggm']['logging_level'],
     has_internet=pygem_prms['oggm']['has_internet'],
-    working_dir=f"{pygem_prms['root']}/{pygem_prms['oggm']['oggm_gdir_relpath']}",
+    working_dir=f'{pygem_prms["root"]}/{pygem_prms["oggm"]["oggm_gdir_relpath"]}',
     facorrected=pygem_prms['setup']['include_frontalablation'],
 ):
     """Prepare a GlacierDirectory for PyGEM (single flowline to start with)

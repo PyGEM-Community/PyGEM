@@ -44,9 +44,9 @@ class GCM:
         """
 
         if pygem_prms['rgi']['rgi_lon_colname'] not in ['CenLon_360']:
-            assert (
-                1 == 0
-            ), 'Longitude does not use 360 degrees. Check how negative values are handled!'
+            assert 1 == 0, (
+                'Longitude does not use 360 degrees. Check how negative values are handled!'
+            )
 
         # Source of climate data
         self.name = name
