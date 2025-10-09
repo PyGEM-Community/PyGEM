@@ -68,33 +68,36 @@ def elev_change_1d_to_gdir(
                 [dh_sigma_bin1_period2, dh_sigma_bin2_period2, ..., dh_sigma_binN_period2],
                 ...
                 [dh_sigma_bin1_periodM, dh_sigma_bin2_periodM, ..., dh_sigma_binN_periodM]
-            ]
+            ],
+            'ref_dem_year': int
         }
 
     Notes:
         - Each element in 'dates' defines one elevation change period with a start and end date,
         stored as strings in 'YYYY-MM-DD' format.
         - Each list in 'dh' (and optionally 'dh_sigma') corresponds exactly to one period in 'dates'.
-        - 'dh' should contain M lists of length N-1, where N is the number of bin edges. Units are in meters.
+        - 'dh' should contain M lists of length N-1, where M is the number of periods and N is the number of bin edges. Units are in meters.
         - 'dh_sigma' should either be M lists of length N-1 (matching 'dh') or a single scalar value. Units are in meters.
+        - ref_dem_year is the year of the reference DEM used for elevation-binning.
 
     CSV file structure:
-        bin_start, bin_stop, date_start, date_end, dh, dh_sigma
-        edge0, edge1, date_start_1, date_end_1, dh_bin1_period1, dh_sigma_bin1_period1
-        edge1, edge2, date_start_1, date_end_1, dh_bin2_period1, dh_sigma_bin2_period1
+        bin_start, bin_stop, date_start, date_end, dh, dh_sigma, ref_dem_year
+        edge0, edge1, date_start_1, date_end_1, dh_bin1_period1, dh_sigma_bin1_period1, ref_dem_year
+        edge1, edge2, date_start_1, date_end_1, dh_bin2_period1, dh_sigma_bin2_period1, ref_dem_year
         ...
-        edgeN-1, edgeN, date_start_1, date_end_1, dh_binN_period1, dh_sigma_binN_period1
-        edge0, edge1, date_start_2, date_end_2, dh_bin1_period2, dh_sigma_bin1_period2
+        edgeN-1, edgeN, date_start_1, date_end_1, dh_binN_period1, dh_sigma_binN_period1, ref_dem_year
+        edge0, edge1, date_start_2, date_end_2, dh_bin1_period2, dh_sigma_bin1_period2, ref_dem_year
         ...
-        edgeN-1, edgeN, date_start_M, date_end_M, dh_binN_periodM, dh_sigma_binN_periodM
+        edgeN-1, edgeN, date_start_M, date_end_M, dh_binN_periodM, dh_sigma_binN_periodM, ref_dem_year
 
     Notes:
         - Each set of 'date_start' and 'date_end' defines one elevation change period.
         - Dates must be stored as strings in 'YYYY-MM-DD' format.
         - Rows with the same ('date_start', 'date_end') values correspond to a single period,
         with one row per elevation bin.
-        - 'dh' should contain M × (N-1) entries, where N is the number of bin edges and M is the number of periods. Units are in meters.
-        - 'dh_sigma' should contain M × (N-1) entries, where N is the number of bin edges and M is the number of periods. Units are in meters.
+        - 'dh' should contain M × (N-1) entries, where M is the number of periods and N is the number of bin edges. Units are in meters.
+        - 'dh_sigma' should contain M × (N-1) entries, where M is the number of periods and N is the number of bin edges. Units are in meters.
+        - 'ref_dem_year' is constant for all rows and indicates the year of the reference DEM used for elevation-binning.
 
     Parameters
     ----------
@@ -131,7 +134,7 @@ def elev_change_1d_to_gdir(
 def validate_elev_change_1d_structure(data):
     """Validate that elev_change_1d JSON structure matches expected format."""
 
-    required_keys = ['bin_edges', 'dates', 'dh', 'sigma']
+    required_keys = ['bin_edges', 'dates', 'dh', 'sigma', 'ref_dem_year']
     for key in required_keys:
         if key not in data:
             raise ValueError(f"Missing required key '{key}' in elevation change JSON.")
@@ -203,14 +206,19 @@ def validate_elev_change_1d_structure(data):
                 )
     else:
         raise ValueError("'sigma' must be a list or scalar numeric value.")
+    
+    # Validate ref_dem_year
+    ref_dem_year = data['ref_dem_year']
+    if not isinstance(ref_dem_year, int):
+        raise ValueError("'ref_dem_year' must be an integer year.")
 
-    return True
+    return True 
 
 
 def csv_to_elev_change_1d_dict(csv_path):
     """
     Convert a CSV with columns:
-    bin_start, bin_stop, date_start, date_end, dh, dh_sigma
+    bin_start, bin_stop, date_start, date_end, dh, dh_sigma, ref_dem_year
     into a dictionary structure matching elev_change_data format.
     """
     df = pd.read_csv(csv_path)
@@ -222,6 +230,7 @@ def csv_to_elev_change_1d_dict(csv_path):
         'date_end',
         'dh',
         'dh_sigma',
+        'ref_dem_year',
     }
     if not required_cols.issubset(df.columns):
         raise ValueError(f'CSV must contain columns: {required_cols}')
@@ -231,6 +240,16 @@ def csv_to_elev_change_1d_dict(csv_path):
 
     # Get all unique bin edges
     bin_edges = sorted(set(df['bin_start']).union(df['bin_stop']))
+
+    # Validate reference DEM year - should only be one constant integer value
+    dem_year = df['ref_dem_year'].dropna().unique()
+    if len(dem_year) != 1:
+        raise ValueError(
+            f"'ref_dem_year' must have exactly one unique value, "
+            f"but found {len(dem_year)}: {dem_year}"
+        )
+    if not isinstance(dem_year, (int)):
+        raise TypeError(f"'ref_dem_year' must be an integer, but got {dem_year} ({type(dem_year).__name__}).")
 
     # Get all unique date pairs (preserving order)
     date_pairs = (
@@ -250,6 +269,7 @@ def csv_to_elev_change_1d_dict(csv_path):
         'dates': [(str(ds), str(de)) for ds, de in date_pairs],
         'dh': dh_all,
         'sigma': sigma_all,
+        'ref_dem_year': dem_year,
     }
 
     return data

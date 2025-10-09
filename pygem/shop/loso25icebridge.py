@@ -579,10 +579,14 @@ class oib:
                             [sigma_bin1_period2, sigma_bin2_period2, ..., sigma_binN_period2],
                             ...
                             [sigma_bin1_periodM, sigma_bin2_periodM, ..., sigma_binN_periodM]],
+            'ref_dem_year': int
         }
         note: 'dates' are tuples (or length-2 sublists) of the start and stop date of an individual elevation change record
         and are stored as strings in 'YYYY-MM-DD' format. 'dh' should M lists of length N-1,
-        where N is the number of bin edges. 'sigma'  should eaither be M lists of shape N-1 a scalar value.
+        where M is the number of date pairs and N is the number of bin edges. 
+        'sigma'  should eaither be M lists of shape N-1 a scalar value.
+        'ref_dem_year' is the year of the reference DEM used for elevation-binning.
+
         """
         # Ensure output directory exists
         os.makedirs(outdir, exist_ok=True)
@@ -595,6 +599,7 @@ class oib:
             ],
             'dh': self.dbl_diffs['dh'].T.tolist(),
             'sigma': self.dbl_diffs['sigma'].T.tolist(),
+            'ref_dem_year': 2013,  # hardcoded for now since all OIB diffs are relative to COP30 (2013)
         }
 
         # Save to JSON file
