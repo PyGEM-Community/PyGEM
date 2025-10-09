@@ -653,10 +653,10 @@ def run(list_packed_vars):
                 'prec': gcm_prec_adj[glac, :],
                 'lr': gcm_lr[glac, :],
             }
-            fact = gcm_prec_biasadj_frac[glac]
-            if fact < 0.5 or fact > 2:
+            # Warn if precipitation bias adjustment is greater than 2x
+            if gcm_prec_biasadj_frac[glac] < 0.5 or gcm_prec_biasadj_frac[glac] > 2:
                 warnings.warn(
-                    f'Bias-adjusted GCM precipitation for {glacier_str} differs from that of the refernce climate data by a factor greater than 2x ({round(fact, 2)})',
+                    f'Bias-adjusted GCM precipitation for {glacier_str} differs from that of the refernce climate data by a factor greater than 2x ({round(gcm_prec_biasadj_frac[glac], 2)})',
                     Warning,
                     stacklevel=2,
                 )
