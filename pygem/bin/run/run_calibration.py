@@ -16,6 +16,7 @@ import multiprocessing
 import os
 import pickle
 import time
+import warnings
 from datetime import timedelta
 
 import gpytorch
@@ -37,15 +38,15 @@ config_manager = ConfigManager()
 # read the config
 pygem_prms = config_manager.read_config()
 
+from oggm import cfg, utils
+from oggm.core import flowline
+
 import pygem.oggm_compat as oggm_compat
 import pygem.pygem_modelsetup as modelsetup
 from pygem import class_climate, mcmc
 from pygem.massbalance import PyGEMMassBalance
+from pygem.utils._funcs import interp1d_fill_gaps
 from pygem.utils.stats import mcmc_stats
-
-# from oggm.core import climate
-# from oggm.core.flowline import FluxBasedModel
-# from oggm.core.inversion import calving_flux_from_depth
 
 
 # %% FUNCTIONS
@@ -163,6 +164,13 @@ def getparser():
         default=pygem_prms['calib']['MCMC_params']['mcmc_burn_pct'],
         help='burn-in percentage for MCMC calibration',
     )
+    parser.add_argument(
+        '-thin',
+        action='store',
+        type=int,
+        default=pygem_prms['calib']['MCMC_params']['thin_interval'],
+        help='thinning factor for MCMC calibration',
+    )
 
     # flags
     parser.add_argument(
@@ -252,6 +260,162 @@ def mb_mwea_calc(
             / nyears
         )
         return mb_mwea
+
+
+def calculate_mass_change_change_1d(
+    gdir,
+    modelprms,
+    glacier_rgi_table,
+    fls,
+    debug=False,
+):
+    """
+    For a given set of model parameters, run the ice thickness inversion and mass balance model to get binned annual ice thickness change
+    Convert to monthly thickness by assuming that the flux divergence is constant throughout the year
+    """
+    nyears = int(gdir.dates_table.shape[0] / 12)  # number of years from dates table
+    y0 = gdir.dates_table.year.min()
+    y1 = gdir.dates_table.year.max()
+
+    # Check that water level is within given bounds
+    cls = gdir.read_pickle('inversion_input')[-1]
+    th = cls['hgt'][-1]
+    vmin, vmax = cfg.PARAMS['free_board_marine_terminating']
+    water_level = utils.clip_scalar(0, th - vmax, th - vmin)
+    # mass balance model with evolving area
+    mbmod = PyGEMMassBalance(gdir, modelprms, glacier_rgi_table, fls=fls)
+    # glacier dynamics model
+    if gdir.is_tidewater and pygem_prms['setup']['include_frontalablation']:
+        ev_model = flowline.FluxBasedModel(
+            fls,
+            y0=y0,
+            mb_model=mbmod,
+            glen_a=gdir.get_diagnostics()['inversion_glen_a'],
+            fs=gdir.get_diagnostics()['inversion_fs'],
+            is_tidewater=gdir.is_tidewater,
+            water_level=water_level,
+            do_kcalving=pygem_prms['setup']['include_frontalablation'],
+        )
+    else:
+        ev_model = flowline.SemiImplicitModel(
+            fls,
+            y0=y0,
+            mb_model=mbmod,
+            glen_a=gdir.get_diagnostics()['inversion_glen_a'],
+            fs=gdir.get_diagnostics()['inversion_fs'],
+            is_tidewater=gdir.is_tidewater,
+            water_level=water_level,
+        )
+
+    try:
+        # run glacier dynamics model forward
+        diag, ds = ev_model.run_until_and_store(y1 + 1, fl_diag_path=True)
+        with np.errstate(invalid='ignore'):
+            # record frontal ablation for tidewater glaciers and update total mass balance
+            if gdir.is_tidewater and pygem_prms['setup']['include_frontalablation']:
+                # glacier-wide frontal ablation (m3 w.e.)
+                # - note: diag.calving_m3 is cumulative calving, convert to annual calving
+                calving_m3we_annual = (
+                    (diag.calving_m3.values[1:] - diag.calving_m3.values[0:-1])
+                    * pygem_prms['constants']['density_ice']
+                    / pygem_prms['constants']['density_water']
+                )
+                # record each year's frontal ablation in m3 w.e.
+                for n in np.arange(calving_m3we_annual.shape[0]):
+                    ev_model.mb_model.glac_wide_frontalablation[12 * n + 11] = (
+                        calving_m3we_annual[n]
+                    )
+
+                # Add mass lost from frontal ablation to Glacier-wide total mass balance (m3 w.e.)
+                ev_model.mb_model.glac_wide_massbaltotal = (
+                    ev_model.mb_model.glac_wide_massbaltotal
+                    + ev_model.mb_model.glac_wide_frontalablation
+                )
+
+            mb_mwea = (
+                mbmod.glac_wide_massbaltotal[
+                    gdir.mbdata['t1_idx'] : gdir.mbdata['t2_idx'] + 1
+                ].sum()
+                / mbmod.glac_wide_area_annual[0]
+                / gdir.mbdata['nyears']
+            )
+
+    # if there is an issue evaluating the dynamics model for a given parameter set in MCMC calibration,
+    # return -inf for mb_mwea and binned_dh, so MCMC calibration won't accept given parameters
+    except RuntimeError:
+        return -np.inf, -np.inf
+
+    ### get monthly ice thickness
+    # grab components of interest
+    thickness_m = ds[
+        0
+    ].thickness_m.values.T  # glacier thickness [m ice], (nbins, nyears)
+
+    # set any < 0 thickness to nan
+    thickness_m[thickness_m <= 0] = np.nan
+
+    # climatic mass balance
+    dotb_monthly = (
+        mbmod.glac_bin_massbalclim
+    )  # climatic mass balance [m w.e.] per month
+    # convert to m ice
+    dotb_monthly = dotb_monthly * (
+        pygem_prms['constants']['density_water']
+        / pygem_prms['constants']['density_ice']
+    )
+
+    ### to get monthly thickness and mass we require monthly flux divergence ###
+    # we'll assume the flux divergence is constant througohut the year (is this a good assumption?)
+    # ie. take annual values and divide by 12 - use numpy repeat to repeat values across 12 months
+    flux_div_monthly_mmo = np.repeat(
+        -ds[0].flux_divergence_myr.values.T[:, 1:] / 12, 12, axis=-1
+    )
+
+    # get monthly binned change in thickness
+    delta_h_monthly = dotb_monthly - flux_div_monthly_mmo  # [m ice per month]
+
+    # get binned monthly thickness = running thickness change + initial thickness
+    running_delta_h_monthly = np.cumsum(delta_h_monthly, axis=-1)
+    h_monthly = running_delta_h_monthly + thickness_m[:, 0][:, np.newaxis]
+
+    # convert to mass per unit area
+    m_monthly_spec = h_monthly * pygem_prms['constants']['density_ice']
+
+    # get surface height at the specified reference year
+    ref_surface_h = (
+        ds[0].bed_h.values
+        + ds[0].thickness_m.sel(time=gdir.elev_change_1d['ref_dem_year']).values
+    )
+
+    # aggregate model bin thicknesses as desired
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore')
+        m_monthly_spec = np.column_stack(
+            [
+                stats.binned_statistic(
+                    x=ref_surface_h,
+                    values=x,
+                    statistic=np.nanmean,
+                    bins=gdir.elev_change_1d['bin_edges'],
+                )[0]
+                for x in m_monthly_spec.T
+            ]
+        )
+
+    # interpolate over any empty bins
+    m_monthly_spec_ = np.column_stack(
+        [interp1d_fill_gaps(x.copy()) for x in m_monthly_spec.T]
+    )
+
+    # difference each set of inds in diff_inds_map
+    dmda = np.column_stack(
+        [
+            m_monthly_spec_[:, tup[1]] - m_monthly_spec_[:, tup[0]]
+            for tup in gdir.elev_change_1d['model2obs_inds_map']
+        ]
+    )
+
+    return mb_mwea, dmda
 
 
 # class for Gaussian Process model for mass balance emulator
@@ -547,6 +711,7 @@ def run(list_packed_vars):
     # Unpack variables
     glac_no = list_packed_vars[1]
     ref_climate_name = list_packed_vars[2]
+    ncores = list_packed_vars[3]
 
     parser = getparser()
     args = parser.parse_args()
@@ -1791,7 +1956,8 @@ def run(list_packed_vars):
                             )
                         elif priors[param]['type'] == 'uniform':
                             dist = stats.uniform(
-                                low=priors[param]['low'], high=priors[param]['high']
+                                loc=priors[param]['low'],
+                                scale=priors[param]['high'] - priors[param]['low'],
                             )
                         elif priors[param]['type'] == 'gamma':
                             dist = stats.gamma(
@@ -1810,33 +1976,36 @@ def run(list_packed_vars):
                         dists.append(dist)
                     return dists
 
-                def get_initials(dists, threshold=0.01):
-                    # sample priors - ensure that probability of each sample > .01
-                    initials = None
-                    while initials is None:
-                        # sample from each distribution
-                        xs = [dist.rvs() for dist in dists]
-                        # calculate densities for each sample
-                        ps = [dist.pdf(x) for dist, x in zip(dists, xs)]
+                def get_initials(dists, threshold=0.01, pctl=None):
+                    if pctl:
+                        initials = [dist.ppf(pctl) for dist in dists]
+                    else:
+                        # sample priors - ensure that probability of each sample > .01
+                        initials = None
+                        while initials is None:
+                            # sample from each distribution
+                            xs = [dist.rvs() for dist in dists]
+                            # calculate densities for each sample
+                            ps = [dist.pdf(x) for dist, x in zip(dists, xs)]
 
-                        # Check if all densities are greater than the threshold
-                        if all(p > threshold for p in ps):
-                            initials = xs
+                            # Check if all densities are greater than the threshold
+                            if all(p > threshold for p in ps):
+                                initials = xs
                     return initials
 
-                def mb_max(*args, **kwargs):
-                    """Model parameters cannot completely melt the glacier (psuedo-likelihood fxn)"""
+                def mb_max(**kwargs):
+                    """Psuedo-likelihood functionto ensure glacier is not completely melted."""
                     if kwargs['massbal'] < mb_max_loss:
                         return -np.inf
                     else:
                         return 0
 
-                def must_melt(kp, tbias, ddfsnow, **kwargs):
-                    """Likelihood function for mass balance [mwea] based on model parametersr (psuedo-likelihood fxn)"""
+                def must_melt(**kwargs):
+                    """Psuedo-likelihood function for mass balance [mwea] based on model parameters."""
                     modelprms_copy = modelprms.copy()
-                    modelprms_copy['tbias'] = float(tbias)
-                    modelprms_copy['kp'] = float(kp)
-                    modelprms_copy['ddfsnow'] = float(ddfsnow)
+                    modelprms_copy['tbias'] = float(kwargs['tbias'])
+                    modelprms_copy['kp'] = float(kwargs['kp'])
+                    modelprms_copy['ddfsnow'] = float(kwargs['ddfsnow'])
                     modelprms_copy['ddfice'] = (
                         modelprms_copy['ddfsnow']
                         / pygem_prms['sim']['params']['ddfsnow_iceratio']
@@ -1924,15 +2093,11 @@ def run(list_packed_vars):
                         'type': pygem_prms['calib']['MCMC_params']['tbias_disttype'],
                         'mu': float(tbias_mu),
                         'sigma': float(tbias_sigma),
-                        'low': safe_float(getattr(pygem_prms, 'tbias_bndlow', None)),
-                        'high': safe_float(getattr(pygem_prms, 'tbias_bndhigh', None)),
                     },
                     'kp': {
                         'type': pygem_prms['calib']['MCMC_params']['kp_disttype'],
                         'alpha': float(kp_gamma_alpha),
                         'beta': float(kp_gamma_beta),
-                        'low': safe_float(getattr(pygem_prms, 'kp_bndlow', None)),
-                        'high': safe_float(getattr(pygem_prms, 'kp_bndhigh', None)),
                     },
                     'ddfsnow': {
                         'type': pygem_prms['calib']['MCMC_params']['ddfsnow_disttype'],
@@ -1946,18 +2111,6 @@ def run(list_packed_vars):
                         ),
                     },
                 }
-
-                # add density priors if calibrating against binned elevation change
-                if args.option_calib_elev_change_1d:
-                    priors['rhoabl'] = {'type': 'normal', 'mu': 900.0, 'sigma': 17.0}
-                    priors['rhoacc'] = {
-                        'type': 'normal',
-                        'mu': 600.0,
-                        'sigma': 60.0,
-                    }  # from Huss, 2013 Table 1
-
-                # define distributions from priors for sampling initials
-                prior_dists = get_priors(priors)
                 # ------------------
 
                 # -----------------------------------
@@ -1989,9 +2142,38 @@ def run(list_packed_vars):
                 # -------------------
                 # mass balance observation and standard deviation
                 obs = [(torch.tensor([mb_obs_mwea]), torch.tensor([mb_obs_mwea_err]))]
+
+                # if running full model (no emulator), or calibrating against binned dmda, several arguments are needed
+                if args.option_calib_elev_change_1d:
+                    # add density priors if calibrating against binned elevation change
+                    priors['rhoabl'] = {'type': 'normal', 'mu': 900.0, 'sigma': 17.0}
+                    priors['rhoacc'] = {
+                        'type': 'normal',
+                        'mu': 600.0,
+                        'sigma': 60.0,
+                    }  # from Huss, 2013 Table 1
+                    # load binned elev change obs to glacier directory
+                    gdir.elev_change_1d = gdir.read_json('elev_change_1d')
+                    # calculate inds of data v. model
+                    mbfxn = (
+                        calculate_mass_change_change_1d  # returns (mb_mwea, binned_dm)
+                    )
+                    mbargs = (
+                        gdir,  # arguments for get_binned_dh()
+                        modelprms,
+                        glacier_rgi_table,
+                        fls,
+                    )
+                    # append deltah obs and and sigma obs list
+                    obs.append(
+                        (
+                            torch.tensor(gdir.elev_change_1d['dh']),
+                            torch.tensor(gdir.elev_change_1d['dh_sigma']),
+                        )
+                    )
                 # if there are more observations to calibrate against, simply append a tuple of (obs, variance) to obs list
                 # e.g. obs.append((torch.tensor(dmda_array),torch.tensor(dmda_err_array)))
-                if pygem_prms['calib']['MCMC_params']['option_use_emulator']:
+                elif pygem_prms['calib']['MCMC_params']['option_use_emulator']:
                     mbfxn = mbEmulator.eval  # returns (mb_mwea)
                     mbargs = None  # no additional arguments for mbEmulator.eval()
                 else:
@@ -2007,20 +2189,48 @@ def run(list_packed_vars):
                 # note, mbEmulator.eval expects the modelprms to be ordered like so: [tbias, kp, ddfsnow], so priors and initial guesses must also be ordered as such)
                 priors = {
                     key: priors[key]
-                    for key in ['tbias', 'kp', 'ddfsnow']
+                    for key in ['tbias', 'kp', 'ddfsnow', 'rhoabl', 'rhoacc']
                     if key in priors
-                }
+                }  # verify order of priors
                 mb = mcmc.mbPosterior(
                     obs,
                     priors,
                     mb_func=mbfxn,
                     mb_args=mbargs,
-                    potential_fxns=[mb_max, must_melt],
+                    potential_fxns=[mb_max, must_melt, rho_constraints],
+                    ela=min(gdir.ela['z']) if hasattr(gdir, 'ela') else None,
+                    bin_z=gdir.elev_change_1d['bin_centers']
+                    if hasattr(gdir, 'elev_change_1d')
+                    else None,
                 )
-
                 # prepare export modelprms dictionary
                 modelprms_export = {}
-                for k in ['tbias', 'kp', 'ddfsnow', 'ddfice', 'mb_mwea', 'ar']:
+                # store model parameters and priors
+                modelprms_export['precgrad'] = [pygem_prms['sim']['params']['precgrad']]
+                modelprms_export['tsnow_threshold'] = [
+                    pygem_prms['sim']['params']['tsnow_threshold']
+                ]
+                modelprms_export['mb_obs_mwea'] = [float(mb_obs_mwea)]
+                modelprms_export['mb_obs_mwea_err'] = [float(mb_obs_mwea_err)]
+                # mcmc keys
+                ks = ['tbias', 'kp', 'ddfsnow', 'ddfice', 'mb_mwea', 'ar']
+                if args.option_calib_elev_change_1d:
+                    modelprms_export['dmda'] = {}
+                    modelprms_export['dmda']['x'] = gdir.elev_change_1d[
+                        'bin_centers'
+                    ].tolist()
+                    modelprms_export['dmda']['obs'] = [
+                        ob.flatten().tolist() for ob in obs[1]
+                    ]
+                    modelprms_export['dmda']['dates'] = [
+                        (dt1.strftime('%Y-%m-%d'), dt2.strftime('%Y-%m-%d'))
+                        for dt1, dt2 in gdir.elev_change_1d['dates']
+                    ]
+                    ks += ['rhoabl', 'rhoacc']
+                modelprms_export['priors'] = priors
+
+                # create nested dictionary for each mcmc key
+                for k in ks:
                     modelprms_export[k] = {}
                 # -------------------
 
@@ -2029,59 +2239,74 @@ def run(list_packed_vars):
                 # --------------------
                 try:
                     ### loop over chains, adjust initial guesses accordingly. done in a while loop as to repeat a chain up to one time if it remained stuck throughout ###
+                    attempts_per_chain = 2  # number of repeats per chain (each with different initial guesses)
                     n_chain = 0
-                    repeat = False
                     while n_chain < args.nchains:
-                        # compile initial guesses and standardize by standard deviations
-                        # for 0th chain, take mean from regional priors
-                        if n_chain == 0:
-                            initial_guesses = torch.tensor(
-                                (
-                                    tbias_mu,
-                                    kp_gamma_alpha / kp_gamma_beta,
-                                    pygem_prms['calib']['MCMC_params']['ddfsnow_mu'],
+                        n_attempts = 0
+                        chain_completed = False
+                        while not chain_completed and n_attempts < attempts_per_chain:
+                            # Select initial guesses
+                            if n_chain == 0 and n_attempts == 0:
+                                initial_guesses = torch.tensor(
+                                    (
+                                        tbias_mu,
+                                        kp_gamma_alpha / kp_gamma_beta,
+                                        pygem_prms['calib']['MCMC_params'][
+                                            'ddfsnow_mu'
+                                        ],
+                                    )
+                                )
+                                if args.option_calib_elev_change_1d:
+                                    initial_guesses = torch.cat(
+                                        (initial_guesses, torch.tensor([900.0, 600.0]))
+                                    )
+                            else:
+                                initial_guesses = torch.tensor(
+                                    get_initials(get_priors(priors))
+                                )
+
+                            if debug:
+                                print(
+                                    f'{glacier_str} chain {n_chain} attempt {n_attempts} initials:\n'
+                                    f'tbias: {initial_guesses[0]:.2f}, kp: {initial_guesses[1]:.2f}, ddfsnow: {initial_guesses[2]:.4f}'
+                                    + (
+                                        f', rhoabl: {initial_guesses[3]:.1f}, rhoacc: {initial_guesses[4]:.1f}'
+                                        if args.option_calib_elev_change_1d
+                                        else ''
+                                    )
+                                )
+
+                            # instantiate sampler
+                            sampler = mcmc.Metropolis(mb.means, mb.stds)
+                            # draw samples
+                            m_chain, pred_chain, m_primes, pred_primes, _, ar = (
+                                sampler.sample(
+                                    initial_guesses,
+                                    mb.log_posterior,
+                                    n_samples=args.chain_length,
+                                    h=pygem_prms['calib']['MCMC_params']['mcmc_step'],
+                                    burnin=int(args.burn_pct / 100 * args.chain_length),
+                                    thin_factor=args.thin,
+                                    progress_bar=args.progress_bar,
                                 )
                             )
-                        # for all chains > 0, randomly sample from regional priors
-                        else:
-                            initial_guesses = torch.tensor(get_initials(prior_dists))
-                        if debug:
+
+                            # Check if stuck - this simply checks if the first column of the chain (tbias) is constant
+                            if (m_chain[:, 0] == m_chain[0, 0]).all():
+                                if debug:
+                                    print(
+                                        f'Chain {n_chain}, attempt {n_attempts}: stuck. Trying a different initial guess.'
+                                    )
+                                n_attempts += 1
+                                continue  # Try a new initial guess
+                            else:
+                                chain_completed = True
+                                break
+
+                        if not chain_completed and debug:
                             print(
-                                f'{glacier_str} chain {n_chain} initials:\ttbias: {initial_guesses[0]:.2f}, kp: {initial_guesses[1]:.2f}, ddfsnow: {initial_guesses[2]:.4f}'
+                                f'Chain {n_chain}: failed to produce an unstuck result after {attempts_per_chain} initial guesses.'
                             )
-                        initial_guesses_z = mcmc.z_normalize(
-                            initial_guesses, mb.means, mb.stds
-                        )
-
-                        # instantiate sampler
-                        sampler = mcmc.Metropolis(mb.means, mb.stds)
-
-                        # draw samples
-                        m_chain_z, pred_chain, m_primes_z, pred_primes, _, ar = (
-                            sampler.sample(
-                                initial_guesses_z,
-                                mb.log_posterior,
-                                n_samples=args.chain_length,
-                                h=pygem_prms['calib']['MCMC_params']['mcmc_step'],
-                                burnin=int(args.burn_pct / 100 * args.chain_length),
-                                thin_factor=pygem_prms['calib']['MCMC_params'][
-                                    'thin_interval'
-                                ],
-                                progress_bar=args.progress_bar,
-                            )
-                        )
-
-                        # Check condition at the end
-                        if (m_chain_z[:, 0] == m_chain_z[0, 0]).all():
-                            if not repeat and n_chain != 0:
-                                repeat = True
-                                continue
-
-                        # inverse z-normalize the samples to original parameter space
-                        m_chain = mcmc.inverse_z_normalize(m_chain_z, mb.means, mb.stds)
-                        m_primes = mcmc.inverse_z_normalize(
-                            m_primes_z, mb.means, mb.stds
-                        )
 
                         # concatenate mass balance
                         m_chain = torch.cat(
@@ -2110,28 +2335,34 @@ def run(list_packed_vars):
                                 + glacier_str.split('.')[0].zfill(2)
                                 + '/fig/'
                             )
+                            if args.option_calib_elev_change_1d:
+                                fp += 'dh/'
                             os.makedirs(fp, exist_ok=True)
-                            if args.ncores > 1:
+                            if ncores > 1:
                                 show = False
                             else:
                                 show = True
-                            mcmc.plot_chain(
-                                m_primes,
-                                m_chain,
-                                obs[0],
-                                ar,
-                                glacier_str,
-                                show=show,
-                                fpath=f'{fp}/{glacier_str}-chain{n_chain}.png',
-                            )
-                            for i in pred_chain.keys():
-                                mcmc.plot_resid_hist(
-                                    obs[i],
-                                    pred_chain[i],
+                            try:
+                                mcmc.plot_chain(
+                                    m_primes,
+                                    m_chain,
+                                    obs[0],
+                                    ar,
                                     glacier_str,
                                     show=show,
-                                    fpath=f'{fp}/{glacier_str}-chain{n_chain}-residuals-{i}.png',
+                                    fpath=f'{fp}/{glacier_str}-chain{n_chain}.png',
                                 )
+                                for i in pred_chain.keys():
+                                    mcmc.plot_resid_hist(
+                                        obs[i],
+                                        pred_chain[i],
+                                        glacier_str,
+                                        show=show,
+                                        fpath=f'{fp}/{glacier_str}-chain{n_chain}-residuals-{i}.png',
+                                    )
+                            except Exception as e:
+                                if debug:
+                                    print(f'Error plotting chain {n_chain}: {e}')
 
                         # Store data from model to be exported
                         chain_str = 'chain_' + str(n_chain)
@@ -2142,22 +2373,22 @@ def run(list_packed_vars):
                             m_chain[:, 2]
                             / pygem_prms['sim']['params']['ddfsnow_iceratio']
                         ).tolist()
-                        modelprms_export['mb_mwea'][chain_str] = m_chain[:, 3].tolist()
+                        modelprms_export['mb_mwea'][chain_str] = m_chain[:, -1].tolist()
                         modelprms_export['ar'][chain_str] = ar
+                        if args.option_calib_elev_change_1d:
+                            dh_preds = [
+                                preds.flatten().tolist() for preds in pred_chain[1]
+                            ]
+                            modelprms_export['dmda'][chain_str] = dh_preds
+                            modelprms_export['rhoabl'][chain_str] = m_chain[
+                                :, 3
+                            ].tolist()
+                            modelprms_export['rhoacc'][chain_str] = m_chain[
+                                :, 4
+                            ].tolist()
 
                         # increment n_chain only if the current iteration was a repeat
                         n_chain += 1
-
-                    # Export model parameters
-                    modelprms_export['precgrad'] = [
-                        pygem_prms['sim']['params']['precgrad']
-                    ]
-                    modelprms_export['tsnow_threshold'] = [
-                        pygem_prms['sim']['params']['tsnow_threshold']
-                    ]
-                    modelprms_export['mb_obs_mwea'] = [float(mb_obs_mwea)]
-                    modelprms_export['mb_obs_mwea_err'] = [float(mb_obs_mwea_err)]
-                    modelprms_export['priors'] = priors
 
                     # compute stats on mcmc parameters
                     modelprms_export = mcmc_stats(modelprms_export)
@@ -2171,6 +2402,8 @@ def run(list_packed_vars):
                             + '/'
                         )
                     ]
+                    if args.option_calib_elev_change_1d:
+                        modelprms_fp[0] += 'dh/'
                     # if not using emulator (running full model), save output in ./calibration/ and ./calibration-fullsim/
                     if not pygem_prms['calib']['MCMC_params']['option_use_emulator']:
                         modelprms_fp.append(
@@ -3033,7 +3266,7 @@ def main():
     # Pack variables for multiprocessing
     list_packed_vars = []
     for count, glac_no_lst in enumerate(glac_no_lsts):
-        list_packed_vars.append([count, glac_no_lst, ref_climate_name])
+        list_packed_vars.append([count, glac_no_lst, ref_climate_name, num_cores])
     # Parallel processing
     if num_cores > 1:
         print('Processing in parallel with ' + str(num_cores) + ' cores...')
