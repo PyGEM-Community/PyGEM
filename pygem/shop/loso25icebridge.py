@@ -583,7 +583,7 @@ class oib:
         }
         note: 'dates' are tuples (or length-2 sublists) of the start and stop date of an individual elevation change record
         and are stored as strings in 'YYYY-MM-DD' format. 'dh' should M lists of length N-1,
-        where M is the number of date pairs and N is the number of bin edges. 
+        where M is the number of date pairs and N is the number of bin edges.
         'sigma'  should eaither be M lists of shape N-1 a scalar value.
         'ref_dem_year' is the year of the reference DEM used for elevation-binning.
 

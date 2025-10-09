@@ -206,13 +206,13 @@ def validate_elev_change_1d_structure(data):
                 )
     else:
         raise ValueError("'sigma' must be a list or scalar numeric value.")
-    
+
     # Validate ref_dem_year
     ref_dem_year = data['ref_dem_year']
     if not isinstance(ref_dem_year, int):
         raise ValueError("'ref_dem_year' must be an integer year.")
 
-    return True 
+    return True
 
 
 def csv_to_elev_change_1d_dict(csv_path):
@@ -246,10 +246,12 @@ def csv_to_elev_change_1d_dict(csv_path):
     if len(dem_year) != 1:
         raise ValueError(
             f"'ref_dem_year' must have exactly one unique value, "
-            f"but found {len(dem_year)}: {dem_year}"
+            f'but found {len(dem_year)}: {dem_year}'
         )
     if not isinstance(dem_year, (int)):
-        raise TypeError(f"'ref_dem_year' must be an integer, but got {dem_year} ({type(dem_year).__name__}).")
+        raise TypeError(
+            f"'ref_dem_year' must be an integer, but got {dem_year} ({type(dem_year).__name__})."
+        )
 
     # Get all unique date pairs (preserving order)
     date_pairs = (
