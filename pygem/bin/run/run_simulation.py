@@ -41,7 +41,7 @@ config_manager = ConfigManager()
 # read the config
 pygem_prms = config_manager.read_config()
 # oggm imports
-from oggm import cfg, graphics, tasks, utils
+from oggm import cfg, tasks, utils
 from oggm.core.flowline import FluxBasedModel, SemiImplicitModel
 from oggm.core.massbalance import apparent_mb_from_any_mb
 
@@ -55,6 +55,7 @@ from pygem.oggm_compat import (
     single_flowline_glacier_directory_with_calving,
 )
 from pygem.output import calc_stats_array
+from pygem.plot import graphics
 from pygem.shop import debris
 
 cfg.PARAMS['hydro_month_nh'] = 1
@@ -1103,8 +1104,8 @@ def run(list_packed_vars):
                             )
 
                         if debug:
-                            graphics.plot_modeloutput_section(ev_model)
-                            plt.show()
+                            fig, ax = plt.subplots(1)
+                            graphics.plot_modeloutput_section(ev_model, ax=ax)
 
                         try:
                             diag = ev_model.run_until_and_store(args.sim_endyear + 1)
@@ -1336,9 +1337,8 @@ def run(list_packed_vars):
                         )
 
                         if debug:
-                            print('New glacier vol', ev_model.volume_m3)
-                            graphics.plot_modeloutput_section(ev_model)
-                            plt.show()
+                            fig, ax = plt.subplots(1)
+                            graphics.plot_modeloutput_section(ev_model, ax=ax)
                         try:
                             _, diag = ev_model.run_until_and_store(args.sim_endyear + 1)
                             #                            print('shape of volume:', ev_model.mb_model.glac_wide_volume_annual.shape, diag.volume_m3.shape)
@@ -1477,8 +1477,9 @@ def run(list_packed_vars):
                     if successful_run:
                         if args.option_dynamics is not None:
                             if debug:
-                                graphics.plot_modeloutput_section(ev_model)
-                                #                    graphics.plot_modeloutput_map(gdir, model=ev_model)
+                                graphics.plot_modeloutput_section(
+                                    ev_model, ax=ax, srfls='--'
+                                )
                                 plt.figure()
                                 diag.volume_m3.plot()
                                 plt.show()

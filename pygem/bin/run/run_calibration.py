@@ -45,6 +45,7 @@ import pygem.oggm_compat as oggm_compat
 import pygem.pygem_modelsetup as modelsetup
 from pygem import class_climate, mcmc
 from pygem.massbalance import PyGEMMassBalance
+from pygem.plot import graphics
 from pygem.utils._funcs import interp1d_fill_gaps
 from pygem.utils.stats import mcmc_stats
 
@@ -2343,7 +2344,7 @@ def run(list_packed_vars):
                             else:
                                 show = True
                             try:
-                                mcmc.plot_chain(
+                                graphics.plot_mcmc_chain(
                                     m_primes,
                                     m_chain,
                                     obs[0],
@@ -2353,7 +2354,7 @@ def run(list_packed_vars):
                                     fpath=f'{fp}/{glacier_str}-chain{n_chain}.png',
                                 )
                                 for i in pred_chain.keys():
-                                    mcmc.plot_resid_hist(
+                                    graphics.plot_resid_histogram(
                                         obs[i],
                                         pred_chain[i],
                                         glacier_str,
