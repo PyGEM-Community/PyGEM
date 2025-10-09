@@ -569,37 +569,38 @@ class oib:
             Directory to save the elevation change data.
 
         format will be a JSON file with the following structure:
-        {   'bin_edges':    [edge0, edge1, ..., edgeN],
+        {
+            'ref_dem_year': int,
+            'bin_edges':    [edge0, edge1, ..., edgeN],
             'dates':        [(period1_start, period1_end), (period2_start, period2_end), ... (periodM_start, periodM_end)],
             'dh':           [[dh_bin1_period1, dh_bin2_period1, ..., dh_binN_period1],
                             [dh_bin1_period2, dh_bin2_period2, ..., dh_binN_period2],
                             ...
                             [dh_bin1_periodM, dh_bin2_periodM, ..., dh_binN_periodM]],
-            'sigma':        [[sigma_bin1_period1, sigma_bin2_period1, ..., sigma_binN_period1],
+            'dh_sigma':        [[sigma_bin1_period1, sigma_bin2_period1, ..., sigma_binN_period1],
                             [sigma_bin1_period2, sigma_bin2_period2, ..., sigma_binN_period2],
                             ...
                             [sigma_bin1_periodM, sigma_bin2_periodM, ..., sigma_binN_periodM]],
-            'ref_dem_year': int
         }
-        note: 'dates' are tuples (or length-2 sublists) of the start and stop date of an individual elevation change record
+        note: 'ref_dem_year' is the year of the reference DEM used for elevation-binning.
+        'dates' are tuples (or length-2 sublists) of the start and stop date of an individual elevation change record
         and are stored as strings in 'YYYY-MM-DD' format. 'dh' should M lists of length N-1,
         where M is the number of date pairs and N is the number of bin edges.
-        'sigma'  should eaither be M lists of shape N-1 a scalar value.
-        'ref_dem_year' is the year of the reference DEM used for elevation-binning.
+        'dh_sigma'  should eaither be M lists of shape N-1 a scalar value.
 
         """
         # Ensure output directory exists
         os.makedirs(outdir, exist_ok=True)
         # Prepare data for saving
         elev_change_data = {
-            'bin_edges': self.bin_edges.tolist(),
+            'ref_dem_year': 2013,  # hardcoded for now since all OIB diffs are relative to COP30 (2013)
             'dates': [
                 (dt[0].strftime('%Y-%m-%d'), dt[1].strftime('%Y-%m-%d'))
                 for dt in self.dbl_diffs['dates']
             ],
+            'bin_edges': self.bin_edges.tolist(),
             'dh': self.dbl_diffs['dh'].T.tolist(),
-            'sigma': self.dbl_diffs['sigma'].T.tolist(),
-            'ref_dem_year': 2013,  # hardcoded for now since all OIB diffs are relative to COP30 (2013)
+            'dh_sigma': self.dbl_diffs['sigma'].T.tolist(),
         }
 
         # Save to JSON file

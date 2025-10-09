@@ -50,13 +50,14 @@ def elev_change_1d_to_gdir(
 
     JSON file structure:
         {
-            'bin_edges': [edge0, edge1, ..., edgeN],
+            'ref_dem_year': int,
             'dates': [
                 (date_start_1, date_end_1),
                 (date_start_2, date_end_2),
                 ...
                 (date_start_M, date_end_M)
             ],
+            'bin_edges': [edge0, edge1, ..., edgeN],
             'dh': [
                 [dh_bin1_period1, dh_bin2_period1, ..., dh_binN_period1],
                 [dh_bin1_period2, dh_bin2_period2, ..., dh_binN_period2],
@@ -69,16 +70,15 @@ def elev_change_1d_to_gdir(
                 ...
                 [dh_sigma_bin1_periodM, dh_sigma_bin2_periodM, ..., dh_sigma_binN_periodM]
             ],
-            'ref_dem_year': int
         }
 
     Notes:
+        - 'ref_dem_year' is the year of the reference DEM used for elevation-binning.
         - Each element in 'dates' defines one elevation change period with a start and end date,
         stored as strings in 'YYYY-MM-DD' format.
         - Each list in 'dh' (and optionally 'dh_sigma') corresponds exactly to one period in 'dates'.
         - 'dh' should contain M lists of length N-1, where M is the number of periods and N is the number of bin edges. Units are in meters.
         - 'dh_sigma' should either be M lists of length N-1 (matching 'dh') or a single scalar value. Units are in meters.
-        - ref_dem_year is the year of the reference DEM used for elevation-binning.
 
     CSV file structure:
         bin_start, bin_stop, date_start, date_end, dh, dh_sigma, ref_dem_year
@@ -134,7 +134,7 @@ def elev_change_1d_to_gdir(
 def validate_elev_change_1d_structure(data):
     """Validate that elev_change_1d JSON structure matches expected format."""
 
-    required_keys = ['bin_edges', 'dates', 'dh', 'sigma', 'ref_dem_year']
+    required_keys = ['ref_dem_year', 'bin_edges', 'dates', 'dh', 'dh_sigma']
     for key in required_keys:
         if key not in data:
             raise ValueError(f"Missing required key '{key}' in elevation change JSON.")
@@ -187,7 +187,7 @@ def validate_elev_change_1d_structure(data):
             raise ValueError(f"All 'dh[{i}]' values must be numeric.")
 
     # Validate sigma
-    sigma = data['sigma']
+    sigma = data['dh_sigma']
     if isinstance(sigma, (int, float)):
         # scalar is OK
         pass
@@ -267,11 +267,11 @@ def csv_to_elev_change_1d_dict(csv_path):
         sigma_all.append(subset['dh_sigma'].tolist())
 
     data = {
-        'bin_edges': bin_edges,
-        'dates': [(str(ds), str(de)) for ds, de in date_pairs],
-        'dh': dh_all,
-        'sigma': sigma_all,
         'ref_dem_year': dem_year,
+        'dates': [(str(ds), str(de)) for ds, de in date_pairs],
+        'bin_edges': bin_edges,
+        'dh': dh_all,
+        'dh_sigma': sigma_all,
     }
 
     return data
