@@ -636,9 +636,9 @@ def run(list_packed_vars):
 
                 # Tidewater glaciers - use climatic mass balance since calving_k already calibrated separately
                 if gdir.is_tidewater:
-                    assert 'mb_clim_mwea' in gdir.mbdata.keys(), (
-                        'include_frontalablation is set as true, but fontal ablation has yet to be calibrated.'
-                    )
+                    assert (
+                        'mb_clim_mwea' in gdir.mbdata.keys()
+                    ), 'include_frontalablation is set as true, but fontal ablation has yet to be calibrated.'
                     mb_obs_mwea = gdir.mbdata['mb_clim_mwea']
                     mb_obs_mwea_err = gdir.mbdata['mb_clim_mwea_err']
                 # non-tidewater - use geodetic mass balance
@@ -702,9 +702,9 @@ def run(list_packed_vars):
             fls = None
 
         if debug:
-            assert os.path.exists(mbdata_fn), (
-                'Mass balance data missing. Check dataset and column names'
-            )
+            assert os.path.exists(
+                mbdata_fn
+            ), 'Mass balance data missing. Check dataset and column names'
 
         # if spinup, grab appropriate flowlines
         if args.spinup:
@@ -1207,9 +1207,9 @@ def run(list_packed_vars):
 
                         Computationally more robust and sometimes faster than scipy minimize
                         """
-                        assert prm2opt is not None, (
-                            'For single_param_optimizer you must specify parameter to optimize'
-                        )
+                        assert (
+                            prm2opt is not None
+                        ), 'For single_param_optimizer you must specify parameter to optimize'
 
                         if prm2opt == 'kp':
                             prm_bndlow = kp_bnds[0]
@@ -1707,9 +1707,9 @@ def run(list_packed_vars):
                         + glacier_str.split('.')[0].zfill(2)
                         + '/'
                     )
-                    assert os.path.exists(em_mod_fp + em_mod_fn), (
-                        f'emulator output does not exist : {em_mod_fp + em_mod_fn}'
-                    )
+                    assert os.path.exists(
+                        em_mod_fp + em_mod_fn
+                    ), f'emulator output does not exist : {em_mod_fp + em_mod_fn}'
                     mbEmulator = massbalEmulator.load(em_mod_path=em_mod_fp + em_mod_fn)
                     outpath_sfix = ''  # output file path suffix if using emulator
                 else:
@@ -2039,18 +2039,23 @@ def run(list_packed_vars):
                         sampler = mcmc.Metropolis(mb.means, mb.stds)
 
                         # draw samples
-                        m_chain_z, pred_chain, m_primes_z, pred_primes, _, ar = (
-                            sampler.sample(
-                                initial_guesses_z,
-                                mb.log_posterior,
-                                n_samples=args.chain_length,
-                                h=pygem_prms['calib']['MCMC_params']['mcmc_step'],
-                                burnin=int(args.burn_pct / 100 * args.chain_length),
-                                thin_factor=pygem_prms['calib']['MCMC_params'][
-                                    'thin_interval'
-                                ],
-                                progress_bar=args.progress_bar,
-                            )
+                        (
+                            m_chain_z,
+                            pred_chain,
+                            m_primes_z,
+                            pred_primes,
+                            _,
+                            ar,
+                        ) = sampler.sample(
+                            initial_guesses_z,
+                            mb.log_posterior,
+                            n_samples=args.chain_length,
+                            h=pygem_prms['calib']['MCMC_params']['mcmc_step'],
+                            burnin=int(args.burn_pct / 100 * args.chain_length),
+                            thin_factor=pygem_prms['calib']['MCMC_params'][
+                                'thin_interval'
+                            ],
+                            progress_bar=args.progress_bar,
                         )
 
                         # Check condition at the end
@@ -2326,9 +2331,9 @@ def run(list_packed_vars):
                     mb_mwea_threshold=0.005,
                     debug=False,
                 ):
-                    assert prm2opt is not None, (
-                        'For single_param_optimizer you must specify parameter to optimize'
-                    )
+                    assert (
+                        prm2opt is not None
+                    ), 'For single_param_optimizer you must specify parameter to optimize'
 
                     if prm2opt == 'kp':
                         prm_bndlow = kp_bnds[0]
