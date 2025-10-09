@@ -70,11 +70,11 @@ def run(
 
     # Air temperature [degC]
     temp, _ = ref_clim.importGCMvarnearestneighbor_xarray(
-        ref_clim.temp_fn, ref_clim.temp_vn, main_glac_rgi, dt
+        ref_clim.temp_fn, ref_clim.temp_vn, main_glac_rgi, dt, verbose=debug
     )
     # Precipitation [m]
     prec, _ = ref_clim.importGCMvarnearestneighbor_xarray(
-        ref_clim.prec_fn, ref_clim.prec_vn, main_glac_rgi, dt
+        ref_clim.prec_fn, ref_clim.prec_vn, main_glac_rgi, dt, verbose=debug
     )
     # Elevation [m asl]
     elev = ref_clim.importGCMfxnearestneighbor_xarray(
@@ -82,7 +82,7 @@ def run(
     )
     # Lapse rate [degC m-1]
     lr, _ = ref_clim.importGCMvarnearestneighbor_xarray(
-        ref_clim.lr_fn, ref_clim.lr_vn, main_glac_rgi, dt
+        ref_clim.lr_fn, ref_clim.lr_vn, main_glac_rgi, dt, verbose=debug
     )
 
     # load prior regionally averaged modelprms (from Rounce et al. 2023)
