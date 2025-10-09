@@ -208,7 +208,7 @@ class GCM:
                 self.timestep = pygem_prms['time']['timestep']
                 self.rgi_lat_colname = pygem_prms['rgi']['rgi_lat_colname']
                 self.rgi_lon_colname = pygem_prms['rgi']['rgi_lon_colname']
-            
+
             # Standardized CMIP5 format (GCM/RCP)
             elif 'rcp' in sim_climate_scenario:
                 # Variable names

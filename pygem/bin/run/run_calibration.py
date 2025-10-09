@@ -1847,6 +1847,17 @@ def run(list_packed_vars):
                     else:
                         return -np.inf
 
+                def rho_constraints(**kwargs):
+                    """Psuedo-likelihood function for ablation and accumulation area densities."""
+                    if 'rhoabl' not in kwargs or 'rhoacc' not in kwargs:
+                        return 0
+                    rhoabl = float(kwargs['rhoabl'])
+                    rhoacc = float(kwargs['rhoacc'])
+                    if (rhoacc < 0) or (rhoabl < 0) or (rhoacc > rhoabl):
+                        return -np.inf
+                    else:
+                        return 0
+
                 # ---------------------------------
 
                 # ---------------------------------
@@ -1935,6 +1946,16 @@ def run(list_packed_vars):
                         ),
                     },
                 }
+
+                # add density priors if calibrating against binned elevation change
+                if args.option_calib_elev_change_1d:
+                    priors['rhoabl'] = {'type': 'normal', 'mu': 900.0, 'sigma': 17.0}
+                    priors['rhoacc'] = {
+                        'type': 'normal',
+                        'mu': 600.0,
+                        'sigma': 60.0,
+                    }  # from Huss, 2013 Table 1
+
                 # define distributions from priors for sampling initials
                 prior_dists = get_priors(priors)
                 # ------------------
