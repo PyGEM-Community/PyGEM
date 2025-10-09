@@ -480,18 +480,16 @@ def run(list_packed_vars):
                 args.ref_startyear,
             )
             # Precipitation bias correction
-            (
-                gcm_prec_adj,
-                gcm_elev_adj,
-                gcm_prec_biasadj_frac,
-            ) = gcmbiasadj.prec_biasadj_opt1(
-                ref_prec,
-                ref_elev,
-                gcm_prec,
-                dates_table_ref,
-                dates_table_full,
-                args.sim_startyear,
-                args.ref_startyear,
+            gcm_prec_adj, gcm_elev_adj, gcm_prec_biasadj_frac = (
+                gcmbiasadj.prec_biasadj_opt1(
+                    ref_prec,
+                    ref_elev,
+                    gcm_prec,
+                    dates_table_ref,
+                    dates_table_full,
+                    args.sim_startyear,
+                    args.ref_startyear,
+                )
             )
         # OPTION 2: Adjust temp and prec using Huss and Hock (2015)
         elif args.option_bias_adjustment == 2:
@@ -506,16 +504,14 @@ def run(list_packed_vars):
                 args.ref_startyear,
             )
             # Precipitation bias correction
-            (
-                gcm_prec_adj,
-                gcm_elev_adj,
-                gcm_prec_biasadj_frac,
-            ) = gcmbiasadj.prec_biasadj_HH2015(
-                ref_prec,
-                ref_elev,
-                gcm_prec,
-                dates_table_ref,
-                dates_table_full,
+            gcm_prec_adj, gcm_elev_adj, gcm_prec_biasadj_frac = (
+                gcmbiasadj.prec_biasadj_HH2015(
+                    ref_prec,
+                    ref_elev,
+                    gcm_prec,
+                    dates_table_ref,
+                    dates_table_full,
+                )
             )
         # OPTION 3: Adjust temp and prec using quantile delta mapping, Cannon et al. (2015)
         elif args.option_bias_adjustment == 3:

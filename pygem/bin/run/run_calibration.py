@@ -2051,6 +2051,7 @@ def run(list_packed_vars):
                                 ],
                                 progress_bar=args.progress_bar,
                             )
+                        )
 
                         # Check condition at the end
                         if (m_chain_z[:, 0] == m_chain_z[0, 0]).all():
