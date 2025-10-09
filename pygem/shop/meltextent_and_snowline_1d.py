@@ -132,13 +132,14 @@ def validate_meltextent_1d_structure(data):
         raise ValueError("All 'direction' values must be strings.")
     
     # Validate reference DEM year
-    dem_year = data['ref_dem_year']
-    if not (isinstance(dem_year, pd.Series) and len(dem_year) == len(dates)):
-        raise ValueError(f"'ref_dem_year' must be a series of length {len(dates)}.")
-    if len(set(dem_year)) != 1:
-        raise ValueError("All 'ref_dem_year' values must be identical.")
-    if not all(isinstance(x, int) for x in dem_year):
-        raise ValueError("All 'ref_dem_year' values must be an integer year.")
+    dem_year = data['ref_dem_year'].dropna().unique()
+    if len(dem_year) != 1:
+        raise ValueError(
+            f"'ref_dem_year' must have exactly one unique value, "
+            f"but found {len(dem_year)}: {dem_year}"
+        )
+    if not isinstance(dem_year, (int)):
+        raise TypeError(f"'ref_dem_year' must be an integer, but got {dem_year} ({type(dem_year).__name__}).")
 
     return True
 
@@ -252,13 +253,14 @@ def validate_snowline_1d_structure(data):
         raise ValueError("All 'direction' values must be strings.")
     
     # Validate reference DEM year
-    dem_year = data['ref_dem_year']
-    if not (isinstance(dem_year, pd.Series) and len(dem_year) == len(dates)):
-        raise ValueError(f"'ref_dem_year' must be a series of length {len(dates)}.")
-    if len(set(dem_year)) != 1:
-        raise ValueError("All 'ref_dem_year' values must be identical.")
-    if not all(isinstance(x, int) for x in dem_year):
-        raise ValueError("All 'ref_dem_year' values must be an integer year.")
+    dem_year = data['ref_dem_year'].dropna().unique()
+    if len(dem_year) != 1:
+        raise ValueError(
+            f"'ref_dem_year' must have exactly one unique value, "
+            f"but found {len(dem_year)}: {dem_year}"
+        )
+    if not isinstance(dem_year, (int)):
+        raise TypeError(f"'ref_dem_year' must be an integer, but got {dem_year} ({type(dem_year).__name__}).")
 
     return True
 
