@@ -430,17 +430,17 @@ def run(list_packed_vars):
     # ----- Select Temperature and Precipitation Data -----
     # Air temperature [degC]
     gcm_temp, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(
-        gcm.temp_fn, gcm.temp_vn, main_glac_rgi, dates_table_full
+        gcm.temp_fn, gcm.temp_vn, main_glac_rgi, dates_table_full, verbose=debug
     )
     ref_temp, ref_dates = ref_gcm.importGCMvarnearestneighbor_xarray(
-        ref_gcm.temp_fn, ref_gcm.temp_vn, main_glac_rgi, dates_table_ref
+        ref_gcm.temp_fn, ref_gcm.temp_vn, main_glac_rgi, dates_table_ref, verbose=debug
     )
     # Precipitation [m]
     gcm_prec, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(
-        gcm.prec_fn, gcm.prec_vn, main_glac_rgi, dates_table_full
+        gcm.prec_fn, gcm.prec_vn, main_glac_rgi, dates_table_full, verbose=debug
     )
     ref_prec, ref_dates = ref_gcm.importGCMvarnearestneighbor_xarray(
-        ref_gcm.prec_fn, ref_gcm.prec_vn, main_glac_rgi, dates_table_ref
+        ref_gcm.prec_fn, ref_gcm.prec_vn, main_glac_rgi, dates_table_ref, verbose=debug
     )
     # Elevation [m asl]
     try:
@@ -548,13 +548,17 @@ def run(list_packed_vars):
         ref_tempstd = np.zeros((main_glac_rgi.shape[0], dates_table_ref.shape[0]))
     elif pygem_prms['mb']['option_ablation'] == 2 and sim_climate_name in ['ERA5']:
         gcm_tempstd, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(
-            gcm.tempstd_fn, gcm.tempstd_vn, main_glac_rgi, dates_table
+            gcm.tempstd_fn, gcm.tempstd_vn, main_glac_rgi, dates_table, verbose=debug
         )
         ref_tempstd = gcm_tempstd
     elif pygem_prms['mb']['option_ablation'] == 2 and args.ref_climate_name in ['ERA5']:
         # Compute temp std based on reference climate data
         ref_tempstd, ref_dates = ref_gcm.importGCMvarnearestneighbor_xarray(
-            ref_gcm.tempstd_fn, ref_gcm.tempstd_vn, main_glac_rgi, dates_table_ref
+            ref_gcm.tempstd_fn,
+            ref_gcm.tempstd_vn,
+            main_glac_rgi,
+            dates_table_ref,
+            verbose=debug,
         )
         # Monthly average from reference climate data
         gcm_tempstd = gcmbiasadj.monthly_avg_array_rolled(
@@ -567,13 +571,18 @@ def run(list_packed_vars):
     # Lapse rate
     if sim_climate_name in ['ERA-Interim', 'ERA5']:
         gcm_lr, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(
-            gcm.lr_fn, gcm.lr_vn, main_glac_rgi, dates_table
+            gcm.lr_fn,
+            gcm.lr_vn,
+            main_glac_rgi,
+            dates_table,
+            upscale_var_timestep=True,
+            verbose=debug,
         )
         ref_lr = gcm_lr
     else:
         # Compute lapse rates based on reference climate data
         ref_lr, ref_dates = ref_gcm.importGCMvarnearestneighbor_xarray(
-            ref_gcm.lr_fn, ref_gcm.lr_vn, main_glac_rgi, dates_table_ref
+            ref_gcm.lr_fn, ref_gcm.lr_vn, main_glac_rgi, dates_table_ref, verbose=debug
         )
         # Monthly average from reference climate data
         gcm_lr = gcmbiasadj.monthly_avg_array_rolled(
@@ -591,12 +600,9 @@ def run(list_packed_vars):
     else:
         nsims = 1
 
-    # Number of years (for OGGM's run_until_and_store)
-    if pygem_prms['time']['timestep'] == 'monthly':
-        nyears = int(dates_table.shape[0] / 12)
-        nyears_ref = int(dates_table_ref.shape[0] / 12)
-    else:
-        assert True == False, 'Adjust nyears for non-monthly timestep'
+    # Number of years
+    nyears = dates_table.year.unique()[-1] - dates_table.year.unique()[0] + 1
+    nyears_ref = dates_table_ref.year.unique()[-1] - dates_table.year.unique()[0] + 1
 
     for glac in range(main_glac_rgi.shape[0]):
         if glac == 0:

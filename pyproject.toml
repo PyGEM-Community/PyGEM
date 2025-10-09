@@ -81,6 +81,7 @@ ignore = [
     "B007",  # Loop control variable not used within loop body
     "B008",  # Function call `range` in argument defaults
     "B023",  # Function definition does not bind loop variable
+    "B905",  # Missing explicit `strict=` parameter in `zip()` call
     "C405",  # Unnecessary list literal
     "C408",  # Unnecessary `dict()` call
     "C414",  # Unnecessary `list()` call
