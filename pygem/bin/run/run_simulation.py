@@ -999,7 +999,8 @@ def run(list_packed_vars):
                         else:
                             inversion_filter = False
 
-                        # run inversion
+                        # run inversion if spinup was not run previously
+                        #   note that if `args.spinup`, spinup flowlines have already been imported above as `nfls` and thus inversion is not redone here
                         if not args.spinup:
                             # Perform inversion based on PyGEM MB using reference directory
                             mbmod_inv = PyGEMMassBalance(
