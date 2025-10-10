@@ -136,7 +136,7 @@ def validate_meltextent_1d_structure(data):
     ref_dem = data['ref_dem'].dropna().unique()
     if not isinstance(ref_dem, (str)):
         raise TypeError(
-            f"'ref_dem' must be an integer, but got {ref_dem} ({type(ref_dem).__name__})."
+            f"'ref_dem' must be an string, but got {ref_dem} ({type(ref_dem).__name__})."
         )
     
     # Validate reference DEM year
@@ -267,7 +267,7 @@ def validate_snowline_1d_structure(data):
     ref_dem = data['ref_dem'].dropna().unique()
     if not isinstance(ref_dem, (str)):
         raise TypeError(
-            f"'ref_dem' must be an integer, but got {ref_dem} ({type(ref_dem).__name__})."
+            f"'ref_dem' must be an string, but got {ref_dem} ({type(ref_dem).__name__})."
         )
     
     # Validate reference DEM year
