@@ -38,7 +38,7 @@ config_manager = ConfigManager()
 # read the config
 pygem_prms = config_manager.read_config()
 
-from oggm import cfg, utils
+from oggm import cfg, tasks, utils
 from oggm.core import flowline
 
 import pygem.oggm_compat as oggm_compat
@@ -264,7 +264,7 @@ def mb_mwea_calc(
         return mb_mwea
 
 
-def calculate_mass_change_1d(
+def calculate_elev_change_1d(
     gdir,
     modelprms,
     glacier_rgi_table,
@@ -275,7 +275,6 @@ def calculate_mass_change_1d(
     For a given set of model parameters, run the ice thickness inversion and mass balance model to get binned annual ice thickness change
     Convert to monthly thickness by assuming that the flux divergence is constant throughout the year
     """
-    nyears = int(gdir.dates_table.shape[0] / 12)  # number of years from dates table
     y0 = gdir.dates_table.year.min()
     y1 = gdir.dates_table.year.max()
 
@@ -334,7 +333,7 @@ def calculate_mass_change_1d(
                     + ev_model.mb_model.glac_wide_frontalablation
                 )
 
-            mb_mwea = (
+            mod_glacierwide_mb_mwea = (
                 mbmod.glac_wide_massbaltotal[
                     gdir.mbdata['t1_idx'] : gdir.mbdata['t2_idx'] + 1
                 ].sum()
@@ -367,7 +366,7 @@ def calculate_mass_change_1d(
     )
 
     ### to get monthly thickness and mass we require monthly flux divergence ###
-    # we'll assume the flux divergence is constant througohut the year (is this a good assumption?)
+    # we'll assume the flux divergence is constant througohut the year
     # ie. take annual values and divide by 12 - use numpy repeat to repeat values across 12 months
     flux_div_monthly_mmo = np.repeat(
         -ds[0].flux_divergence_myr.values.T[:, 1:] / 12, 12, axis=-1
@@ -380,9 +379,6 @@ def calculate_mass_change_1d(
     running_delta_h_monthly = np.cumsum(delta_h_monthly, axis=-1)
     h_monthly = running_delta_h_monthly + thickness_m[:, 0][:, np.newaxis]
 
-    # convert to mass per unit area
-    m_monthly_spec = h_monthly * pygem_prms['constants']['density_ice']
-
     # get surface height at the specified reference year
     ref_surface_h = (
         ds[0].bed_h.values
@@ -392,7 +388,7 @@ def calculate_mass_change_1d(
     # aggregate model bin thicknesses as desired
     with warnings.catch_warnings():
         warnings.filterwarnings('ignore')
-        m_monthly_spec = np.column_stack(
+        h_monthly = np.column_stack(
             [
                 stats.binned_statistic(
                     x=ref_surface_h,
@@ -400,24 +396,24 @@ def calculate_mass_change_1d(
                     statistic=np.nanmean,
                     bins=gdir.elev_change_1d['bin_edges'],
                 )[0]
-                for x in m_monthly_spec.T
+                for x in h_monthly.T
             ]
         )
 
     # interpolate over any empty bins
-    m_monthly_spec_ = np.column_stack(
-        [interp1d_fill_gaps(x.copy()) for x in m_monthly_spec.T]
-    )
+    h_monthly_ = np.column_stack([interp1d_fill_gaps(x.copy()) for x in h_monthly.T])
 
     # difference each set of inds in diff_inds_map
-    dmda = np.column_stack(
+    mod_elev_change_1d = np.column_stack(
         [
-            m_monthly_spec_[:, tup[1]] - m_monthly_spec_[:, tup[0]]
+            h_monthly_[:, tup[1]] - h_monthly_[:, tup[0]]
+            if tup[0] is not None and tup[1] is not None
+            else np.full(h_monthly_.shape[0], np.nan)
             for tup in gdir.elev_change_1d['model2obs_inds_map']
         ]
     )
 
-    return mb_mwea, dmda
+    return mod_glacierwide_mb_mwea, mod_elev_change_1d
 
 
 # class for Gaussian Process model for mass balance emulator
@@ -876,7 +872,9 @@ def run(list_packed_vars):
         # if not `args.spinup` and calibrating elevation change, grab model flowlines
         elif args.option_calib_elev_change_1d:
             if not os.path.exists(gdir.get_filepath('model_flowlines')):
-                raise FileNotFoundError('No model flowlines found - has inversion been run?')
+                raise FileNotFoundError(
+                    'No model flowlines found - has inversion been run?'
+                )
             fls = gdir.read_pickle('model_flowlines')
 
         # ----- CALIBRATION OPTIONS ------
@@ -2150,15 +2148,23 @@ def run(list_packed_vars):
                 # mass balance observation and standard deviation
                 obs = [(torch.tensor([mb_obs_mwea]), torch.tensor([mb_obs_mwea_err]))]
 
-                # if running full model (no emulator), or calibrating against binned dmda, several arguments are needed
+                # if running full model (no emulator), or calibrating against binned elevation change, several arguments are needed
                 if args.option_calib_elev_change_1d:
                     # add density priors if calibrating against binned elevation change
-                    priors['rhoabl'] = {'type': pygem_prms['calib']['MCMC_params']['rhoabl_disttype'],
-                                        'mu':  pygem_prms['calib']['MCMC_params']['rhoabl_mu'],
-                                        'sigma':  pygem_prms['calib']['MCMC_params']['rhoabl_sigma']}
-                    priors['rhoacc'] = {'type': pygem_prms['calib']['MCMC_params']['rhoaccum_disttype'],
-                                        'mu':  pygem_prms['calib']['MCMC_params']['rhoaccum_mu'],
-                                        'sigma':  pygem_prms['calib']['MCMC_params']['rhoaccum_sigma']}
+                    priors['rhoabl'] = {
+                        'type': pygem_prms['calib']['MCMC_params']['rhoabl_disttype'],
+                        'mu': float(pygem_prms['calib']['MCMC_params']['rhoabl_mu']),
+                        'sigma': float(
+                            pygem_prms['calib']['MCMC_params']['rhoabl_sigma']
+                        ),
+                    }
+                    priors['rhoacc'] = {
+                        'type': pygem_prms['calib']['MCMC_params']['rhoaccum_disttype'],
+                        'mu': float(pygem_prms['calib']['MCMC_params']['rhoaccum_mu']),
+                        'sigma': float(
+                            pygem_prms['calib']['MCMC_params']['rhoaccum_sigma']
+                        ),
+                    }
                     # load binned elev change obs to glacier directory
                     gdir.elev_change_1d = gdir.read_json('elev_change_1d')
                     # stack dh and dh_sigma
@@ -2176,12 +2182,22 @@ def run(list_packed_vars):
                         d: i for i, d in enumerate(gdir.dates_table['date'])
                     }
                     gdir.elev_change_1d['model2obs_inds_map'] = [
-                        (date_to_index.get(pd.to_datetime(start)), date_to_index.get(pd.to_datetime(end)))
+                        (
+                            date_to_index.get(pd.to_datetime(start)),
+                            date_to_index.get(pd.to_datetime(end)),
+                        )
                         for start, end in gdir.elev_change_1d['dates']
                     ]
+                    # model equilibrium line elevation for breakpoint of accumulation and ablation area density scaling
+                    gdir.ela = tasks.compute_ela(
+                        gdir,
+                        years=np.arange(
+                            gdir.dates_table.year.min(), gdir.dates_table.year.max() + 1
+                        ),
+                    )
 
                     # calculate inds of data v. model
-                    mbfxn = calculate_mass_change_1d  # returns (mb_mwea, binned_dm)
+                    mbfxn = calculate_elev_change_1d  # returns (mb_mwea, binned_dm)
                     mbargs = (
                         gdir,  # arguments for get_binned_dh()
                         modelprms,
@@ -2215,14 +2231,14 @@ def run(list_packed_vars):
                     key: priors[key]
                     for key in ['tbias', 'kp', 'ddfsnow', 'rhoabl', 'rhoacc']
                     if key in priors
-                }  # verify order of priors
+                }
                 mb = mcmc.mbPosterior(
                     obs,
                     priors,
                     mb_func=mbfxn,
                     mb_args=mbargs,
                     potential_fxns=[mb_max, must_melt, rho_constraints],
-                    ela=min(gdir.ela['z']) if hasattr(gdir, 'ela') else None,
+                    ela=gdir.ela.min() if hasattr(gdir, 'ela') else None,
                     bin_z=gdir.elev_change_1d['bin_centers']
                     if hasattr(gdir, 'elev_change_1d')
                     else None,
@@ -2239,12 +2255,14 @@ def run(list_packed_vars):
                 # mcmc keys
                 ks = ['tbias', 'kp', 'ddfsnow', 'ddfice', 'mb_mwea', 'ar']
                 if args.option_calib_elev_change_1d:
-                    modelprms_export['dmda'] = {}
-                    modelprms_export['dmda']['x'] = gdir.elev_change_1d['bin_centers']
-                    modelprms_export['dmda']['obs'] = [
+                    modelprms_export['elev_change_1d'] = {}
+                    modelprms_export['elev_change_1d']['bin_edges'] = (
+                        gdir.elev_change_1d['bin_edges']
+                    )
+                    modelprms_export['elev_change_1d']['obs'] = [
                         ob.flatten().tolist() for ob in obs[1]
                     ]
-                    modelprms_export['dmda']['dates'] = [
+                    modelprms_export['elev_change_1d']['dates'] = [
                         (dt1, dt2) for dt1, dt2 in gdir.elev_change_1d['dates']
                     ]
                     ks += ['rhoabl', 'rhoacc']
@@ -2258,8 +2276,7 @@ def run(list_packed_vars):
                 # --------------------
                 # ----- run MCMC -----
                 # --------------------
-                # try:
-                for i in ['here']:
+                try:
                     ### loop over chains, adjust initial guesses accordingly. done in a while loop as to repeat a chain up to one time if it remained stuck throughout ###
                     attempts_per_chain = 2  # number of repeats per chain (each with different initial guesses)
                     n_chain = 0
@@ -2280,7 +2297,23 @@ def run(list_packed_vars):
                                 )
                                 if args.option_calib_elev_change_1d:
                                     initial_guesses = torch.cat(
-                                        (initial_guesses, torch.tensor([900.0, 600.0]))
+                                        (
+                                            initial_guesses,
+                                            torch.tensor(
+                                                [
+                                                    float(
+                                                        pygem_prms['calib'][
+                                                            'MCMC_params'
+                                                        ]['rhoabl_mu']
+                                                    ),
+                                                    float(
+                                                        pygem_prms['calib'][
+                                                            'MCMC_params'
+                                                        ]['rhoaccum_mu']
+                                                    ),
+                                                ]
+                                            ),
+                                        )
                                     )
                             else:
                                 initial_guesses = torch.tensor(
@@ -2382,6 +2415,15 @@ def run(list_packed_vars):
                                         show=show,
                                         fpath=f'{fp}/{glacier_str}-chain{n_chain}-residuals-{i}.png',
                                     )
+                                    if i == 1:
+                                        graphics.plot_mcmc_elev_change_1d(
+                                            gdir.elev_change_1d,
+                                            pred_chain[1],
+                                            gdir.ela.min(),
+                                            glacier_str,
+                                            show=show,
+                                            fpath=f'{fp}/{glacier_str}-chain{n_chain}-elev_change_1d.png',
+                                        )
                             except Exception as e:
                                 if debug:
                                     print(f'Error plotting chain {n_chain}: {e}')
@@ -2398,10 +2440,9 @@ def run(list_packed_vars):
                         modelprms_export['mb_mwea'][chain_str] = m_chain[:, -1].tolist()
                         modelprms_export['ar'][chain_str] = ar
                         if args.option_calib_elev_change_1d:
-                            dh_preds = [
+                            modelprms_export['elev_change_1d'][chain_str] = [
                                 preds.flatten().tolist() for preds in pred_chain[1]
                             ]
-                            modelprms_export['dmda'][chain_str] = dh_preds
                             modelprms_export['rhoabl'][chain_str] = m_chain[
                                 :, 3
                             ].tolist()
@@ -2462,21 +2503,21 @@ def run(list_packed_vars):
                             glacier_str + ' successfully exported mcmc results'
                         )
 
-                # except Exception as err:
-                #     # MCMC LOG FAILURE
-                #     mcmc_fail_fp = (
-                #         pygem_prms['root']
-                #         + f'/Output/mcmc_fail{outpath_sfix}/'
-                #         + glacier_str.split('.')[0].zfill(2)
-                #         + '/'
-                #     )
-                #     if not os.path.exists(mcmc_fail_fp):
-                #         os.makedirs(mcmc_fail_fp, exist_ok=True)
-                #     txt_fn_fail = glacier_str + '-mcmc_fail.txt'
-                #     with open(mcmc_fail_fp + txt_fn_fail, 'w') as text_file:
-                #         text_file.write(
-                #             glacier_str + f' failed to complete MCMC: {err}'
-                #         )
+                except Exception as err:
+                    # MCMC LOG FAILURE
+                    mcmc_fail_fp = (
+                        pygem_prms['root']
+                        + f'/Output/mcmc_fail{outpath_sfix}/'
+                        + glacier_str.split('.')[0].zfill(2)
+                        + '/'
+                    )
+                    if not os.path.exists(mcmc_fail_fp):
+                        os.makedirs(mcmc_fail_fp, exist_ok=True)
+                    txt_fn_fail = glacier_str + '-mcmc_fail.txt'
+                    with open(mcmc_fail_fp + txt_fn_fail, 'w') as text_file:
+                        text_file.write(
+                            glacier_str + f' failed to complete MCMC: {err}'
+                        )
                 # --------------------
 
             # %% ===== HUSS AND HOCK (2015) CALIBRATION =====

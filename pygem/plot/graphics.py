@@ -8,6 +8,8 @@ Distributed under the MIT license
 Graphics module with various plotting tools
 """
 
+import warnings
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -303,6 +305,176 @@ def plot_resid_histogram(obs, preds, title, fontsize=8, show=False, fpath=None):
     axes.set_title(title, fontsize=fontsize)
     plt.tight_layout()
     plt.subplots_adjust(hspace=0.1, wspace=0)
+    if fpath:
+        fig.savefig(fpath, dpi=400)
+    if show:
+        plt.show(block=True)  # wait until the figure is closed
+    plt.close(fig)
+
+
+def plot_mcmc_elev_change_1d(
+    obs, preds, ela, title, fontsize=8, show=False, fpath=None
+):
+    bin_z = np.asarray(obs['bin_centers'])
+
+    # cum_area = np.cumsum(np.asarray(data['area'])*1e-6)
+    cum_area = bin_z
+
+    # get date time spans
+    labels = [
+        f'{lbl[0][:-2].replace("-", "")}:{lbl[1][:-3].replace("-", "")}'
+        for lbl in obs['dates']
+    ]
+
+    # instantiate subplots
+    fig, ax = plt.subplots(
+        nrows=len(labels),
+        ncols=1,
+        figsize=(5, len(labels) * 2),
+        gridspec_kw={'hspace': 0.075},
+        sharex=True,
+    )
+
+    # Transform functions
+    def cum_area_to_elev(x):
+        return np.interp(x, cum_area, bin_z)
+
+    def elev_to_cum_area(x):
+        return np.interp(x, bin_z, cum_area)
+
+    if not isinstance(ax, np.ndarray):
+        ax = [ax]
+    # loop through date spans
+    for t in range(len(labels)):
+        # axb = ax[t].twinx()
+        ax[t].xaxis.set_label_position('top')
+        ax[t].xaxis.tick_top()  # move ticks to top
+        ax[t].tick_params(axis='x', which='both', top=False)
+
+        ax[t].axhline(y=0, c='grey', lw=0.5)
+        # axb.yaxis.set_label_position('left')
+        # axb.yaxis.set_ticks_position('left')
+        preds = np.stack(preds)
+
+        # preds[:,np.where(np.asarray(data['area'])==0)[0]] = np.nan  # mask out where area <= 0
+
+        ax[t].fill_between(
+            cum_area,
+            obs['dh'][:, t] - obs['dh_sigma'][:, t],
+            obs['dh'][:, t] + obs['dh_sigma'][:, t],
+            color='k',
+            alpha=0.125,
+        )
+        ax[t].plot(cum_area, obs['dh'][:, t], 'k-', marker='.', label='Obs.')
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore')
+            ax[t].fill_between(
+                cum_area,
+                np.nanpercentile(preds[:, :, t], 5, axis=0),
+                np.nanpercentile(preds[:, :, t], 95, axis=0),
+                color='r',
+                alpha=0.25,
+            )
+            ax[t].plot(
+                cum_area,
+                np.nanmedian(preds[:, :, t], axis=0),
+                'r-',
+                marker='.',
+                label='Pred.',
+            )
+
+        # for r in stack:
+        #     axb.plot(bin_z, r, 'r', alpha=.0125)
+        # axb.plot(bin_z, np.nanmin(stack,axis=0), 'r', label='Pred.')
+
+        # dummy label for timespan
+        ax[t].text(
+            0.99175,
+            0.980,
+            labels[t],
+            transform=ax[t].transAxes,
+            fontsize=8,
+            verticalalignment='top',
+            horizontalalignment='right',
+            bbox=dict(
+                facecolor='white',
+                edgecolor='black',
+                alpha=1,
+                boxstyle='square,pad=0.25',
+            ),
+            zorder=10,
+        )
+
+        secaxx = ax[t].secondary_xaxis(
+            'bottom', functions=(cum_area_to_elev, elev_to_cum_area)
+        )
+
+        if t != len(labels) - 1:
+            secaxx.tick_params(axis='x', labelbottom=False)
+        else:
+            secaxx.set_xlabel('Elevation (m)')
+
+        if t == 0:
+            leg = ax[t].legend(
+                handlelength=1,
+                borderaxespad=0,
+                fancybox=False,
+                loc='lower right',
+                edgecolor='k',
+                framealpha=1,
+            )
+            for legobj in leg.legend_handles:
+                legobj.set_linewidth(2.0)
+        # else:
+        # Turn off cumulative area ticks and labels
+        ax[t].tick_params(axis='x', which='both', top=False, labeltop=False)
+
+    ax[0].set_xlim([elev_to_cum_area(np.min(bin_z)), elev_to_cum_area(np.max(bin_z))])
+
+    for a in ax:
+        # plot ela
+        a.axvline(x=elev_to_cum_area(ela), c='k', ls=':', lw=1)
+        # plot area
+        # a.fill_between(bin_z, 0, np.asarray(data['area'])*1e-6, color='steelblue', alpha=.125)
+        # a.set_ylim([0,a.get_ylim()[-1]*3])
+        # a.yaxis.set_label_position('right')
+        # a.yaxis.set_ticks_position('right')
+        # a.yaxis.set_label_position("right")
+        # a.spines['right'].set_color('steelblue')
+        # a.yaxis.label.set_color('steelblue')
+        # a.tick_params(axis='y', colors='steelblue')
+        # a.set_ylim([0, np.ceil(2*a.get_ylim()[1])])
+        # a.set_yticks([0,np.rint(max(np.asarray(data['area'])*1e-6))])
+
+    # axb.set_xlim(np.asarray(bin_z)[np.where(np.asarray(data['area'])>0)[0][[0,-1]]].tolist())
+    # ax[-1].sec('Elevation (m)')
+    ax[-1].text(
+        0.0125,
+        0.5,
+        r'Elevation change (m)',
+        horizontalalignment='left',
+        rotation=90,
+        verticalalignment='center',
+        transform=fig.transFigure,
+    )
+
+    # ax[-1].text(0.95, .5, 'Glacier Area (km$^2$)', c='steelblue', horizontalalignment='left', rotation=90,
+    #                 verticalalignment='center', transform=fig.transFigure)
+    ax[0].set_title(title, fontsize=fontsize)
+    # Remove overlapping tick labels from secaxx
+    fig.canvas.draw()  # Force rendering to get accurate bounding boxes
+    labels = secaxx.get_xticklabels()
+    renderer = fig.canvas.get_renderer()
+    bboxes = [label.get_window_extent(renderer) for label in labels]
+    # Only show labels spaced apart by at least `min_spacing` pixels
+    min_spacing = 15  # adjust as needed
+    last_right = -float('inf')
+    for label, bbox in zip(labels, bboxes):
+        if bbox.x0 > last_right + min_spacing:
+            last_right = bbox.x1
+        else:
+            label.set_visible(False)
+    # save
     if fpath:
         fig.savefig(fpath, dpi=400)
     if show:

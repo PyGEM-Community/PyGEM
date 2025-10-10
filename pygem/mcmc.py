@@ -264,11 +264,16 @@ class mbPosterior:
                 rho[self.abl_mask] = m[3]  # rhoabl
                 rho[~self.abl_mask] = m[4]  # rhoacc
                 rho = torch.tensor(rho)
+                self.preds[i] = pred = (
+                    self.preds[i]
+                    * rho[:, np.newaxis]
+                    / pygem_prms['constants']['density_ice']
+                )  # scale prediction by model density values (convert from m ice to m thickness change)
 
                 log_likehood += log_normal_density(
-                    self.obs[i][0] * rho[:, np.newaxis],  # scaled observations
+                    self.obs[i][0],  # observations
                     mu=pred,  # scaled predictions
-                    sigma=self.obs[i][1] * rho[:, np.newaxis],  # scaled uncertainty
+                    sigma=self.obs[i][1],  # uncertainty
                 )
         return log_likehood
 

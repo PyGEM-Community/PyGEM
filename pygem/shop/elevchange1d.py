@@ -254,8 +254,7 @@ def csv_to_elev_change_1d_dict(csv_path):
     dem = df['ref_dem'].dropna().unique()
     if len(dem) != 1:
         raise ValueError(
-            f"'ref_dem' must have exactly one unique value, "
-            f'but found {len(dem)}: {dem}'
+            f"'ref_dem' must have exactly one unique value, but found {len(dem)}: {dem}"
         )
     if not isinstance(dem, (str)):
         raise TypeError(
