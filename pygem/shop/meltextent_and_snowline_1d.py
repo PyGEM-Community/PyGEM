@@ -161,6 +161,7 @@ def meltextent_csv_to_dict(data):
     z_min = data['z_min'].astype(float).tolist()
     z_max = data['z_max'].astype(float).tolist()
     direction = data['direction'].astype(str).tolist()
+    ref_dem = data['ref_dem'].astype(str).tolist()[0]
     ref_dem_year = data['ref_dem_year'].astype(int).tolist()[0]
 
     data_dict = {
@@ -169,6 +170,7 @@ def meltextent_csv_to_dict(data):
         'z_min': z_min,
         'z_max': z_max,
         'direction': direction,
+        'ref_dem': ref_dem,
         'ref_dem_year': ref_dem_year,
     }
     return data_dict
@@ -284,7 +286,6 @@ def validate_snowline_1d_structure(data):
 
     return True
 
-
 def snowline_csv_to_dict(data):
     """Convert snowline_1d CSV to JSON for OGGM ingestion."""
     dates = data['date'].astype(str).tolist()
@@ -292,6 +293,7 @@ def snowline_csv_to_dict(data):
     z_min = data['z_min'].astype(float).tolist()
     z_max = data['z_max'].astype(float).tolist()
     direction = data['direction'].astype(str).tolist()
+    ref_dem = data['ref_dem'].astype(str).tolist()[0]
     ref_dem_year = data['ref_dem_year'].astype(int).tolist()[0]
 
     data_dict = {
@@ -300,6 +302,7 @@ def snowline_csv_to_dict(data):
         'z_min': z_min,
         'z_max': z_max,
         'direction': direction,
+        'ref_dem': ref_dem,
         'ref_dem_year': ref_dem_year,
     }
     return data_dict
