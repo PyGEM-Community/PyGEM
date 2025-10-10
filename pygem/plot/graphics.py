@@ -9,6 +9,7 @@ Graphics module with various plotting tools
 """
 
 import warnings
+from datetime import datetime
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -313,7 +314,7 @@ def plot_resid_histogram(obs, preds, title, fontsize=8, show=False, fpath=None):
 
 
 def plot_mcmc_elev_change_1d(
-    obs, preds, ela, title, fontsize=8, show=False, fpath=None
+    obs, preds, ela, title, fontsize=8, rate=True, show=False, fpath=None
 ):
     bin_z = np.asarray(obs['bin_centers'])
 
@@ -321,10 +322,18 @@ def plot_mcmc_elev_change_1d(
     cum_area = bin_z
 
     # get date time spans
-    labels = [
-        f'{lbl[0][:-2].replace("-", "")}:{lbl[1][:-3].replace("-", "")}'
-        for lbl in obs['dates']
-    ]
+    labels = []
+    nyrs = []
+    for start, end in obs['dates']:
+        labels.append(f'{start[:-2].replace("-", "")}:{end[:-3].replace("-", "")}')
+        start_dt = datetime.strptime(start, '%Y-%m-%d')
+        end_dt = datetime.strptime(end, '%Y-%m-%d')
+        nyrs.append((end_dt - start_dt).days / 365.25)
+    if not rate:
+        nyrs[:] = 1
+        ylbl = 'Elevation change (m)'
+    else:
+        ylbl = r'Elevation change (m yr$^{-1}$)'
 
     # instantiate subplots
     fig, ax = plt.subplots(
@@ -333,6 +342,7 @@ def plot_mcmc_elev_change_1d(
         figsize=(5, len(labels) * 2),
         gridspec_kw={'hspace': 0.075},
         sharex=True,
+        sharey=rate,
     )
 
     # Transform functions
@@ -360,24 +370,24 @@ def plot_mcmc_elev_change_1d(
 
         ax[t].fill_between(
             cum_area,
-            obs['dh'][:, t] - obs['dh_sigma'][:, t],
-            obs['dh'][:, t] + obs['dh_sigma'][:, t],
+            (obs['dh'][:, t] - obs['dh_sigma'][:, t]) / nyrs[t],
+            (obs['dh'][:, t] + obs['dh_sigma'][:, t]) / nyrs[t],
             color='k',
             alpha=0.125,
         )
-        ax[t].plot(cum_area, obs['dh'][:, t], 'k-', marker='.', label='Obs.')
+        ax[t].plot(cum_area, obs['dh'][:, t] / nyrs[t], 'k-', marker='.', label='Obs.')
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore')
             ax[t].fill_between(
                 cum_area,
-                np.nanpercentile(preds[:, :, t], 5, axis=0),
-                np.nanpercentile(preds[:, :, t], 95, axis=0),
+                np.nanpercentile(preds[:, :, t], 5, axis=0) / nyrs[t],
+                np.nanpercentile(preds[:, :, t], 95, axis=0) / nyrs[t],
                 color='r',
                 alpha=0.25,
             )
             ax[t].plot(
                 cum_area,
-                np.nanmedian(preds[:, :, t], axis=0),
+                np.nanmedian(preds[:, :, t], axis=0) / nyrs[t],
                 'r-',
                 marker='.',
                 label='Pred.',
@@ -451,7 +461,7 @@ def plot_mcmc_elev_change_1d(
     ax[-1].text(
         0.0125,
         0.5,
-        r'Elevation change (m)',
+        ylbl,
         horizontalalignment='left',
         rotation=90,
         verticalalignment='center',

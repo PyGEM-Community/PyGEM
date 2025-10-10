@@ -2192,7 +2192,8 @@ def run(list_packed_vars):
                     gdir.ela = tasks.compute_ela(
                         gdir,
                         years=np.arange(
-                            gdir.dates_table.year.min(), gdir.dates_table.year.max() + 1
+                            gdir.dates_table.year.min(),
+                            min(2019, gdir.dates_table.year.max() + 1),
                         ),
                     )
 
