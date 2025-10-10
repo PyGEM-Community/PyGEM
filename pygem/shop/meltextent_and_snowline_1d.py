@@ -62,6 +62,7 @@ def meltextent_1d_to_gdir(
             'z_min':        Melt extent elevation minimum (meters)
             'z_max':        Melt extent elevation maximum (meters)
             'direction':    SAR path direction, stored as a string (e.g., 'ascending' or 'descending')
+            'ref_dem':      Reference DEM used for elevation values
             'ref_dem_year': Reference DEM year for elevation value of observations (m a.s.l.) (e.g., 2013 if using COP30)
     """
     # get dataset file path
@@ -86,7 +87,15 @@ def meltextent_1d_to_gdir(
 def validate_meltextent_1d_structure(data):
     """Validate that meltextent_1d CSV structure matches expected format."""
 
-    required_cols = ['date', 'z', 'z_min', 'z_max', 'direction', 'ref_dem_year']
+    required_cols = [
+        'date',
+        'z',
+        'z_min',
+        'z_max',
+        'direction',
+        'ref_dem',
+        'ref_dem_year',
+    ]
     for col in required_cols:
         if col not in data.columns:
             raise ValueError(f"Missing required column '{col}' in melt extent CSV.")
@@ -131,6 +140,13 @@ def validate_meltextent_1d_structure(data):
     if not all(isinstance(x, str) for x in direction):
         raise ValueError("All 'direction' values must be strings.")
 
+    # Validate reference DEM
+    ref_dem = data['ref_dem'].dropna().unique()
+    if not isinstance(ref_dem, (str)):
+        raise TypeError(
+            f"'ref_dem' must be an string, but got {ref_dem} ({type(ref_dem).__name__})."
+        )
+
     # Validate reference DEM year
     dem_year = data['ref_dem_year'].dropna().unique()
     if len(dem_year) != 1:
@@ -153,6 +169,7 @@ def meltextent_csv_to_dict(data):
     z_min = data['z_min'].astype(float).tolist()
     z_max = data['z_max'].astype(float).tolist()
     direction = data['direction'].astype(str).tolist()
+    ref_dem = data['ref_dem'].astype(str).tolist()[0]
     ref_dem_year = data['ref_dem_year'].astype(int).tolist()[0]
 
     data_dict = {
@@ -161,6 +178,7 @@ def meltextent_csv_to_dict(data):
         'z_min': z_min,
         'z_max': z_max,
         'direction': direction,
+        'ref_dem': ref_dem,
         'ref_dem_year': ref_dem_year,
     }
     return data_dict
@@ -185,6 +203,7 @@ def snowline_1d_to_gdir(
             'z_min':        Snowline elevation minimum (m a.s.l.)
             'z_max':        Snowline elevation maximum (m a.s.l.)
             'direction':    SAR path direction, stored as a string (e.g., 'ascending' or 'descending')
+            'ref_dem':      Reference DEM used for elevation values
             'ref_dem_year': Reference DEM year for elevation value of observations (m a.s.l.) (e.g., 2013 if using COP30)
     """
     # get dataset file path
@@ -209,7 +228,15 @@ def snowline_1d_to_gdir(
 def validate_snowline_1d_structure(data):
     """Validate that snowline_1d CSV structure matches expected format."""
 
-    required_cols = ['date', 'z', 'z_min', 'z_max', 'direction', 'ref_dem_year']
+    required_cols = [
+        'date',
+        'z',
+        'z_min',
+        'z_max',
+        'direction',
+        'ref_dem',
+        'ref_dem_year',
+    ]
     for col in required_cols:
         if col not in data.columns:
             raise ValueError(f"Missing required column '{col}' in snowline CSV.")
@@ -254,6 +281,13 @@ def validate_snowline_1d_structure(data):
     if not all(isinstance(x, str) for x in direction):
         raise ValueError("All 'direction' values must be strings.")
 
+    # Validate reference DEM
+    ref_dem = data['ref_dem'].dropna().unique()
+    if not isinstance(ref_dem, (str)):
+        raise TypeError(
+            f"'ref_dem' must be an string, but got {ref_dem} ({type(ref_dem).__name__})."
+        )
+
     # Validate reference DEM year
     dem_year = data['ref_dem_year'].dropna().unique()
     if len(dem_year) != 1:
@@ -276,6 +310,7 @@ def snowline_csv_to_dict(data):
     z_min = data['z_min'].astype(float).tolist()
     z_max = data['z_max'].astype(float).tolist()
     direction = data['direction'].astype(str).tolist()
+    ref_dem = data['ref_dem'].astype(str).tolist()[0]
     ref_dem_year = data['ref_dem_year'].astype(int).tolist()[0]
 
     data_dict = {
@@ -284,6 +319,7 @@ def snowline_csv_to_dict(data):
         'z_min': z_min,
         'z_max': z_max,
         'direction': direction,
+        'ref_dem': ref_dem,
         'ref_dem_year': ref_dem_year,
     }
     return data_dict
