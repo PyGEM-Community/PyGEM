@@ -570,6 +570,7 @@ class oib:
 
         format will be a JSON file with the following structure:
         {
+            'ref_dem': str,
             'ref_dem_year': int,
             'bin_edges':    [edge0, edge1, ..., edgeN],
             'dates':        [(period1_start, period1_end), (period2_start, period2_end), ... (periodM_start, periodM_end)],
@@ -582,7 +583,8 @@ class oib:
                             ...
                             [sigma_bin1_periodM, sigma_bin2_periodM, ..., sigma_binN_periodM]],
         }
-        note: 'ref_dem_year' is the year of the reference DEM used for elevation-binning.
+        note: 'ref_dem' is the reference DEM used for elevation-binning.
+        'ref_dem_year' is the acquisition year of the reference DEM.
         'dates' are tuples (or length-2 sublists) of the start and stop date of an individual elevation change record
         and are stored as strings in 'YYYY-MM-DD' format. 'dh' should M lists of length N-1,
         where M is the number of date pairs and N is the number of bin edges.
@@ -593,6 +595,7 @@ class oib:
         os.makedirs(outdir, exist_ok=True)
         # Prepare data for saving
         elev_change_data = {
+            'ref_dem': 'COP30',
             'ref_dem_year': 2013,  # hardcoded for now since all OIB diffs are relative to COP30 (2013)
             'dates': [
                 (dt[0].strftime('%Y-%m-%d'), dt[1].strftime('%Y-%m-%d'))
