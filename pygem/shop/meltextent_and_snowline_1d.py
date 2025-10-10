@@ -87,7 +87,15 @@ def meltextent_1d_to_gdir(
 def validate_meltextent_1d_structure(data):
     """Validate that meltextent_1d CSV structure matches expected format."""
 
-    required_cols = ['date', 'z', 'z_min', 'z_max', 'direction', 'ref_dem', 'ref_dem_year']
+    required_cols = [
+        'date',
+        'z',
+        'z_min',
+        'z_max',
+        'direction',
+        'ref_dem',
+        'ref_dem_year',
+    ]
     for col in required_cols:
         if col not in data.columns:
             raise ValueError(f"Missing required column '{col}' in melt extent CSV.")
@@ -138,7 +146,7 @@ def validate_meltextent_1d_structure(data):
         raise TypeError(
             f"'ref_dem' must be an string, but got {ref_dem} ({type(ref_dem).__name__})."
         )
-    
+
     # Validate reference DEM year
     dem_year = data['ref_dem_year'].dropna().unique()
     if len(dem_year) != 1:
@@ -220,7 +228,15 @@ def snowline_1d_to_gdir(
 def validate_snowline_1d_structure(data):
     """Validate that snowline_1d CSV structure matches expected format."""
 
-    required_cols = ['date', 'z', 'z_min', 'z_max', 'direction', 'ref_dem', 'ref_dem_year']
+    required_cols = [
+        'date',
+        'z',
+        'z_min',
+        'z_max',
+        'direction',
+        'ref_dem',
+        'ref_dem_year',
+    ]
     for col in required_cols:
         if col not in data.columns:
             raise ValueError(f"Missing required column '{col}' in snowline CSV.")
@@ -271,7 +287,7 @@ def validate_snowline_1d_structure(data):
         raise TypeError(
             f"'ref_dem' must be an string, but got {ref_dem} ({type(ref_dem).__name__})."
         )
-    
+
     # Validate reference DEM year
     dem_year = data['ref_dem_year'].dropna().unique()
     if len(dem_year) != 1:
@@ -285,6 +301,7 @@ def validate_snowline_1d_structure(data):
         )
 
     return True
+
 
 def snowline_csv_to_dict(data):
     """Convert snowline_1d CSV to JSON for OGGM ingestion."""
