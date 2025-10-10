@@ -182,6 +182,7 @@ def getparser():
     parser.add_argument(
         '-option_calib_elev_change_1d',
         action='store_true',
+        default=pygem_prms['calib']['MCMC_params']['option_calib_elev_change_1d'],
         help='Flag to calibrate against 1D elevation change data (default is false)',
     )
     parser.add_argument(
@@ -263,7 +264,7 @@ def mb_mwea_calc(
         return mb_mwea
 
 
-def calculate_mass_change_change_1d(
+def calculate_mass_change_1d(
     gdir,
     modelprms,
     glacier_rgi_table,
@@ -869,9 +870,14 @@ def run(list_packed_vars):
         except:
             fls = None
 
-        # if spinup, grab appropriate flowlines
+        # if `args.spinup`, grab appropriate model flowlines
         if args.spinup:
             fls = oggm_compat.get_spinup_flowlines(gdir, y0=args.ref_startyear)
+        # if not `args.spinup` and calibrating elevation change, grab model flowlines
+        elif args.option_calib_elev_change_1d:
+            if not os.path.exists(gdir.get_filepath('model_flowlines')):
+                raise FileNotFoundError('No model flowlines found - has inversion been run?')
+            fls = gdir.read_pickle('model_flowlines')
 
         # ----- CALIBRATION OPTIONS ------
         if (fls is not None) and (gdir.mbdata is not None) and (glacier_area.sum() > 0):
@@ -2147,18 +2153,35 @@ def run(list_packed_vars):
                 # if running full model (no emulator), or calibrating against binned dmda, several arguments are needed
                 if args.option_calib_elev_change_1d:
                     # add density priors if calibrating against binned elevation change
-                    priors['rhoabl'] = {'type': 'normal', 'mu': 900.0, 'sigma': 17.0}
-                    priors['rhoacc'] = {
-                        'type': 'normal',
-                        'mu': 600.0,
-                        'sigma': 60.0,
-                    }  # from Huss, 2013 Table 1
+                    priors['rhoabl'] = {'type': pygem_prms['calib']['MCMC_params']['rhoabl_disttype'],
+                                        'mu':  pygem_prms['calib']['MCMC_params']['rhoabl_mu'],
+                                        'sigma':  pygem_prms['calib']['MCMC_params']['rhoabl_sigma']}
+                    priors['rhoacc'] = {'type': pygem_prms['calib']['MCMC_params']['rhoaccum_disttype'],
+                                        'mu':  pygem_prms['calib']['MCMC_params']['rhoaccum_mu'],
+                                        'sigma':  pygem_prms['calib']['MCMC_params']['rhoaccum_sigma']}
                     # load binned elev change obs to glacier directory
                     gdir.elev_change_1d = gdir.read_json('elev_change_1d')
-                    # calculate inds of data v. model
-                    mbfxn = (
-                        calculate_mass_change_change_1d  # returns (mb_mwea, binned_dm)
+                    # stack dh and dh_sigma
+                    gdir.elev_change_1d['dh'] = np.column_stack(
+                        gdir.elev_change_1d['dh']
                     )
+                    gdir.elev_change_1d['dh_sigma'] = (
+                        np.column_stack(gdir.elev_change_1d['dh_sigma'])
+                        if not isinstance(gdir.elev_change_1d['dh_sigma'], int)
+                        else gdir.elev_change_1d['dh_sigma']
+                    )
+                    # get observation period indices in model date_table
+                    # create lookup dict (timestamp → index)
+                    date_to_index = {
+                        d: i for i, d in enumerate(gdir.dates_table['date'])
+                    }
+                    gdir.elev_change_1d['model2obs_inds_map'] = [
+                        (date_to_index.get(pd.to_datetime(start)), date_to_index.get(pd.to_datetime(end)))
+                        for start, end in gdir.elev_change_1d['dates']
+                    ]
+
+                    # calculate inds of data v. model
+                    mbfxn = calculate_mass_change_1d  # returns (mb_mwea, binned_dm)
                     mbargs = (
                         gdir,  # arguments for get_binned_dh()
                         modelprms,
@@ -2217,15 +2240,12 @@ def run(list_packed_vars):
                 ks = ['tbias', 'kp', 'ddfsnow', 'ddfice', 'mb_mwea', 'ar']
                 if args.option_calib_elev_change_1d:
                     modelprms_export['dmda'] = {}
-                    modelprms_export['dmda']['x'] = gdir.elev_change_1d[
-                        'bin_centers'
-                    ].tolist()
+                    modelprms_export['dmda']['x'] = gdir.elev_change_1d['bin_centers']
                     modelprms_export['dmda']['obs'] = [
                         ob.flatten().tolist() for ob in obs[1]
                     ]
                     modelprms_export['dmda']['dates'] = [
-                        (dt1.strftime('%Y-%m-%d'), dt2.strftime('%Y-%m-%d'))
-                        for dt1, dt2 in gdir.elev_change_1d['dates']
+                        (dt1, dt2) for dt1, dt2 in gdir.elev_change_1d['dates']
                     ]
                     ks += ['rhoabl', 'rhoacc']
                 modelprms_export['priors'] = priors
@@ -2238,7 +2258,8 @@ def run(list_packed_vars):
                 # --------------------
                 # ----- run MCMC -----
                 # --------------------
-                try:
+                # try:
+                for i in ['here']:
                     ### loop over chains, adjust initial guesses accordingly. done in a while loop as to repeat a chain up to one time if it remained stuck throughout ###
                     attempts_per_chain = 2  # number of repeats per chain (each with different initial guesses)
                     n_chain = 0
@@ -2441,21 +2462,21 @@ def run(list_packed_vars):
                             glacier_str + ' successfully exported mcmc results'
                         )
 
-                except Exception as err:
-                    # MCMC LOG FAILURE
-                    mcmc_fail_fp = (
-                        pygem_prms['root']
-                        + f'/Output/mcmc_fail{outpath_sfix}/'
-                        + glacier_str.split('.')[0].zfill(2)
-                        + '/'
-                    )
-                    if not os.path.exists(mcmc_fail_fp):
-                        os.makedirs(mcmc_fail_fp, exist_ok=True)
-                    txt_fn_fail = glacier_str + '-mcmc_fail.txt'
-                    with open(mcmc_fail_fp + txt_fn_fail, 'w') as text_file:
-                        text_file.write(
-                            glacier_str + f' failed to complete MCMC: {err}'
-                        )
+                # except Exception as err:
+                #     # MCMC LOG FAILURE
+                #     mcmc_fail_fp = (
+                #         pygem_prms['root']
+                #         + f'/Output/mcmc_fail{outpath_sfix}/'
+                #         + glacier_str.split('.')[0].zfill(2)
+                #         + '/'
+                #     )
+                #     if not os.path.exists(mcmc_fail_fp):
+                #         os.makedirs(mcmc_fail_fp, exist_ok=True)
+                #     txt_fn_fail = glacier_str + '-mcmc_fail.txt'
+                #     with open(mcmc_fail_fp + txt_fn_fail, 'w') as text_file:
+                #         text_file.write(
+                #             glacier_str + f' failed to complete MCMC: {err}'
+                #         )
                 # --------------------
 
             # %% ===== HUSS AND HOCK (2015) CALIBRATION =====

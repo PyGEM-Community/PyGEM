@@ -121,6 +121,8 @@ class ConfigManager:
                         f"Invalid type for elements in '{key}': expected all elements to be {elem_type}, but got {sub_data}"
                     )
 
+        # check that all defined paths exist, raise error for any critical ones
+
     # expected config types
     EXPECTED_TYPES = {
         'root': str,
@@ -223,7 +225,6 @@ class ConfigManager:
         'calib.emulator_params.ftol_opt': float,
         'calib.emulator_params.eps_opt': float,
         'calib.MCMC_params': dict,
-        'calib.MCMC_params.option_calib_elev_change_1d': bool,
         'calib.MCMC_params.option_use_emulator': bool,
         'calib.MCMC_params.emulator_sims': int,
         'calib.MCMC_params.tbias_step': float,
@@ -253,6 +254,13 @@ class ConfigManager:
         'calib.MCMC_params.kp_sigma': float,
         'calib.MCMC_params.kp_bndlow': float,
         'calib.MCMC_params.kp_bndhigh': float,
+        'calib.MCMC_params.option_calib_elev_change_1d': bool,
+        'calib.MCMC_params.rhoabl_disttype': str,
+        'calib.MCMC_params.rhoabl_mu': (int, float),
+        'calib.MCMC_params.rhoabl_sigma': (int, float),
+        'calib.MCMC_params.rhoaccum_disttype': str,
+        'calib.MCMC_params.rhoaccum_mu': (int, float),
+        'calib.MCMC_params.rhoaccum_sigma': (int, float),
         'calib.data': dict,
         'calib.data.massbalance': dict,
         'calib.data.massbalance.hugonnet2021_relpath': str,

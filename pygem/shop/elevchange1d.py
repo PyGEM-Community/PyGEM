@@ -249,7 +249,7 @@ def csv_to_elev_change_1d_dict(csv_path):
 
     # Get all unique bin edges
     bin_edges = sorted(set(df['bin_start']).union(df['bin_stop']))
-    
+
     # Validate reference DEM - should only be one unique string
     dem = df['ref_dem'].dropna().unique()
     if len(dem) != 1:
