@@ -23,7 +23,7 @@ from oggm.core.flowline import FileModel
 from oggm.core.massbalance import MassBalanceModel
 
 from pygem.setup.config import ConfigManager
-from pygem.shop import debris, elevchange1d, icethickness, mbdata
+from pygem.shop import debris, icethickness, mbdata, elevchange1d, meltextent_and_snowline_1d
 
 # instantiate ConfigManager
 config_manager = ConfigManager()
@@ -128,6 +128,16 @@ def single_flowline_glacier_directory(
     # 1d elevation change calibration data
     if not os.path.isfile(gdir.get_filepath('elev_change_1d')):
         workflow.execute_entity_task(elevchange1d.elev_change_1d_to_gdir, gdir)
+    # 1d melt extent calibration data
+    if not os.path.isfile(gdir.get_filepath('meltextent_1d')):
+        workflow.execute_entity_task(
+            meltextent_and_snowline_1d.meltextent_1d_to_gdir, gdir
+        )
+    # 1d snowline calibration data
+    if not os.path.isfile(gdir.get_filepath('snowline_1d')):
+        workflow.execute_entity_task(
+            meltextent_and_snowline_1d.snowline_1d_to_gdir, gdir
+        )
 
     return gdir
 
@@ -139,7 +149,7 @@ def single_flowline_glacier_directory_with_calving(
     k_calving=1,
     logging_level=pygem_prms['oggm']['logging_level'],
     has_internet=pygem_prms['oggm']['has_internet'],
-    working_dir=pygem_prms['root'] + pygem_prms['oggm']['oggm_gdir_relpath'],
+    working_dir=f'{pygem_prms["root"]}/{pygem_prms["oggm"]["oggm_gdir_relpath"]}',
     facorrected=pygem_prms['setup']['include_frontalablation'],
 ):
     """Prepare a GlacierDirectory for PyGEM (single flowline to start with)
@@ -227,6 +237,16 @@ def single_flowline_glacier_directory_with_calving(
     # 1d elevation change calibration data
     if not os.path.isfile(gdir.get_filepath('elev_change_1d')):
         workflow.execute_entity_task(elevchange1d.elev_change_1d_to_gdir, gdir)
+    # 1d melt extent calibration data
+    if not os.path.isfile(gdir.get_filepath('meltextent_1d')):
+        workflow.execute_entity_task(
+            meltextent_and_snowline_1d.meltextent_1d_to_gdir, gdir
+        )
+    # 1d snowline calibration data
+    if not os.path.isfile(gdir.get_filepath('snowline_1d')):
+        workflow.execute_entity_task(
+            meltextent_and_snowline_1d.snowline_1d_to_gdir, gdir
+        )
 
     return gdir
 

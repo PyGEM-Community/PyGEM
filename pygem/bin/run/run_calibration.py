@@ -733,17 +733,17 @@ def run(list_packed_vars):
     gcm = class_climate.GCM(name=ref_climate_name)
     # Air temperature [degC]
     gcm_temp, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(
-        gcm.temp_fn, gcm.temp_vn, main_glac_rgi, dates_table
+        gcm.temp_fn, gcm.temp_vn, main_glac_rgi, dates_table, verbose=debug
     )
     if pygem_prms['mb']['option_ablation'] == 2 and ref_climate_name in ['ERA5']:
         gcm_tempstd, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(
-            gcm.tempstd_fn, gcm.tempstd_vn, main_glac_rgi, dates_table
+            gcm.tempstd_fn, gcm.tempstd_vn, main_glac_rgi, dates_table, verbose=debug
         )
     else:
         gcm_tempstd = np.zeros(gcm_temp.shape)
     # Precipitation [m]
     gcm_prec, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(
-        gcm.prec_fn, gcm.prec_vn, main_glac_rgi, dates_table
+        gcm.prec_fn, gcm.prec_vn, main_glac_rgi, dates_table, verbose=debug
     )
     # Elevation [m asl]
     gcm_elev = gcm.importGCMfxnearestneighbor_xarray(
@@ -751,7 +751,12 @@ def run(list_packed_vars):
     )
     # Lapse rate [degC m-1] (always monthly)
     gcm_lr, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(
-        gcm.lr_fn, gcm.lr_vn, main_glac_rgi, dates_table, upscale_var_timestep=True
+        gcm.lr_fn,
+        gcm.lr_vn,
+        main_glac_rgi,
+        dates_table,
+        upscale_var_timestep=True,
+        verbose=debug,
     )
 
     # ===== LOOP THROUGH GLACIERS TO RUN CALIBRATION =====

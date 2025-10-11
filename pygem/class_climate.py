@@ -9,6 +9,7 @@ class of climate data and functions associated with manipulating the dataset to 
 """
 
 import os
+import warnings
 
 import numpy as np
 
@@ -192,10 +193,7 @@ class GCM:
                 self.elev_fn = pygem_prms['climate']['paths']['era5_elev_fn']
                 self.lr_fn = pygem_prms['climate']['paths']['era5_lr_fn']
                 # Variable filepaths
-                if pygem_prms['climate']['paths']['era5_fullpath']:
-                    self.var_fp = ''
-                    self.fx_fp = ''
-                else:
+                if pygem_prms['climate']['paths']['era5_relpath']:
                     self.var_fp = (
                         pygem_prms['root']
                         + pygem_prms['climate']['paths']['era5_relpath']
@@ -204,6 +202,10 @@ class GCM:
                         pygem_prms['root']
                         + pygem_prms['climate']['paths']['era5_relpath']
                     )
+                else:
+                    self.var_fp = ''
+                    self.fx_fp = ''
+
                 # Extra information
                 self.timestep = pygem_prms['time']['timestep']
                 self.rgi_lat_colname = pygem_prms['rgi']['rgi_lat_colname']
@@ -426,6 +428,7 @@ class GCM:
         dates_table,
         realizations=['r1i1p1f1', 'r4i1p1f1'],
         upscale_var_timestep=False,
+        verbose=False,
     ):
         """
         Import time series of variables and extract nearest neighbor.
@@ -662,6 +665,37 @@ class GCM:
                     glac_variable_dict[latlon] = data[vn][
                         start_idx : end_idx + 1, latlon[0], latlon[1]
                     ].values
+
+            # Check all glacier use appropriate climate data
+            for i, latlon in enumerate(latlon_nearidx):
+                rgi_id = main_glac_rgi[
+                    pygem_prms['rgi']['rgi_glacno_float_colname']
+                ].values[i]
+                if (len(data[vn][self.lat_vn].values) == 1) or (
+                    len(data[vn][self.lon_vn].values) == 1
+                ):
+                    if verbose:
+                        warnings.warn(
+                            f'{vn} data has only one latitude or longitude value; check that the correct data is being used',
+                            Warning,
+                            stacklevel=2,
+                        )
+                else:
+                    lat_res = abs(np.diff(data[vn][self.lat_vn].values)[0])
+                    lon_res = abs(np.diff(data[vn][self.lon_vn].values)[0])
+                    lat_dd = abs(
+                        main_glac_rgi[self.rgi_lat_colname].values[i]
+                        - data[vn][self.lat_vn].values[latlon[0]]
+                    )
+                    lon_dd = abs(
+                        main_glac_rgi[self.rgi_lon_colname].values[i]
+                        - data[vn][self.lon_vn].values[latlon[1]]
+                    )
+
+                    assert lat_dd <= lat_res and lon_dd <= lon_res, (
+                        f'Climate data pixel for {vn} too from glacier {rgi_id}: Δlat={lat_dd:.3f}, '
+                        + f'Δlon={lon_dd:.3f}, res=({lat_res:.3f}, {lon_res:.3f})'
+                    )
 
             # Convert to series
             glac_variable_series = np.array(
