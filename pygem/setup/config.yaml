@@ -150,8 +150,6 @@ calib:
   
   # MCMC params
   MCMC_params:
-    option_calib_meltextent_1d: false             # option to calibrate against 1d melt extent data (true or false)
-    option_calib_snowline_1d: false               # option to calibrate against 1d snowline data (true or false)
     option_use_emulator: true                     # use emulator or full model (if true, calibration must have first been run with option_calibretion=='emulator')
     emulator_sims: 100
     tbias_step: 0.1
@@ -186,13 +184,17 @@ calib:
     kp_bndlow: 0.5                                # precipitation factor lower bound
     kp_bndhigh: 1.5                               # precipitation factor upper bound
     # options for calibrating against 1d elevation change
-    option_calib_elev_change_1d: true            # option to calibrate against 1d elevation change data (true or false)
+    option_calib_elev_change_1d: false            # option to calibrate against 1d elevation change data (true or false)
     rhoabl_disttype: normal                      # ablation area density prior distribution type (currently only 'normal' option)
     rhoabl_mu: 900.                              # ablation area density prior mean (kg m^-3)
     rhoabl_sigma: 17.                            # ablation area density prior standard deviation (kg m^-3)
     rhoaccum_disttype: normal                    # ablation area density prior distribution type (currently only 'normal' option)
     rhoaccum_mu: 600.                            # accumulation area density prior mean (kg m^-3). default value from Huss, 2013 Table 1
     rhoaccum_sigma: 60.                          # accumulation area density prior standard deviation (kg m^-3). default value from Huss, 2013 Table 1
+    # options for calibrating against 1d melt extent data
+    option_calib_meltextent_1d: false            # option to calibrate against 1d melt extent data (true or false)
+    # options for calibrating against 1d snowline data
+    option_calib_snowline_1d: false              # option to calibrate against 1d snowline data (true or false)
 
   # calibration datasets
   data:
