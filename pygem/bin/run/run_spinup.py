@@ -46,20 +46,14 @@ def run(glacno_list, mb_model_params, debug=False, **kwargs):
         ref_clim.prec_fn, ref_clim.prec_vn, main_glac_rgi, dt, verbose=debug
     )
     # Elevation [m asl]
-    elev = ref_clim.importGCMfxnearestneighbor_xarray(
-        ref_clim.elev_fn, ref_clim.elev_vn, main_glac_rgi
-    )
+    elev = ref_clim.importGCMfxnearestneighbor_xarray(ref_clim.elev_fn, ref_clim.elev_vn, main_glac_rgi)
     # Lapse rate [degC m-1]
     lr, _ = ref_clim.importGCMvarnearestneighbor_xarray(
         ref_clim.lr_fn, ref_clim.lr_vn, main_glac_rgi, dt, verbose=debug
     )
 
     # load prior regionally averaged modelprms (from Rounce et al. 2023)
-    priors_df = pd.read_csv(
-        pygem_prms['root']
-        + '/Output/calibration/'
-        + pygem_prms['calib']['priors_reg_fn']
-    )
+    priors_df = pd.read_csv(pygem_prms['root'] + '/Output/calibration/' + pygem_prms['calib']['priors_reg_fn'])
 
     # loop through gdirs and add `glacier_rgi_table`, `historical_climate`, `dates_table` and `modelprms` attributes to each glacier directory
     for i, glaco in enumerate(glacno_list):
@@ -67,16 +61,11 @@ def run(glacno_list, mb_model_params, debug=False, **kwargs):
             glacier_rgi_table = main_glac_rgi.loc[main_glac_rgi.index.values[i], :]
             glacier_str = '{0:0.5f}'.format(glacier_rgi_table['RGIId_float'])
             # instantiate glacier directory
-            if (
-                glacier_rgi_table['TermType'] not in [1, 5]
-                or not pygem_prms['setup']['include_frontalablation']
-            ):
+            if glacier_rgi_table['TermType'] not in [1, 5] or not pygem_prms['setup']['include_frontalablation']:
                 gd = single_flowline_glacier_directory(glacier_str, reset=False)
                 gd.is_tidewater = False
             else:
-                gd = single_flowline_glacier_directory_with_calving(
-                    glacier_str, reset=False
-                )
+                gd = single_flowline_glacier_directory_with_calving(glacier_str, reset=False)
                 gd.is_tidewater = True
 
             # Select subsets of data
@@ -113,10 +102,7 @@ def run(glacno_list, mb_model_params, debug=False, **kwargs):
                 # get modelprms from emulator mass balance calibration
                 modelprms_fn = glacier_str + '-modelprms_dict.json'
                 modelprms_fp = (
-                    pygem_prms['root']
-                    + '/Output/calibration/'
-                    + glacier_str.split('.')[0].zfill(2)
-                    + '/'
+                    pygem_prms['root'] + '/Output/calibration/' + glacier_str.split('.')[0].zfill(2) + '/'
                 ) + modelprms_fn
                 with open(modelprms_fp, 'r') as f:
                     modelprms_dict = json.load(f)
@@ -147,9 +133,7 @@ def run(glacno_list, mb_model_params, debug=False, **kwargs):
                 store_fl_diagnostics=True,
                 store_model_geometry=True,
                 # first_guess_t_spinup = , could be passed as input argument for each step in the sampler based on prior tbias, current default first guess is -2
-                mb_model_historical=PyGEMMassBalance_wrapper(
-                    gd, fl_str='model_flowlines'
-                ),
+                mb_model_historical=PyGEMMassBalance_wrapper(gd, fl_str='model_flowlines'),
                 ignore_errors=False,
                 **kwargs,
             )
@@ -241,9 +225,7 @@ def main():
         glac_no = list(main_glac_rgi_all['rgino_str'].values)
 
     if glac_no is None:
-        raise ValueError(
-            'Need to specify either -rgi_glac_number or -rgi_glac_number_fn'
-        )
+        raise ValueError('Need to specify either -rgi_glac_number or -rgi_glac_number_fn')
 
     # number of cores for parallel processing
     if args.ncores > 1:

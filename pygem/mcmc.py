@@ -62,11 +62,7 @@ def log_normal_density(x, method='mean', **kwargs):
     # sigma *= torch.sqrt(torch.tensor(k))
 
     # compute log normal density per element
-    log_prob = (
-        -k / 2.0 * torch.log(torch.tensor(2 * np.pi))
-        - torch.log(sigma)
-        - 0.5 * ((x - mu) / sigma) ** 2
-    )
+    log_prob = -k / 2.0 * torch.log(torch.tensor(2 * np.pi)) - torch.log(sigma) - 0.5 * ((x - mu) / sigma) ** 2
 
     if method == 'sum':
         return torch.tensor([log_prob.nansum()])
@@ -89,12 +85,7 @@ def log_gamma_density(x, **kwargs):
         Log probability density at the given input tensor x.
     """
     alpha, beta = kwargs['alpha'], kwargs['beta']  # shape, scale
-    return (
-        alpha * torch.log(beta)
-        + (alpha - 1) * torch.log(x)
-        - beta * x
-        - torch.lgamma(alpha)
-    )
+    return alpha * torch.log(beta) + (alpha - 1) * torch.log(x) - beta * x - torch.lgamma(alpha)
 
 
 def log_truncated_normal_density(x, **kwargs):
@@ -159,9 +150,7 @@ log_prob_fxn_map = {
 
 # mass balance posterior class
 class mbPosterior:
-    def __init__(
-        self, obs, priors, mb_func, mb_args=None, potential_fxns=None, **kwargs
-    ):
+    def __init__(self, obs, priors, mb_func, mb_args=None, potential_fxns=None, **kwargs):
         # obs will be passed as a list, where each item is a tuple with the first element being the mean observation, and the second being the variance
         self.obs = obs
         self.priors = copy.deepcopy(priors)
@@ -199,28 +188,17 @@ class mbPosterior:
         for k in self.priors.keys():
             if self.priors[k]['type'] == 'gamma' and 'mu' not in self.priors[k].keys():
                 self.priors[k]['mu'] = self.priors[k]['alpha'] / self.priors[k]['beta']
-                self.priors[k]['sigma'] = float(
-                    np.sqrt(self.priors[k]['alpha']) / self.priors[k]['beta']
-                )
+                self.priors[k]['sigma'] = float(np.sqrt(self.priors[k]['alpha']) / self.priors[k]['beta'])
 
-            if (
-                self.priors[k]['type'] == 'uniform'
-                and 'mu' not in self.priors[k].keys()
-            ):
-                self.priors[k]['mu'] = (
-                    self.priors[k]['low'] / self.priors[k]['high']
-                ) / 2
-                self.priors[k]['sigma'] = (
-                    self.priors[k]['high'] - self.priors[k]['low']
-                ) / (12 ** (1 / 2))
+            if self.priors[k]['type'] == 'uniform' and 'mu' not in self.priors[k].keys():
+                self.priors[k]['mu'] = (self.priors[k]['low'] / self.priors[k]['high']) / 2
+                self.priors[k]['sigma'] = (self.priors[k]['high'] - self.priors[k]['low']) / (12 ** (1 / 2))
 
     # update modelprms for evaluation
     def update_modelprms(self, m):
         for i, k in enumerate(['tbias', 'kp', 'ddfsnow']):
             self.mb_args[1][k] = float(m[i])
-        self.mb_args[1]['ddfice'] = (
-            self.mb_args[1]['ddfsnow'] / pygem_prms['sim']['params']['ddfsnow_iceratio']
-        )
+        self.mb_args[1]['ddfice'] = self.mb_args[1]['ddfsnow'] / pygem_prms['sim']['params']['ddfsnow_iceratio']
 
     # get mb_pred
     def get_model_pred(self, m):
@@ -231,9 +209,7 @@ class mbPosterior:
             self.preds = self.mb_func([*m])
         if not isinstance(self.preds, tuple):
             self.preds = [self.preds]
-        self.preds = [
-            torch.tensor(item) for item in self.preds
-        ]  # make all preds torch.tensor() objects
+        self.preds = [torch.tensor(item) for item in self.preds]  # make all preds torch.tensor() objects
 
     # get total log prior density
     def log_prior(self, m):
@@ -265,9 +241,7 @@ class mbPosterior:
                 rho[~self.abl_mask] = m[4]  # rhoacc
                 rho = torch.tensor(rho)
                 self.preds[i] = pred = (
-                    self.preds[i]
-                    * rho[:, np.newaxis]
-                    / pygem_prms['constants']['density_ice']
+                    self.preds[i] * rho[:, np.newaxis] / pygem_prms['constants']['density_ice']
                 )  # scale prediction by model density values (convert from m ice to m thickness change)
 
                 log_likehood += log_normal_density(
@@ -301,9 +275,7 @@ class mbPosterior:
     def log_posterior(self, m):
         # anytime log_posterior is called for a new step, calculate the predicted mass balance
         self.get_model_pred(m)
-        return self.log_prior(m) + self.log_likelihood(m) + self.log_potential(
-            m
-        ), self.preds
+        return self.log_prior(m) + self.log_likelihood(m) + self.log_potential(m), self.preds
 
 
 # Metropolis-Hastings Markov chain Monte Carlo class
@@ -415,9 +387,7 @@ class Metropolis:
                     self.P_chain.append(P_0)
                     self.m_chain.append(m_0)
                     self.m_primes.append(m_prime)
-                    self.acceptance.append(
-                        self.naccept / (i + (thin_factor * self.n_rm))
-                    )
+                    self.acceptance.append(self.naccept / (i + (thin_factor * self.n_rm)))
                     for j in range(len(pred_1)):
                         if j not in self.preds_chain.keys():
                             self.preds_chain[j] = []

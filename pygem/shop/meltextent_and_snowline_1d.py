@@ -108,9 +108,7 @@ def validate_meltextent_1d_structure(data):
         try:
             datetime.datetime.strptime(date_str, '%Y-%m-%d')
         except ValueError:
-            raise ValueError(
-                f"Invalid date format in 'dates[{i}]': {date_str}"
-            ) from None
+            raise ValueError(f"Invalid date format in 'dates[{i}]': {date_str}") from None
 
     # Validate z
     z = data['z']
@@ -143,21 +141,14 @@ def validate_meltextent_1d_structure(data):
     # Validate reference DEM
     ref_dem = data['ref_dem'].dropna().unique()
     if not isinstance(ref_dem, (str)):
-        raise TypeError(
-            f"'ref_dem' must be an string, but got {ref_dem} ({type(ref_dem).__name__})."
-        )
+        raise TypeError(f"'ref_dem' must be an string, but got {ref_dem} ({type(ref_dem).__name__}).")
 
     # Validate reference DEM year
     dem_year = data['ref_dem_year'].dropna().unique()
     if len(dem_year) != 1:
-        raise ValueError(
-            f"'ref_dem_year' must have exactly one unique value, "
-            f'but found {len(dem_year)}: {dem_year}'
-        )
+        raise ValueError(f"'ref_dem_year' must have exactly one unique value, but found {len(dem_year)}: {dem_year}")
     if not isinstance(dem_year, (int)):
-        raise TypeError(
-            f"'ref_dem_year' must be an integer, but got {dem_year} ({type(dem_year).__name__})."
-        )
+        raise TypeError(f"'ref_dem_year' must be an integer, but got {dem_year} ({type(dem_year).__name__}).")
 
     return True
 
@@ -249,9 +240,7 @@ def validate_snowline_1d_structure(data):
         try:
             datetime.datetime.strptime(date_str, '%Y-%m-%d')
         except ValueError:
-            raise ValueError(
-                f"Invalid date format in 'dates[{i}]': {date_str}"
-            ) from None
+            raise ValueError(f"Invalid date format in 'dates[{i}]': {date_str}") from None
 
     # Validate z
     z = data['z']
@@ -284,21 +273,14 @@ def validate_snowline_1d_structure(data):
     # Validate reference DEM
     ref_dem = data['ref_dem'].dropna().unique()
     if not isinstance(ref_dem, (str)):
-        raise TypeError(
-            f"'ref_dem' must be an string, but got {ref_dem} ({type(ref_dem).__name__})."
-        )
+        raise TypeError(f"'ref_dem' must be an string, but got {ref_dem} ({type(ref_dem).__name__}).")
 
     # Validate reference DEM year
     dem_year = data['ref_dem_year'].dropna().unique()
     if len(dem_year) != 1:
-        raise ValueError(
-            f"'ref_dem_year' must have exactly one unique value, "
-            f'but found {len(dem_year)}: {dem_year}'
-        )
+        raise ValueError(f"'ref_dem_year' must have exactly one unique value, but found {len(dem_year)}: {dem_year}")
     if not isinstance(dem_year, (int)):
-        raise TypeError(
-            f"'ref_dem_year' must be an integer, but got {dem_year} ({type(dem_year).__name__})."
-        )
+        raise TypeError(f"'ref_dem_year' must be an integer, but got {dem_year} ({type(dem_year).__name__}).")
 
     return True
 

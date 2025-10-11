@@ -151,9 +151,7 @@ def validate_elev_change_1d_structure(data):
 
     # Calculate bin_centers if missing
     if 'bin_centers' not in data:
-        data['bin_centers'] = [
-            0.5 * (bin_edges[i] + bin_edges[i + 1]) for i in range(len(bin_edges) - 1)
-        ]
+        data['bin_centers'] = [0.5 * (bin_edges[i] + bin_edges[i + 1]) for i in range(len(bin_edges) - 1)]
 
     # Validate bin_centers
     bin_centers = data['bin_centers']
@@ -173,9 +171,7 @@ def validate_elev_change_1d_structure(data):
             try:
                 datetime.datetime.strptime(date_str, '%Y-%m-%d')
             except ValueError:
-                raise ValueError(
-                    f"Invalid date format in 'dates[{i}][{j}]': {date_str}"
-                ) from None
+                raise ValueError(f"Invalid date format in 'dates[{i}][{j}]': {date_str}") from None
 
     # Validate dh
     dh = data['dh']
@@ -204,9 +200,7 @@ def validate_elev_change_1d_structure(data):
                 if not all(isinstance(x, (int, float)) for x in arr):
                     raise ValueError(f"All 'sigma[{i}]' values must be numeric.")
             elif not isinstance(arr, (int, float)):
-                raise ValueError(
-                    f"'sigma[{i}]' must be numeric or a list of numeric values."
-                )
+                raise ValueError(f"'sigma[{i}]' must be numeric or a list of numeric values.")
     else:
         raise ValueError("'sigma' must be a list or scalar numeric value.")
 
@@ -253,30 +247,19 @@ def csv_to_elev_change_1d_dict(csv_path):
     # Validate reference DEM - should only be one unique string
     dem = df['ref_dem'].dropna().unique()
     if len(dem) != 1:
-        raise ValueError(
-            f"'ref_dem' must have exactly one unique value, but found {len(dem)}: {dem}"
-        )
+        raise ValueError(f"'ref_dem' must have exactly one unique value, but found {len(dem)}: {dem}")
     if not isinstance(dem, (str)):
-        raise TypeError(
-            f"'ref_dem' must be a string, but got {dem} ({type(dem).__name__})."
-        )
+        raise TypeError(f"'ref_dem' must be a string, but got {dem} ({type(dem).__name__}).")
 
     # Validate reference DEM year - should only be one constant integer value
     dem_year = df['ref_dem_year'].dropna().unique()
     if len(dem_year) != 1:
-        raise ValueError(
-            f"'ref_dem_year' must have exactly one unique value, "
-            f'but found {len(dem_year)}: {dem_year}'
-        )
+        raise ValueError(f"'ref_dem_year' must have exactly one unique value, but found {len(dem_year)}: {dem_year}")
     if not isinstance(dem_year, (int)):
-        raise TypeError(
-            f"'ref_dem_year' must be an integer, but got {dem_year} ({type(dem_year).__name__})."
-        )
+        raise TypeError(f"'ref_dem_year' must be an integer, but got {dem_year} ({type(dem_year).__name__}).")
 
     # Get all unique date pairs (preserving order)
-    date_pairs = (
-        df[['date_start', 'date_end']].drop_duplicates().apply(tuple, axis=1).tolist()
-    )
+    date_pairs = df[['date_start', 'date_end']].drop_duplicates().apply(tuple, axis=1).tolist()
 
     # Group by date pairs and collect dh, sigma
     dh_all, sigma_all = [], []

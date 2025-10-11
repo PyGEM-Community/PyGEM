@@ -34,9 +34,7 @@ def getparser():
     """
     Use argparse to add arguments from the command line
     """
-    parser = argparse.ArgumentParser(
-        description='process monthly ice thickness for PyGEM simulation'
-    )
+    parser = argparse.ArgumentParser(description='process monthly ice thickness for PyGEM simulation')
     # add arguments
     parser.add_argument(
         '-simpath',
@@ -106,16 +104,13 @@ def get_binned_monthly(dotb_monthly, m_annual, h_annual):
     """
     ### get monthly ice thickness ###
     # convert mass balance from m w.e. yr^-1 to m ice yr^-1
-    dotb_monthly = dotb_monthly * (
-        pygem_prms['constants']['density_water']
-        / pygem_prms['constants']['density_ice']
-    )
+    dotb_monthly = dotb_monthly * (pygem_prms['constants']['density_water'] / pygem_prms['constants']['density_ice'])
     assert dotb_monthly.shape[2] % 12 == 0, 'Number of months is not a multiple of 12!'
 
     # obtain annual mass balance rate, sum monthly for each year
-    dotb_annual = dotb_monthly.reshape(
-        dotb_monthly.shape[0], dotb_monthly.shape[1], -1, 12
-    ).sum(axis=-1)  # climatic mass balance [m ice a^-1]
+    dotb_annual = dotb_monthly.reshape(dotb_monthly.shape[0], dotb_monthly.shape[1], -1, 12).sum(
+        axis=-1
+    )  # climatic mass balance [m ice a^-1]
 
     # compute the thickness change per year
     delta_h_annual = np.diff(h_annual, axis=-1)  # [m ice a^-1] (nbins, nyears-1)
@@ -223,12 +218,7 @@ def update_xrdataset(input_ds, h_monthly, m_spec_monthly, m_monthly):
     count_vn = 0
     encoding = {}
     for vn in output_coords_dict.keys():
-        empty_holder = np.zeros(
-            [
-                len(output_coords_dict[vn][i])
-                for i in list(output_coords_dict[vn].keys())
-            ]
-        )
+        empty_holder = np.zeros([len(output_coords_dict[vn][i]) for i in list(output_coords_dict[vn].keys())])
         output_ds = xr.Dataset(
             {vn: (list(output_coords_dict[vn].keys()), empty_holder)},
             coords=output_coords_dict[vn],
@@ -280,17 +270,13 @@ def run(simpath):
         )
 
         # update dataset to add monthly mass change
-        output_ds_binned, encoding_binned = update_xrdataset(
-            binned_ds, h_monthly, m_spec_monthly, m_monthly
-        )
+        output_ds_binned, encoding_binned = update_xrdataset(binned_ds, h_monthly, m_spec_monthly, m_monthly)
 
         # close input ds before write
         binned_ds.close()
 
         # append to existing binned netcdf
-        output_ds_binned.to_netcdf(
-            simpath, mode='a', encoding=encoding_binned, engine='netcdf4'
-        )
+        output_ds_binned.to_netcdf(simpath, mode='a', encoding=encoding_binned, engine='netcdf4')
 
         # close datasets
         output_ds_binned.close()

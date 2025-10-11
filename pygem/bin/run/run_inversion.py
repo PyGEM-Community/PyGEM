@@ -25,14 +25,10 @@ from pygem.shop import debris, mbdata
 from pygem.utils._funcs import str2bool
 
 cfg.initialize()
-cfg.PATHS['working_dir'] = (
-    f'{pygem_prms["root"]}/{pygem_prms["oggm"]["oggm_gdir_relpath"]}'
-)
+cfg.PATHS['working_dir'] = f'{pygem_prms["root"]}/{pygem_prms["oggm"]["oggm_gdir_relpath"]}'
 
 
-def run(
-    glac_no, ncores=1, calibrate_regional_glen_a=False, reset_gdirs=False, debug=False
-):
+def run(glac_no, ncores=1, calibrate_regional_glen_a=False, reset_gdirs=False, debug=False):
     """
     Run OGGM's bed inversion for a list of RGI glacier IDs using PyGEM's mass balance model.
     """
@@ -77,20 +73,14 @@ def run(
         ref_clim.prec_fn, ref_clim.prec_vn, main_glac_rgi, dt, verbose=debug
     )
     # Elevation [m asl]
-    elev = ref_clim.importGCMfxnearestneighbor_xarray(
-        ref_clim.elev_fn, ref_clim.elev_vn, main_glac_rgi
-    )
+    elev = ref_clim.importGCMfxnearestneighbor_xarray(ref_clim.elev_fn, ref_clim.elev_vn, main_glac_rgi)
     # Lapse rate [degC m-1]
     lr, _ = ref_clim.importGCMvarnearestneighbor_xarray(
         ref_clim.lr_fn, ref_clim.lr_vn, main_glac_rgi, dt, verbose=debug
     )
 
     # load prior regionally averaged modelprms (from Rounce et al. 2023)
-    priors_df = pd.read_csv(
-        pygem_prms['root']
-        + '/Output/calibration/'
-        + pygem_prms['calib']['priors_reg_fn']
-    )
+    priors_df = pd.read_csv(pygem_prms['root'] + '/Output/calibration/' + pygem_prms['calib']['priors_reg_fn'])
 
     # loop through gdirs and add `glacier_rgi_table`, `historical_climate`, `dates_table` and `modelprms` attributes to each glacier directory
     for i, gd in enumerate(gdirs):
@@ -157,9 +147,7 @@ def run(
         ),
     )
     # add debris data to flowlines
-    workflow.execute_entity_task(
-        debris.debris_binned, gdirs, fl_str='inversion_flowlines'
-    )
+    workflow.execute_entity_task(debris.debris_binned, gdirs, fl_str='inversion_flowlines')
 
     ##########################
     ### CALIBRATE GLEN'S A ###
@@ -190,26 +178,18 @@ def run(
                 )
                 glen_a_O1regions = [int(x) for x in glen_a_df.O1Region.values]
                 assert gdir.glacier_rgi_table.O1Region in glen_a_O1regions, (
-                    '{0:0.5f}'.format(gd.glacier_rgi_table['RGIId_float'])
-                    + ' O1 region not in glen_a_df'
+                    '{0:0.5f}'.format(gd.glacier_rgi_table['RGIId_float']) + ' O1 region not in glen_a_df'
                 )
-                glen_a_idx = np.where(
-                    glen_a_O1regions == gdir.glacier_rgi_table.O1Region
-                )[0][0]
+                glen_a_idx = np.where(glen_a_O1regions == gdir.glacier_rgi_table.O1Region)[0][0]
                 glen_a_multiplier = glen_a_df.loc[glen_a_idx, 'glens_a_multiplier']
                 fs = glen_a_df.loc[glen_a_idx, 'fs']
             else:
-                glen_a_multiplier = pygem_prms['sim']['oggm_dynamics'][
-                    'glen_a_multiplier'
-                ]
+                glen_a_multiplier = pygem_prms['sim']['oggm_dynamics']['glen_a_multiplier']
                 fs = pygem_prms['sim']['oggm_dynamics']['fs']
             glen_a = cfg.PARAMS['glen_a'] * glen_a_multiplier
 
         # non-tidewater
-        if (
-            gdir.glacier_rgi_table['TermType'] not in [1, 5]
-            or not pygem_prms['setup']['include_frontalablation']
-        ):
+        if gdir.glacier_rgi_table['TermType'] not in [1, 5] or not pygem_prms['setup']['include_frontalablation']:
             if calibrate_regional_glen_a:
                 # nothing else to do here - already ran inversion when calibrating Glen's A
                 continue
@@ -243,12 +223,8 @@ def run(
                 calving_k = calving_df.loc[calving_idx, 'calving_k']
             # Otherwise, use region's median value
             else:
-                calving_df['O1Region'] = [
-                    int(x.split('-')[1].split('.')[0]) for x in calving_df.RGIId.values
-                ]
-                calving_df_reg = calving_df.loc[
-                    calving_df['O1Region'] == int(gdir.rgi_id[6:8]), :
-                ]
+                calving_df['O1Region'] = [int(x.split('-')[1].split('.')[0]) for x in calving_df.RGIId.values]
+                calving_df_reg = calving_df.loc[calving_df['O1Region'] == int(gdir.rgi_id[6:8]), :]
                 calving_k = np.median(calving_df_reg.calving_k)
 
             # increase calving line for inversion so that later spinup will work

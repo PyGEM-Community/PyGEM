@@ -112,9 +112,7 @@ def plot_modeloutput_section(model=None, ax=None, title='', **kwargs):
     ax.set_title(title, loc='left')
 
 
-def plot_mcmc_chain(
-    m_primes, m_chain, mb_obs, ar, title, ms=1, fontsize=8, show=False, fpath=None
-):
+def plot_mcmc_chain(m_primes, m_chain, mb_obs, ar, title, ms=1, fontsize=8, show=False, fpath=None):
     # Plot the trace of the parameters
     n = m_primes.shape[1]
     fig, axes = plt.subplots(n + 1, 1, figsize=(6, n * 1.5), sharex=True)
@@ -131,9 +129,7 @@ def plot_mcmc_chain(
         [],
         label=f'median={np.median(m_chain[:, 0]):.3f}\niqr={np.subtract(*np.percentile(m_chain[:, 0], [75, 25])):.3f}',
     )
-    l0 = axes[0].legend(
-        loc='upper right', handlelength=0, borderaxespad=0, fontsize=fontsize
-    )
+    l0 = axes[0].legend(loc='upper right', handlelength=0, borderaxespad=0, fontsize=fontsize)
     legs.append(l0)
     axes[0].plot(m_primes[:, 0], '.', ms=ms, label='proposed', c='tab:blue')
     axes[0].plot(m_chain[:, 0], '.', ms=ms, label='accepted', c='tab:orange')
@@ -149,9 +145,7 @@ def plot_mcmc_chain(
         [],
         label=f'median={np.median(m_chain[:, 1]):.3f}\niqr={np.subtract(*np.percentile(m_chain[:, 1], [75, 25])):.3f}',
     )
-    l1 = axes[1].legend(
-        loc='upper right', handlelength=0, borderaxespad=0, fontsize=fontsize
-    )
+    l1 = axes[1].legend(loc='upper right', handlelength=0, borderaxespad=0, fontsize=fontsize)
     legs.append(l1)
     axes[1].set_ylabel(r'$K_p$', fontsize=fontsize)
 
@@ -162,9 +156,7 @@ def plot_mcmc_chain(
         [],
         label=f'median={np.median(m_chain[:, 2]):.3f}\niqr={np.subtract(*np.percentile(m_chain[:, 2], [75, 25])):.3f}',
     )
-    l2 = axes[2].legend(
-        loc='upper right', handlelength=0, borderaxespad=0, fontsize=fontsize
-    )
+    l2 = axes[2].legend(loc='upper right', handlelength=0, borderaxespad=0, fontsize=fontsize)
     legs.append(l2)
     axes[2].set_ylabel(r'$fsnow$', fontsize=fontsize)
 
@@ -178,9 +170,7 @@ def plot_mcmc_chain(
             [],
             label=f'median={np.median(m_chain[:, 3]):.3f}\niqr={np.subtract(*np.percentile(m_chain[:, 3], [75, 25])):.3f}',
         )
-        l3 = axes[3].legend(
-            loc='upper right', handlelength=0, borderaxespad=0, fontsize=fontsize
-        )
+        l3 = axes[3].legend(loc='upper right', handlelength=0, borderaxespad=0, fontsize=fontsize)
         legs.append(l3)
         axes[3].set_ylabel(r'$\rho_{abl}$', fontsize=fontsize)
 
@@ -193,9 +183,7 @@ def plot_mcmc_chain(
             [],
             label=f'median={np.median(m_chain[:, 4]):.3f}\niqr={np.subtract(*np.percentile(m_chain[:, 4], [75, 25])):.3f}',
         )
-        l4 = axes[4].legend(
-            loc='upper right', handlelength=0, borderaxespad=0, fontsize=fontsize
-        )
+        l4 = axes[4].legend(loc='upper right', handlelength=0, borderaxespad=0, fontsize=fontsize)
         legs.append(l4)
         axes[4].set_ylabel(r'$\rho_{acc}$', fontsize=fontsize)
 
@@ -220,9 +208,7 @@ def plot_mcmc_chain(
         [],
         label=f'median={np.median(m_chain[:, -1]):.3f}\niqr={np.subtract(*np.percentile(m_chain[:, -1], [75, 25])):.3f}',
     )
-    ln2 = axes[-2].legend(
-        loc='upper right', handlelength=0, borderaxespad=0, fontsize=fontsize
-    )
+    ln2 = axes[-2].legend(loc='upper right', handlelength=0, borderaxespad=0, fontsize=fontsize)
     legs.append(ln2)
     axes[-2].set_ylabel(r'$\dot{{b}}$', fontsize=fontsize)
 
@@ -233,9 +219,7 @@ def plot_mcmc_chain(
         label='moving avg.',
         lw=1,
     )
-    ln1 = axes[-1].legend(
-        loc='upper left', handlelength=0.5, borderaxespad=0, fontsize=fontsize
-    )
+    ln1 = axes[-1].legend(loc='upper left', handlelength=0.5, borderaxespad=0, fontsize=fontsize)
     legs.append(ln1)
     axes[-1].set_ylabel(r'$AR$', fontsize=fontsize)
 
@@ -284,9 +268,7 @@ def plot_resid_histogram(obs, preds, title, fontsize=8, show=False, fpath=None):
     # Plot the trace of the parameters
     fig, axes = plt.subplots(1, 1, figsize=(3, 2))
     # subtract obs from preds to get residuals
-    diffs = np.concatenate(
-        [pred.flatten() - obs[0].flatten().numpy() for pred in preds]
-    )
+    diffs = np.concatenate([pred.flatten() - obs[0].flatten().numpy() for pred in preds])
     # mask nans to avoid error in np.histogram()
     diffs = diffs[~np.isnan(diffs)]
     # Calculate histogram counts and bin edges
@@ -313,9 +295,7 @@ def plot_resid_histogram(obs, preds, title, fontsize=8, show=False, fpath=None):
     plt.close(fig)
 
 
-def plot_mcmc_elev_change_1d(
-    obs, preds, ela, title, fontsize=8, rate=True, show=False, fpath=None
-):
+def plot_mcmc_elev_change_1d(obs, preds, ela, title, fontsize=8, rate=True, show=False, fpath=None):
     bin_z = np.asarray(obs['bin_centers'])
 
     # cum_area = np.cumsum(np.asarray(data['area'])*1e-6)
@@ -415,9 +395,7 @@ def plot_mcmc_elev_change_1d(
             zorder=10,
         )
 
-        secaxx = ax[t].secondary_xaxis(
-            'bottom', functions=(cum_area_to_elev, elev_to_cum_area)
-        )
+        secaxx = ax[t].secondary_xaxis('bottom', functions=(cum_area_to_elev, elev_to_cum_area))
 
         if t != len(labels) - 1:
             secaxx.tick_params(axis='x', labelbottom=False)

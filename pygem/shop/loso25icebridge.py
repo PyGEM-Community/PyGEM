@@ -43,12 +43,8 @@ class oib:
         self.oib_datpath = oib_datpath
         if os.path.isfile(rgi7_rgi6_linksfp):
             self.rgi7_6_df = pd.read_csv(rgi7_rgi6_linksfp)
-            self.rgi7_6_df['rgi7_id'] = (
-                self.rgi7_6_df['rgi7_id'].str.split('RGI2000-v7.0-G-').str[1]
-            )
-            self.rgi7_6_df['rgi6_id'] = (
-                self.rgi7_6_df['rgi6_id'].str.split('RGI60-').str[1]
-            )
+            self.rgi7_6_df['rgi7_id'] = self.rgi7_6_df['rgi7_id'].str.split('RGI2000-v7.0-G-').str[1]
+            self.rgi7_6_df['rgi6_id'] = self.rgi7_6_df['rgi6_id'].str.split('RGI60-').str[1]
         self.rgi6id = rgi6id
         self.rgi7id = rgi7id
         self.name = None
@@ -105,9 +101,7 @@ class oib:
         return RGI version 7 glacier id for a given RGI version 6 id
 
         """
-        self.rgi6id = (
-            self.rgi6id.split('.')[0].zfill(2) + '.' + self.rgi6id.split('.')[1]
-        )
+        self.rgi6id = self.rgi6id.split('.')[0].zfill(2) + '.' + self.rgi6id.split('.')[1]
         df_sub = self.rgi7_6_df.loc[self.rgi7_6_df['rgi6_id'] == self.rgi6id, :]
 
         if len(df_sub) == 1:
@@ -117,18 +111,14 @@ class oib:
         elif len(df_sub) == 0:
             raise IndexError(f'No matching RGI7Id for {self.rgi6id}')
         elif len(df_sub) > 1:
-            self.rgi7id = df_sub.sort_values(
-                by='rgi6_area_fraction', ascending=False
-            ).iloc[0]['rgi7_id']
+            self.rgi7id = df_sub.sort_values(by='rgi6_area_fraction', ascending=False).iloc[0]['rgi7_id']
 
     def _rgi7torgi6id(self, debug=False):
         """
         return RGI version 6 glacier id for a given RGI version 7 id
 
         """
-        self.rgi7id = (
-            self.rgi7id.split('-')[0].zfill(2) + '-' + self.rgi7id.split('-')[1]
-        )
+        self.rgi7id = self.rgi7id.split('-')[0].zfill(2) + '-' + self.rgi7id.split('-')[1]
         df_sub = self.rgi7_6_df.loc[self.rgi7_6_df['rgi7_id'] == self.rgi7id, :]
         if len(df_sub) == 1:
             self.rgi6id = df_sub.iloc[0]['rgi6_id']
@@ -137,9 +127,7 @@ class oib:
         elif len(df_sub) == 0:
             raise IndexError(f'No matching RGI6Id for {self.rgi7id}')
         elif len(df_sub) > 1:
-            self.rgi6id = df_sub.sort_values(
-                by='rgi7_area_fraction', ascending=False
-            ).iloc[0]['rgi6_id']
+            self.rgi6id = df_sub.sort_values(by='rgi7_area_fraction', ascending=False).iloc[0]['rgi6_id']
 
     def load(self):
         """
@@ -163,9 +151,7 @@ class oib:
         index_map = {value: idx for idx, value in enumerate(dates_table.date.tolist())}
         # map each date pair in deltah['dates'] to their indices, if not found store (None,None)
         self.diff_inds_map = [
-            (index_map.get(val1), index_map.get(val2))
-            if val1 in index_map and val2 in index_map
-            else (None, None)
+            (index_map.get(val1), index_map.get(val2)) if val1 in index_map and val2 in index_map else (None, None)
             for val1, val2 in self.dbl_diffs['dates']
         ]
 
@@ -174,9 +160,7 @@ class oib:
         parse COP30-relative elevation differences
         """
         # get seasons stored in oib diffs
-        seasons = list(
-            set(self.oib_dict.keys()).intersection(['march', 'may', 'august'])
-        )
+        seasons = list(set(self.oib_dict.keys()).intersection(['march', 'may', 'august']))
         diffs_dict = {}
         for ssn in seasons:
             for yr in list(self.oib_dict[ssn].keys()):
@@ -184,16 +168,10 @@ class oib:
                 doy_int = int(np.ceil(self.oib_dict[ssn][yr]['mean_doy']))
                 dt_obj = datetime.datetime.strptime(f'{int(yr)}-{doy_int}', '%Y-%j')
                 # get survey data and filter by pixel count
-                diffs = np.asarray(
-                    self.oib_dict[ssn][yr]['bin_vals']['bin_median_diffs_vec']
-                )
+                diffs = np.asarray(self.oib_dict[ssn][yr]['bin_vals']['bin_median_diffs_vec'])
                 counts = np.asarray(self.oib_dict[ssn][yr]['bin_vals']['bin_count_vec'])
                 # uncertainty represented by IQR
-                sigmas = np.asarray(
-                    self.oib_dict[ssn][yr]['bin_vals'][
-                        'bin_interquartile_range_diffs_vec'
-                    ]
-                )
+                sigmas = np.asarray(self.oib_dict[ssn][yr]['bin_vals']['bin_interquartile_range_diffs_vec'])
                 # add [diffs, sigma, counts] to master dictionary
                 diffs_dict[_round_to_nearest_month(dt_obj)] = [diffs, sigmas, counts]
         # Sort the dictionary by date keys
@@ -206,30 +184,14 @@ class oib:
         # get bin centers
         self.set_centers(
             (
-                np.asarray(
-                    self.oib_dict[ssn][list(self.oib_dict[ssn].keys())[0]]['bin_vals'][
-                        'bin_start_vec'
-                    ]
-                )
-                + np.asarray(
-                    self.oib_dict[ssn][list(self.oib_dict[ssn].keys())[0]]['bin_vals'][
-                        'bin_stop_vec'
-                    ]
-                )
+                np.asarray(self.oib_dict[ssn][list(self.oib_dict[ssn].keys())[0]]['bin_vals']['bin_start_vec'])
+                + np.asarray(self.oib_dict[ssn][list(self.oib_dict[ssn].keys())[0]]['bin_vals']['bin_stop_vec'])
             )
             / 2
         )
         self.set_area(np.asarray(self.oib_dict['aad_dict']['hist_bin_areas_m2']))
-        edges = list(
-            self.oib_dict[ssn][list(self.oib_dict[ssn].keys())[0]]['bin_vals'][
-                'bin_start_vec'
-            ]
-        )
-        edges.append(
-            self.oib_dict[ssn][list(self.oib_dict[ssn].keys())[0]]['bin_vals'][
-                'bin_stop_vec'
-            ][-1]
-        )
+        edges = list(self.oib_dict[ssn][list(self.oib_dict[ssn].keys())[0]]['bin_vals']['bin_start_vec'])
+        edges.append(self.oib_dict[ssn][list(self.oib_dict[ssn].keys())[0]]['bin_vals']['bin_stop_vec'][-1])
         self.set_edges(np.asarray(edges))
 
     def terminus_mask(self, debug=False, inplace=False):
@@ -290,10 +252,7 @@ class oib:
 
         # apply mask while preserving list structure
         for k, v in diffs.items():
-            v_list = [
-                arr.copy().astype(float) if isinstance(arr, np.ndarray) else arr
-                for arr in v
-            ]
+            v_list = [arr.copy().astype(float) if isinstance(arr, np.ndarray) else arr for arr in v]
             for i in range(len(v_list)):
                 if isinstance(v_list[i], np.ndarray):
                     v_list[i][mask] = np.nan  # apply mask
@@ -311,10 +270,7 @@ class oib:
         """
         # get nyears between surveys for averaging - round to nearest year
         self.dbl_diffs['nyears'] = np.array(
-            [
-                round((t[1] - t[0]).total_seconds() / (365.25 * 24 * 60 * 60))
-                for t in self.dbl_diffs['dates']
-            ]
+            [round((t[1] - t[0]).total_seconds() / (365.25 * 24 * 60 * 60)) for t in self.dbl_diffs['dates']]
         ).astype(float)
         # mask any diffs where nyears < 1 (shouldn't ever be the case anyways, but just in case)
         self.dbl_diffs['nyears'][self.dbl_diffs['nyears'] < 1] = np.nan
@@ -345,12 +301,8 @@ class oib:
         # identify columns (survey pairs) to mask
         cols2mask = (dbl_diffs['dhdt'][abl_mask] > threshold).any(axis=0)
         # retain only non-masked survey pairs
-        oib_dbl_diffs_masked['dates'] = [
-            dt for i, dt in enumerate(dbl_diffs['dates']) if not cols2mask[i]
-        ]
-        oib_dbl_diffs_masked['nyears'] = [
-            y for i, y in enumerate(dbl_diffs['nyears']) if not cols2mask[i]
-        ]
+        oib_dbl_diffs_masked['dates'] = [dt for i, dt in enumerate(dbl_diffs['dates']) if not cols2mask[i]]
+        oib_dbl_diffs_masked['nyears'] = [y for i, y in enumerate(dbl_diffs['nyears']) if not cols2mask[i]]
         oib_dbl_diffs_masked['dh'] = dbl_diffs['dh'][:, ~cols2mask]
         oib_dbl_diffs_masked['dhdt'] = dbl_diffs['dhdt'][:, ~cols2mask]
         oib_dbl_diffs_masked['sigma'] = dbl_diffs['sigma'][:, ~cols2mask]
@@ -386,31 +338,17 @@ class oib:
 
             for i, (k, v) in enumerate(self.get_diffs().items()):
                 # Eensure v is a list of three NumPy arrays
-                if not (
-                    isinstance(v, list)
-                    and len(v) == 3
-                    and all(isinstance(arr, np.ndarray) for arr in v)
-                ):
-                    raise ValueError(
-                        f"Expected list of 3 NumPy arrays for key '{k}', but got {v} of type {type(v)}"
-                    )
+                if not (isinstance(v, list) and len(v) == 3 and all(isinstance(arr, np.ndarray) for arr in v)):
+                    raise ValueError(f"Expected list of 3 NumPy arrays for key '{k}', but got {v} of type {type(v)}")
 
                 # perform binning
                 if i == 0:
-                    y = stats.binned_statistic(
-                        x=centers, values=v[0], statistic=np.nanmedian, bins=new_edges
-                    )[0]
+                    y = stats.binned_statistic(x=centers, values=v[0], statistic=np.nanmedian, bins=new_edges)[0]
                 else:
-                    y = stats.binned_statistic(
-                        x=centers, values=v[0], statistic=np.nanmedian, bins=new_edges
-                    )[0]
+                    y = stats.binned_statistic(x=centers, values=v[0], statistic=np.nanmedian, bins=new_edges)[0]
 
-                s = stats.binned_statistic(
-                    x=centers, values=v[1], statistic=np.nanmedian, bins=new_edges
-                )[0]
-                c = stats.binned_statistic(
-                    x=centers, values=v[2], statistic=np.nanmedian, bins=new_edges
-                )[0]
+                s = stats.binned_statistic(x=centers, values=v[1], statistic=np.nanmedian, bins=new_edges)[0]
+                c = stats.binned_statistic(x=centers, values=v[2], statistic=np.nanmedian, bins=new_edges)[0]
 
                 # store results
                 oib_diffs_rebin[k] = [y, s, c]
@@ -459,13 +397,9 @@ class oib:
                 if rem <= tolerance_months or rem >= 12 - tolerance_months:
                     self.dbl_diffs['dates'].append((date1, date2))
                     # self.dbl_diffs['dh'].append((self.oib_diffs[date2][0] - self.oib_diffs[date1][0]) / round(delta_mon/12))
-                    self.dbl_diffs['dh'].append(
-                        self.oib_diffs[date2][0] - self.oib_diffs[date1][0]
-                    )
+                    self.dbl_diffs['dh'].append(self.oib_diffs[date2][0] - self.oib_diffs[date1][0])
                     # self.dbl_diffs['sigma'].append(np.sqrt((self.oib_diffs[date2][1])**2 + (self.oib_diffs[date1][1])**2))
-                    self.dbl_diffs['sigma'].append(
-                        self.oib_diffs[date2][1] + self.oib_diffs[date1][1]
-                    )
+                    self.dbl_diffs['sigma'].append(self.oib_diffs[date2][1] + self.oib_diffs[date1][1])
                     break  # Stop looking for further matches for date1
 
         # column stack dh and sigmas into single 2d array
@@ -474,9 +408,7 @@ class oib:
             self.dbl_diffs['sigma'] = np.column_stack(self.dbl_diffs['sigma'])
             # get rid of any all-nan dbl-diffs (where cop30 offsets may not have overlapped)
             mask = ~np.all(np.isnan(self.dbl_diffs['dh']), axis=0)
-            self.dbl_diffs['dates'] = [
-                val for val, keep in zip(self.dbl_diffs['dates'], mask) if keep
-            ]
+            self.dbl_diffs['dates'] = [val for val, keep in zip(self.dbl_diffs['dates'], mask) if keep]
             self.dbl_diffs['dh'] = self.dbl_diffs['dh'][:, mask]
             self.dbl_diffs['sigma'] = self.dbl_diffs['sigma'][:, mask]
 
@@ -502,9 +434,7 @@ class oib:
             # Apply mask only to numpy arrays
             for i in range(len(v_list)):
                 if isinstance(v_list[i], np.ndarray):
-                    v_list[i] = (
-                        v_list[i].copy().astype(float)
-                    )  # ensure modification doesn't affect original
+                    v_list[i] = v_list[i].copy().astype(float)  # ensure modification doesn't affect original
                     v_list[i][mask] = np.nan  # apply mask
 
             # set key with updated list of arrays
@@ -543,9 +473,7 @@ class oib:
             v_list = list(v)
             for i in range(len(v_list)):
                 if isinstance(v_list[i], np.ndarray) and np.any(mask):
-                    v_list[i] = (
-                        v_list[i].copy().astype(float)
-                    )  # copy only if we modify it
+                    v_list[i] = v_list[i].copy().astype(float)  # copy only if we modify it
                     v_list[i][mask] = np.nan  # apply NaN mask
 
             # set key with updated list of arrays
@@ -597,10 +525,7 @@ class oib:
         elev_change_data = {
             'ref_dem': 'COP30',
             'ref_dem_year': 2013,  # hardcoded for now since all OIB diffs are relative to COP30 (2013)
-            'dates': [
-                (dt[0].strftime('%Y-%m-%d'), dt[1].strftime('%Y-%m-%d'))
-                for dt in self.dbl_diffs['dates']
-            ],
+            'dates': [(dt[0].strftime('%Y-%m-%d'), dt[1].strftime('%Y-%m-%d')) for dt in self.dbl_diffs['dates']],
             'bin_edges': self.bin_edges.tolist(),
             'dh': self.dbl_diffs['dh'].T.tolist(),
             'dh_sigma': self.dbl_diffs['sigma'].T.tolist(),

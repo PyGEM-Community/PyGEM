@@ -177,9 +177,7 @@ def plot_nfls_section(nfls):
     ]
     axh = fig.add_axes(posax, frameon=False)
 
-    axh.hist(
-        height, orientation='horizontal', range=ylim, bins=20, alpha=0.3, weights=area
-    )
+    axh.hist(height, orientation='horizontal', range=ylim, bins=20, alpha=0.3, weights=area)
     axh.invert_xaxis()
     axh.xaxis.tick_top()
     axh.set_xlabel('Area incl. tributaries (km$^2$)')
@@ -251,9 +249,7 @@ def reg_vol_comparison(gdirs, mbmods, a_multiplier=1, fs=0, debug=False):
         apparent_mb_from_any_mb(gdir, mb_model=mbmod_inv)
 
         tasks.prepare_for_inversion(gdir)
-        tasks.mass_conservation_inversion(
-            gdir, glen_a=cfg.PARAMS['glen_a'] * a_multiplier, fs=fs
-        )
+        tasks.mass_conservation_inversion(gdir, glen_a=cfg.PARAMS['glen_a'] * a_multiplier, fs=fs)
         tasks.init_present_time_glacier(gdir)  # adds bins below
         nfls = gdir.read_pickle('model_flowlines')
 
@@ -261,9 +257,7 @@ def reg_vol_comparison(gdirs, mbmods, a_multiplier=1, fs=0, debug=False):
         if os.path.exists(gdir.get_filepath('consensus_mass')):
             consensus_fn = gdir.get_filepath('consensus_mass')
             with open(consensus_fn, 'rb') as f:
-                consensus_km3 = (
-                    pickle.load(f) / pygem_prms['constants']['density_ice'] / 1e9
-                )
+                consensus_km3 = pickle.load(f) / pygem_prms['constants']['density_ice'] / 1e9
 
             reg_vol_km3_consensus += consensus_km3
             reg_vol_km3_modeled += nfls[0].volume_km3
@@ -304,18 +298,11 @@ def main():
         main_glac_rgi_all = main_glac_rgi_all.sort_values('Area', ascending=False)
         main_glac_rgi_all.reset_index(inplace=True, drop=True)
         main_glac_rgi_all['Area_cum'] = np.cumsum(main_glac_rgi_all['Area'])
-        main_glac_rgi_all['Area_cum_frac'] = (
-            main_glac_rgi_all['Area_cum'] / main_glac_rgi_all.Area.sum()
-        )
+        main_glac_rgi_all['Area_cum_frac'] = main_glac_rgi_all['Area_cum'] / main_glac_rgi_all.Area.sum()
 
-        glac_idx = np.where(
-            main_glac_rgi_all.Area_cum_frac
-            > pygem_prms['calib']['icethickness_cal_frac_byarea']
-        )[0][0]
+        glac_idx = np.where(main_glac_rgi_all.Area_cum_frac > pygem_prms['calib']['icethickness_cal_frac_byarea'])[0][0]
         main_glac_rgi_subset = main_glac_rgi_all.loc[0:glac_idx, :]
-        main_glac_rgi_subset = main_glac_rgi_subset.sort_values(
-            'O1Index', ascending=True
-        )
+        main_glac_rgi_subset = main_glac_rgi_subset.sort_values('O1Index', ascending=True)
         main_glac_rgi_subset.reset_index(inplace=True, drop=True)
 
         print(
@@ -335,9 +322,7 @@ def main():
         # ===== LOAD CLIMATE DATA =====
         # Climate class
         sim_climate_name = args.ref_climate_name
-        assert sim_climate_name == 'ERA5', (
-            'Error: Calibration not set up for ' + sim_climate_name
-        )
+        assert sim_climate_name == 'ERA5', 'Error: Calibration not set up for ' + sim_climate_name
         gcm = class_climate.GCM(name=sim_climate_name)
         # Air temperature [degC]
         gcm_temp, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(
@@ -358,9 +343,7 @@ def main():
             gcm.prec_fn, gcm.prec_vn, main_glac_rgi_subset, dates_table, verbose=debug
         )
         # Elevation [m asl]
-        gcm_elev = gcm.importGCMfxnearestneighbor_xarray(
-            gcm.elev_fn, gcm.elev_vn, main_glac_rgi_subset
-        )
+        gcm_elev = gcm.importGCMfxnearestneighbor_xarray(gcm.elev_fn, gcm.elev_vn, main_glac_rgi_subset)
         # Lapse rate [degC m-1]
         gcm_lr, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(
             gcm.lr_fn, gcm.lr_vn, main_glac_rgi_subset, dates_table, verbose=debug
@@ -379,9 +362,7 @@ def main():
         gdirs = []
         for glac in range(main_glac_rgi_subset.shape[0]):
             # Select subsets of data
-            glacier_rgi_table = main_glac_rgi_subset.loc[
-                main_glac_rgi_subset.index.values[glac], :
-            ]
+            glacier_rgi_table = main_glac_rgi_subset.loc[main_glac_rgi_subset.index.values[glac], :]
             glacier_str = '{0:0.5f}'.format(glacier_rgi_table['RGIId_float'])
 
             if glac % 1000 == 0:
@@ -408,21 +389,14 @@ def main():
                 if (fls is not None) and (glacier_area_km2.sum() > 0):
                     modelprms_fn = glacier_str + '-modelprms_dict.json'
                     modelprms_fp = (
-                        pygem_prms['root']
-                        + '/Output/calibration/'
-                        + glacier_str.split('.')[0].zfill(2)
-                        + '/'
+                        pygem_prms['root'] + '/Output/calibration/' + glacier_str.split('.')[0].zfill(2) + '/'
                     )
                     modelprms_fullfn = modelprms_fp + modelprms_fn
-                    assert os.path.exists(modelprms_fullfn), (
-                        glacier_str + ' calibrated parameters do not exist.'
-                    )
+                    assert os.path.exists(modelprms_fullfn), glacier_str + ' calibrated parameters do not exist.'
                     with open(modelprms_fullfn, 'r') as f:
                         modelprms_dict = json.load(f)
 
-                    assert 'emulator' in modelprms_dict, (
-                        'Error: ' + glacier_str + ' emulator not in modelprms_dict'
-                    )
+                    assert 'emulator' in modelprms_dict, 'Error: ' + glacier_str + ' emulator not in modelprms_dict'
                     modelprms_all = modelprms_dict['emulator']
 
                     # Loop through model parameters
@@ -536,9 +510,7 @@ def main():
                 debug=debug,
             )
 
-            print(
-                '\n\nOptimized:\n  glens_a_multiplier:', np.round(a_multiplier_opt, 3)
-            )
+            print('\n\nOptimized:\n  glens_a_multiplier:', np.round(a_multiplier_opt, 3))
             print('  Consensus [km3]:', reg_vol_km3_con)
             print('  Model [km3]    :', reg_vol_km3_mod)
 
@@ -562,9 +534,7 @@ def main():
         ]
 
         try:
-            glena_df = pd.read_csv(
-                f'{pygem_prms["root"]}/{pygem_prms["out"]["glen_a_regional_relpath"]}'
-            )
+            glena_df = pd.read_csv(f'{pygem_prms["root"]}/{pygem_prms["out"]["glen_a_regional_relpath"]}')
 
             # Add or overwrite existing file
             glena_idx = np.where((glena_df.O1Region == reg))[0]

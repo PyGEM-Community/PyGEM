@@ -29,9 +29,7 @@ class ConfigManager:
         self.config_filename = config_filename
         self.base_dir = base_dir or os.path.join(os.path.expanduser('~'), 'PyGEM')
         self.config_path = os.path.join(self.base_dir, self.config_filename)
-        self.source_config_path = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), 'config.yaml'
-        )
+        self.source_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.yaml')
         self.overwrite = overwrite
         self._ensure_config()
 
@@ -109,9 +107,7 @@ class ConfigManager:
                     raise KeyError(f'Missing required key in configuration: {key}')
 
             if not isinstance(sub_data, expected_type):
-                raise TypeError(
-                    f"Invalid type for '{key}': expected {expected_type}, not {type(sub_data)}"
-                )
+                raise TypeError(f"Invalid type for '{key}': expected {expected_type}, not {type(sub_data)}")
 
             # Check elements inside lists (if defined)
             if key in self.LIST_ELEMENT_TYPES and isinstance(sub_data, list):

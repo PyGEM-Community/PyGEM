@@ -88,9 +88,7 @@ def download_and_unzip_from_google_drive(file_id, output_dir):
             response = session.get(base_url, params={'id': file_id}, stream=True)
             token = get_confirm_token(response)
             if token:
-                response = session.get(
-                    base_url, params={'id': file_id, 'confirm': token}, stream=True
-                )
+                response = session.get(base_url, params={'id': file_id, 'confirm': token}, stream=True)
             save_response_content(response, zip_path)
 
         # Unzip the file
@@ -99,11 +97,7 @@ def download_and_unzip_from_google_drive(file_id, output_dir):
             zip_ref.extractall(tmppath)
 
         # get root dir name of zipped files
-        dir = [
-            item
-            for item in os.listdir(tmppath)
-            if os.path.isdir(os.path.join(tmppath, item))
-        ][0]
+        dir = [item for item in os.listdir(tmppath) if os.path.isdir(os.path.join(tmppath, item))][0]
         unzip_dir = os.path.join(tmppath, dir)
         # get unique name if root dir name already exists in output_dir
         output_dir = get_unique_folder_name(os.path.join(output_dir, dir))
