@@ -28,12 +28,12 @@ cfg.initialize()
 cfg.PATHS['working_dir'] = f'{pygem_prms["root"]}/{pygem_prms["oggm"]["oggm_gdir_relpath"]}'
 
 
-def run(glac_no, ncores=1, calibrate_regional_glen_a=False, reset_gdirs=False, debug=False):
+def run(glac_no, ncores=1, calibrate_regional_glen_a=False, glen_a=None, fs=None, reset_gdirs=False, debug=False):
     """
     Run OGGM's bed inversion for a list of RGI glacier IDs using PyGEM's mass balance model.
     """
 
-    update_cfg({'continue_on_error': False}, 'PARAMS')
+    update_cfg({'continue_on_error': True}, 'PARAMS')
     if ncores > 1:
         update_cfg({'use_multiprocessing': True}, 'PARAMS')
         update_cfg({'mp_processes': ncores}, 'PARAMS')
@@ -171,22 +171,23 @@ def run(glac_no, ncores=1, calibrate_regional_glen_a=False, reset_gdirs=False, d
             glen_a = gdir.get_diagnostics()['inversion_glen_a']
             fs = gdir.get_diagnostics()['inversion_fs']
         else:
-            # get glen_a and fs values from prior calibration or manual entry
-            if pygem_prms['sim']['oggm_dynamics']['use_regional_glen_a']:
-                glen_a_df = pd.read_csv(
-                    f'{pygem_prms["root"]}/{pygem_prms["sim"]["oggm_dynamics"]["glen_a_regional_relpath"]}'
-                )
-                glen_a_O1regions = [int(x) for x in glen_a_df.O1Region.values]
-                assert gdir.glacier_rgi_table.O1Region in glen_a_O1regions, (
-                    '{0:0.5f}'.format(gd.glacier_rgi_table['RGIId_float']) + ' O1 region not in glen_a_df'
-                )
-                glen_a_idx = np.where(glen_a_O1regions == gdir.glacier_rgi_table.O1Region)[0][0]
-                glen_a_multiplier = glen_a_df.loc[glen_a_idx, 'glens_a_multiplier']
-                fs = glen_a_df.loc[glen_a_idx, 'fs']
-            else:
-                glen_a_multiplier = pygem_prms['sim']['oggm_dynamics']['glen_a_multiplier']
-                fs = pygem_prms['sim']['oggm_dynamics']['fs']
-            glen_a = cfg.PARAMS['glen_a'] * glen_a_multiplier
+            if glen_a is None and fs is None:
+                # get glen_a and fs values from prior calibration or manual entry
+                if pygem_prms['sim']['oggm_dynamics']['use_regional_glen_a']:
+                    glen_a_df = pd.read_csv(
+                        f'{pygem_prms["root"]}/{pygem_prms["sim"]["oggm_dynamics"]["glen_a_regional_relpath"]}'
+                    )
+                    glen_a_O1regions = [int(x) for x in glen_a_df.O1Region.values]
+                    assert gdir.glacier_rgi_table.O1Region in glen_a_O1regions, (
+                        '{0:0.5f}'.format(gd.glacier_rgi_table['RGIId_float']) + ' O1 region not in glen_a_df'
+                    )
+                    glen_a_idx = np.where(glen_a_O1regions == gdir.glacier_rgi_table.O1Region)[0][0]
+                    glen_a_multiplier = glen_a_df.loc[glen_a_idx, 'glens_a_multiplier']
+                    fs = glen_a_df.loc[glen_a_idx, 'fs']
+                else:
+                    glen_a_multiplier = pygem_prms['sim']['oggm_dynamics']['glen_a_multiplier']
+                    fs = pygem_prms['sim']['oggm_dynamics']['fs']
+                glen_a = cfg.PARAMS['glen_a'] * glen_a_multiplier
 
         # non-tidewater
         if gdir.glacier_rgi_table['TermType'] not in [1, 5] or not pygem_prms['setup']['include_frontalablation']:
@@ -279,21 +280,31 @@ def main():
         nargs='+',
         help='Randoph Glacier Inventory glacier number (can take multiple)',
     )
-    (
-        parser.add_argument(
-            '-rgi_glac_number_fn',
-            action='store',
-            type=str,
-            default=None,
-            help='Filepath containing list of rgi_glac_number, helpful for running batches on spc',
-        ),
-    )
+    parser.add_argument(
+        '-rgi_glac_number_fn',
+        action='store',
+        type=str,
+        default=None,
+        help='Filepath containing list of rgi_glac_number, helpful for running batches on spc',
+    ),
     parser.add_argument(
         '-calibrate_regional_glen_a',
         type=str2bool,
         default=True,
         help="If True (False) run ice thickness inversion and regionally calibrate (use previously calibrated or user-input) Glen's A values. Default is True",
     )
+    parser.add_argument(
+        '-glen_a',
+        type=float,
+        default=None,
+        help="User-selected inversion Glen's creep parameter value",
+    )  
+    parser.add_argument(
+        '-fs',
+        type=float,
+        default=None,
+        help="User-selected inversion Orleam's sliding factor value",
+    )    
     parser.add_argument(
         '-ncores',
         action='store',
@@ -308,6 +319,11 @@ def main():
     )
     parser.add_argument('-v', '--debug', action='store_true', help='Flag for debugging')
     args = parser.parse_args()
+
+    # --- Validation logic ---
+    if args.calibrate_regional_glen_a:
+        if args.glen_a is not None or args.fs is not None:
+            parser.error("When '-calibrate_regional_glen_a' is True, '-glen_a' and '-fs' must both be None.")
 
     # RGI glacier batches
     if args.rgi_region01:
@@ -338,6 +354,8 @@ def main():
         run,
         ncores=args.ncores,
         calibrate_regional_glen_a=args.calibrate_regional_glen_a,
+        glen_a=args.glen_a, 
+        fs=args.fs,
         reset_gdirs=args.reset_gdirs,
         debug=args.debug,
     )
