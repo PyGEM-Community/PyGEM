@@ -59,6 +59,7 @@ def elev_change_1d_to_gdir(
                 (date_start_M, date_end_M)
             ],
             'bin_edges': [edge0, edge1, ..., edgeN],
+            'bin_area': [area0, area1, ..., areaN],
             'dh': [
                 [dh_bin1_period1, dh_bin2_period1, ..., dh_binN_period1],
                 [dh_bin1_period2, dh_bin2_period2, ..., dh_binN_period2],
@@ -78,9 +79,11 @@ def elev_change_1d_to_gdir(
         - 'ref_dem_year' is the acquisition year of the reference DEM.
         - Each element in 'dates' defines one elevation change period with a start and end date,
         stored as strings in 'YYYY-MM-DD' format.
-        - Each list in 'dh' (and optionally 'dh_sigma') corresponds exactly to one period in 'dates'.
+        - 'bin_edges' should be a list length N containing the elevation values of each bin edge.
+        - 'bin_area' should be a list of length N-1 containing the bin areas given by the 'ref_dem' (optional).        
         - 'dh' should contain M lists of length N-1, where M is the number of periods and N is the number of bin edges. Units are in meters.
         - 'dh_sigma' should either be M lists of length N-1 (matching 'dh') or a single scalar value. Units are in meters.
+        - Each list in 'dh' (and optionally 'dh_sigma') corresponds exactly to one period in 'dates'.
 
     CSV file structure:
         bin_start, bin_stop, date_start, date_end, dh, dh_sigma, ref_dem, ref_dem_year
@@ -213,6 +216,14 @@ def validate_elev_change_1d_structure(data):
     ref_dem_year = data['ref_dem_year']
     if not isinstance(ref_dem_year, int):
         raise ValueError("'ref_dem_year' must be an integer year.")
+    
+    # Validate bin_area if present
+    if 'bin_area' in data:
+        bin_area = data['bin_area']
+        if len(bin_area) != N:
+            raise ValueError(f"'bin_area' must be a list of length {N}.")
+        if not all(isinstance(x, (int, float)) for x in bin_area):
+            raise ValueError(f"All 'bin_area' values must be numeric.")
 
     return True
 

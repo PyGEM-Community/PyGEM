@@ -500,8 +500,9 @@ class oib:
         {
             'ref_dem': str,
             'ref_dem_year': int,
-            'bin_edges':    [edge0, edge1, ..., edgeN],
             'dates':        [(period1_start, period1_end), (period2_start, period2_end), ... (periodM_start, periodM_end)],
+            'bin_edges':    [edge0, edge1, ..., edgeN],
+            'bin_area':     [area0, area1, ..., areaN],
             'dh':           [[dh_bin1_period1, dh_bin2_period1, ..., dh_binN_period1],
                             [dh_bin1_period2, dh_bin2_period2, ..., dh_binN_period2],
                             ...
@@ -514,8 +515,10 @@ class oib:
         note: 'ref_dem' is the reference DEM used for elevation-binning.
         'ref_dem_year' is the acquisition year of the reference DEM.
         'dates' are tuples (or length-2 sublists) of the start and stop date of an individual elevation change record
-        and are stored as strings in 'YYYY-MM-DD' format. 'dh' should M lists of length N-1,
-        where M is the number of date pairs and N is the number of bin edges.
+        and are stored as strings in 'YYYY-MM-DD' format. 
+        'bin_edges' should be a list length N containing the elevation values of each bin edge.
+        'bin_area' should be a list of length N-1 containing the bin areas given by the 'ref_dem' (optional).
+        'dh' should be M lists of length N-1, where M is the number of date pairs and N is the number of bin edges.
         'dh_sigma'  should eaither be M lists of shape N-1 a scalar value.
 
         """
@@ -527,6 +530,7 @@ class oib:
             'ref_dem_year': 2013,  # hardcoded for now since all OIB diffs are relative to COP30 (2013)
             'dates': [(dt[0].strftime('%Y-%m-%d'), dt[1].strftime('%Y-%m-%d')) for dt in self.dbl_diffs['dates']],
             'bin_edges': self.bin_edges.tolist(),
+            'bin_area': self.bin_area.tolist(),
             'dh': self.dbl_diffs['dh'].T.tolist(),
             'dh_sigma': self.dbl_diffs['sigma'].T.tolist(),
         }
