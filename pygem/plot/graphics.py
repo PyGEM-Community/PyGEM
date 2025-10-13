@@ -13,6 +13,7 @@ from datetime import datetime
 
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.stats import binned_statistic
 
 from pygem.utils.stats import effective_n
 
@@ -295,11 +296,32 @@ def plot_resid_histogram(obs, preds, title, fontsize=8, show=False, fpath=None):
     plt.close(fig)
 
 
-def plot_mcmc_elev_change_1d(obs, preds, ela, title, fontsize=8, rate=True, show=False, fpath=None):
-    bin_z = np.asarray(obs['bin_centers'])
+def plot_mcmc_elev_change_1d(preds, fls, obs, ela, title, fontsize=8, rate=True, uniform_area=True, show=False, fpath=None):
 
-    # cum_area = np.cumsum(np.asarray(data['area'])*1e-6)
-    cum_area = bin_z
+    bin_z = np.array(obs['bin_centers'])
+    bin_edges = np.array(obs['bin_edges'])
+
+    # get initial thickness and surface area
+    initial_area = fls[0].widths_m * fls[0].dx_meter
+    initial_thickness = getattr(fls[0], 'thick', None)
+    initial_surface_h = getattr(fls[0], 'surface_h', None)
+    # sort initial surface height 
+    sorting = np.argsort(initial_surface_h)
+    initial_surface_h = initial_surface_h[sorting]
+    initial_area = initial_area[sorting]
+    initial_thickness = initial_thickness[sorting]
+    # get first and last non-zero thickness indices
+    first, last = np.nonzero(initial_thickness)[0][[0, -1]]
+    # rebin surfce area
+    initial_area = binned_statistic(x=initial_surface_h, values=initial_area, statistic=np.nanmean, bins=bin_edges)[0]
+    # use reference dataset bin area if available
+    if 'bin_area' in obs:
+        initial_area = obs['bin_area']
+
+    if uniform_area:
+        xvals = np.nancumsum(initial_area)*1e-6
+    else:
+        xvals = bin_z
 
     # get date time spans
     labels = []
@@ -327,46 +349,42 @@ def plot_mcmc_elev_change_1d(obs, preds, ela, title, fontsize=8, rate=True, show
 
     # Transform functions
     def cum_area_to_elev(x):
-        return np.interp(x, cum_area, bin_z)
+        return np.interp(x, xvals, bin_z)
 
     def elev_to_cum_area(x):
-        return np.interp(x, bin_z, cum_area)
+        return np.interp(x, bin_z, xvals)
 
     if not isinstance(ax, np.ndarray):
         ax = [ax]
+
     # loop through date spans
     for t in range(len(labels)):
-        # axb = ax[t].twinx()
         ax[t].xaxis.set_label_position('top')
         ax[t].xaxis.tick_top()  # move ticks to top
         ax[t].tick_params(axis='x', which='both', top=False)
-
         ax[t].axhline(y=0, c='grey', lw=0.5)
-        # axb.yaxis.set_label_position('left')
-        # axb.yaxis.set_ticks_position('left')
         preds = np.stack(preds)
 
-        # preds[:,np.where(np.asarray(data['area'])==0)[0]] = np.nan  # mask out where area <= 0
 
         ax[t].fill_between(
-            cum_area,
+            xvals,
             (obs['dh'][:, t] - obs['dh_sigma'][:, t]) / nyrs[t],
             (obs['dh'][:, t] + obs['dh_sigma'][:, t]) / nyrs[t],
             color='k',
             alpha=0.125,
         )
-        ax[t].plot(cum_area, obs['dh'][:, t] / nyrs[t], 'k-', marker='.', label='Obs.')
+        ax[t].plot(xvals, obs['dh'][:, t] / nyrs[t], 'k-', marker='.', label='Obs.')
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore')
             ax[t].fill_between(
-                cum_area,
+                xvals,
                 np.nanpercentile(preds[:, :, t], 5, axis=0) / nyrs[t],
                 np.nanpercentile(preds[:, :, t], 95, axis=0) / nyrs[t],
                 color='r',
                 alpha=0.25,
             )
             ax[t].plot(
-                cum_area,
+                xvals,
                 np.nanmedian(preds[:, :, t], axis=0) / nyrs[t],
                 'r-',
                 marker='.',
@@ -375,7 +393,6 @@ def plot_mcmc_elev_change_1d(obs, preds, ela, title, fontsize=8, rate=True, show
 
         # for r in stack:
         #     axb.plot(bin_z, r, 'r', alpha=.0125)
-        # axb.plot(bin_z, np.nanmin(stack,axis=0), 'r', label='Pred.')
 
         # dummy label for timespan
         ax[t].text(
@@ -413,29 +430,15 @@ def plot_mcmc_elev_change_1d(obs, preds, ela, title, fontsize=8, rate=True, show
             )
             for legobj in leg.legend_handles:
                 legobj.set_linewidth(2.0)
-        # else:
         # Turn off cumulative area ticks and labels
         ax[t].tick_params(axis='x', which='both', top=False, labeltop=False)
 
-    ax[0].set_xlim([elev_to_cum_area(np.min(bin_z)), elev_to_cum_area(np.max(bin_z))])
+    ax[0].set_xlim(list(map(elev_to_cum_area, (initial_surface_h[first], initial_surface_h[last]))))
 
     for a in ax:
         # plot ela
         a.axvline(x=elev_to_cum_area(ela), c='k', ls=':', lw=1)
-        # plot area
-        # a.fill_between(bin_z, 0, np.asarray(data['area'])*1e-6, color='steelblue', alpha=.125)
-        # a.set_ylim([0,a.get_ylim()[-1]*3])
-        # a.yaxis.set_label_position('right')
-        # a.yaxis.set_ticks_position('right')
-        # a.yaxis.set_label_position("right")
-        # a.spines['right'].set_color('steelblue')
-        # a.yaxis.label.set_color('steelblue')
-        # a.tick_params(axis='y', colors='steelblue')
-        # a.set_ylim([0, np.ceil(2*a.get_ylim()[1])])
-        # a.set_yticks([0,np.rint(max(np.asarray(data['area'])*1e-6))])
 
-    # axb.set_xlim(np.asarray(bin_z)[np.where(np.asarray(data['area'])>0)[0][[0,-1]]].tolist())
-    # ax[-1].sec('Elevation (m)')
     ax[-1].text(
         0.0125,
         0.5,
@@ -446,8 +449,6 @@ def plot_mcmc_elev_change_1d(obs, preds, ela, title, fontsize=8, rate=True, show
         transform=fig.transFigure,
     )
 
-    # ax[-1].text(0.95, .5, 'Glacier Area (km$^2$)', c='steelblue', horizontalalignment='left', rotation=90,
-    #                 verticalalignment='center', transform=fig.transFigure)
     ax[0].set_title(title, fontsize=fontsize)
     # Remove overlapping tick labels from secaxx
     fig.canvas.draw()  # Force rendering to get accurate bounding boxes
