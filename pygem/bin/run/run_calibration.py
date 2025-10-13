@@ -327,7 +327,7 @@ def calculate_elev_change_1d(
     # if there is an issue evaluating the dynamics model for a given parameter set in MCMC calibration,
     # return -inf for mb_mwea and binned_dh, so MCMC calibration won't accept given parameters
     except RuntimeError:
-        return -np.inf, -np.inf
+        return float('-inf'), float('-inf')
 
     ### get monthly ice thickness
     # grab components of interest
@@ -2196,8 +2196,9 @@ def run(list_packed_vars):
                                     )
                                     if i == 1:
                                         graphics.plot_mcmc_elev_change_1d(
-                                            gdir.elev_change_1d,
                                             pred_chain[1],
+                                            fls,
+                                            gdir.elev_change_1d,
                                             gdir.ela.min(),
                                             glacier_str,
                                             show=show,
