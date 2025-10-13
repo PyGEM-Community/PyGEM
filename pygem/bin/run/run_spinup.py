@@ -32,7 +32,9 @@ def run(glacno_list, mb_model_params, debug=False, **kwargs):
     kwargs = {k: v for k, v in kwargs.items() if v is not None}
     main_glac_rgi = modelsetup.selectglaciersrgitable(glac_no=glacno_list)
     # model dates
-    dt = modelsetup.datesmodelrun(startyear=2000 - kwargs.get('spinup_period', 20), endyear=kwargs.get('ye', 2020))
+    dt = modelsetup.datesmodelrun(
+        startyear=2000 - kwargs.get('spinup_period', 20), endyear=kwargs.get('ye', pygem_prms['climate']['ref_endyear'])
+    )
 
     # load climate data
     ref_clim = class_climate.GCM(name='ERA5')
