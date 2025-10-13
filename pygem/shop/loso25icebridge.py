@@ -515,7 +515,7 @@ class oib:
         note: 'ref_dem' is the reference DEM used for elevation-binning.
         'ref_dem_year' is the acquisition year of the reference DEM.
         'dates' are tuples (or length-2 sublists) of the start and stop date of an individual elevation change record
-        and are stored as strings in 'YYYY-MM-DD' format. 
+        and are stored as strings in 'YYYY-MM-DD' format.
         'bin_edges' should be a list length N containing the elevation values of each bin edge.
         'bin_area' should be a list of length N-1 containing the bin areas given by the 'ref_dem' (optional).
         'dh' should be M lists of length N-1, where M is the number of date pairs and N is the number of bin edges.

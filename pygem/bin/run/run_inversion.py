@@ -280,13 +280,15 @@ def main():
         nargs='+',
         help='Randoph Glacier Inventory glacier number (can take multiple)',
     )
-    parser.add_argument(
-        '-rgi_glac_number_fn',
-        action='store',
-        type=str,
-        default=None,
-        help='Filepath containing list of rgi_glac_number, helpful for running batches on spc',
-    ),
+    (
+        parser.add_argument(
+            '-rgi_glac_number_fn',
+            action='store',
+            type=str,
+            default=None,
+            help='Filepath containing list of rgi_glac_number, helpful for running batches on spc',
+        ),
+    )
     parser.add_argument(
         '-calibrate_regional_glen_a',
         type=str2bool,
@@ -298,13 +300,13 @@ def main():
         type=float,
         default=None,
         help="User-selected inversion Glen's creep parameter value",
-    )  
+    )
     parser.add_argument(
         '-fs',
         type=float,
         default=None,
         help="User-selected inversion Orleam's sliding factor value",
-    )    
+    )
     parser.add_argument(
         '-ncores',
         action='store',
@@ -354,7 +356,7 @@ def main():
         run,
         ncores=args.ncores,
         calibrate_regional_glen_a=args.calibrate_regional_glen_a,
-        glen_a=args.glen_a, 
+        glen_a=args.glen_a,
         fs=args.fs,
         reset_gdirs=args.reset_gdirs,
         debug=args.debug,

@@ -296,8 +296,9 @@ def plot_resid_histogram(obs, preds, title, fontsize=8, show=False, fpath=None):
     plt.close(fig)
 
 
-def plot_mcmc_elev_change_1d(preds, fls, obs, ela, title, fontsize=8, rate=True, uniform_area=True, show=False, fpath=None):
-
+def plot_mcmc_elev_change_1d(
+    preds, fls, obs, ela, title, fontsize=8, rate=True, uniform_area=True, show=False, fpath=None
+):
     bin_z = np.array(obs['bin_centers'])
     bin_edges = np.array(obs['bin_edges'])
 
@@ -305,7 +306,7 @@ def plot_mcmc_elev_change_1d(preds, fls, obs, ela, title, fontsize=8, rate=True,
     initial_area = fls[0].widths_m * fls[0].dx_meter
     initial_thickness = getattr(fls[0], 'thick', None)
     initial_surface_h = getattr(fls[0], 'surface_h', None)
-    # sort initial surface height 
+    # sort initial surface height
     sorting = np.argsort(initial_surface_h)
     initial_surface_h = initial_surface_h[sorting]
     initial_area = initial_area[sorting]
@@ -319,7 +320,7 @@ def plot_mcmc_elev_change_1d(preds, fls, obs, ela, title, fontsize=8, rate=True,
         initial_area = obs['bin_area']
 
     if uniform_area:
-        xvals = np.nancumsum(initial_area)*1e-6
+        xvals = np.nancumsum(initial_area) * 1e-6
     else:
         xvals = bin_z
 
@@ -364,7 +365,6 @@ def plot_mcmc_elev_change_1d(preds, fls, obs, ela, title, fontsize=8, rate=True,
         ax[t].tick_params(axis='x', which='both', top=False)
         ax[t].axhline(y=0, c='grey', lw=0.5)
         preds = np.stack(preds)
-
 
         ax[t].fill_between(
             xvals,

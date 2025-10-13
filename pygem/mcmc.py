@@ -230,7 +230,7 @@ class mbPosterior:
             if torch.all(pred == float('-inf')):
                 # Invalid model output -> assign -inf likelihood
                 return torch.tensor([-float('inf')])
-        
+
             if i == 0:
                 # --- Base case: mass balance likelihood ---
                 log_likehood += log_normal_density(
@@ -238,7 +238,7 @@ class mbPosterior:
                     mu=pred,  # predicted values
                     sigma=self.obs[i][1],  # observation uncertainty
                 )
-            
+
             elif i == 1 and len(m) > 3:
                 # --- Extended case: apply density scaling to get binned elevation change ---
                 # Create density field, separate values for ablation/accumulation zones
@@ -251,9 +251,9 @@ class mbPosterior:
                 )  # scale prediction by model density values (convert from m ice to m thickness change)
 
                 log_likehood += log_normal_density(
-                    self.obs[i][0],         # observations
-                    mu=pred,                # scaled predictions
-                    sigma=self.obs[i][1],   # uncertainty
+                    self.obs[i][0],  # observations
+                    mu=pred,  # scaled predictions
+                    sigma=self.obs[i][1],  # uncertainty
                 )
         return log_likehood
 

@@ -30,10 +30,10 @@ from pygem.oggm_compat import (
 def run(glacno_list, mb_model_params, debug=False, **kwargs):
     # remove None kwargs
     kwargs = {k: v for k, v in kwargs.items() if v is not None}
-
     main_glac_rgi = modelsetup.selectglaciersrgitable(glac_no=glacno_list)
     # model dates
-    dt = modelsetup.datesmodelrun(startyear=1979, endyear=2019)
+    dt = modelsetup.datesmodelrun(startyear=2000 - kwargs.get('spinup_period', 20), endyear=kwargs.get('ye', 2020))
+
     # load climate data
     ref_clim = class_climate.GCM(name='ERA5')
 
@@ -186,7 +186,7 @@ def main():
         help='Fixed spinup period (years). If not provided, OGGM default is used.',
     )
     parser.add_argument('-target_yr', type=int, default=None)
-    parser.add_argument('-ye', type=int, default=2020)
+    parser.add_argument('-ye', type=int, default=None)
     parser.add_argument(
         '-ncores',
         action='store',
@@ -242,6 +242,7 @@ def main():
         mb_model_params=args.mb_model_params,
         target_yr=args.target_yr,
         spinup_period=args.spinup_period,
+        ye=args.ye,
     )
     # parallel processing
     print(f'Processing with {ncores} cores... \n{glac_no_lsts}')
