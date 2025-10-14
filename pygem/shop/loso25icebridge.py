@@ -487,6 +487,7 @@ class oib:
     def save_elevchange1d(
         self,
         outdir=f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["elev_change_1d"]["elev_change_1d_relpath"]}',
+        csv=False,
     ):
         """
         Save elevation change data in a format compatible with elevchange1d module.
@@ -539,6 +540,35 @@ class oib:
         outfp = os.path.join(outdir, f'{self.rgi6id}_elev_change_1d.json')
         with open(outfp, 'w') as f:
             json.dump(elev_change_data, f)
+
+        if csv:
+            edges = np.array(elev_change_data['bin_edges'])
+            ref_dem = elev_change_data['ref_dem']
+            ref_year = elev_change_data['ref_dem_year']
+            bin_area = np.array(elev_change_data.get('bin_area', [np.nan] * (len(edges) - 1)))
+
+            records = []
+            for period_idx, (start, end) in enumerate(elev_change_data['dates']):
+                dh_vals = np.array(elev_change_data['dh'][period_idx])
+                dh_sig = np.array(elev_change_data['dh_sigma'][period_idx])
+                for i in range(len(edges) - 1):
+                    records.append(
+                        {
+                            'bin_start': edges[i],
+                            'bin_stop': edges[i + 1],
+                            'bin_area': bin_area[i],
+                            'date_start': start,
+                            'date_end': end,
+                            'dh': dh_vals[i],
+                            'dh_sigma': dh_sig[i],
+                            'ref_dem': ref_dem,
+                            'ref_dem_year': ref_year,
+                        }
+                    )
+
+            df = pd.DataFrame(records)
+            outfp = os.path.join(outdir, f'{self.rgi6id}_elev_change_1d.csv')
+            df.to_csv(outfp, index=False)
 
 
 def _split_by_uppercase(text):

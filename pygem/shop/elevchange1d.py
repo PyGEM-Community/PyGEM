@@ -12,6 +12,7 @@ import json
 import logging
 import os
 
+import numpy as np
 import pandas as pd
 
 # External libraries
@@ -59,18 +60,18 @@ def elev_change_1d_to_gdir(
                 (date_start_M, date_end_M)
             ],
             'bin_edges': [edge0, edge1, ..., edgeN],
-            'bin_area': [area0, area1, ..., areaN],
+            'bin_area': [area0, area1, ..., areaN-1],
             'dh': [
-                [dh_bin1_period1, dh_bin2_period1, ..., dh_binN_period1],
-                [dh_bin1_period2, dh_bin2_period2, ..., dh_binN_period2],
+                [dh_bin1_period1, dh_bin2_period1, ..., dh_binN-1_period1],
+                [dh_bin1_period2, dh_bin2_period2, ..., dh_binN-1_period2],
                 ...
-                [dh_bin1_periodM, dh_bin2_periodM, ..., dh_binN_periodM]
+                [dh_bin1_periodM, dh_bin2_periodM, ..., dh_binN-1_periodM]
             ],
             'dh_sigma': [
-                [dh_sigma_bin1_period1, dh_sigma_bin2_period1, ..., dh_sigma_binN_period1],
-                [dh_sigma_bin1_period2, dh_sigma_bin2_period2, ..., dh_sigma_binN_period2],
+                [dh_sigma_bin1_period1, dh_sigma_bin2_period1, ..., dh_sigma_binN-1_period1],
+                [dh_sigma_bin1_period2, dh_sigma_bin2_period2, ..., dh_sigma_binN-1_period2],
                 ...
-                [dh_sigma_bin1_periodM, dh_sigma_bin2_periodM, ..., dh_sigma_binN_periodM]
+                [dh_sigma_bin1_periodM, dh_sigma_bin2_periodM, ..., dh_sigma_binN-1_periodM]
             ],
         }
 
@@ -86,20 +87,21 @@ def elev_change_1d_to_gdir(
         - Each list in 'dh' (and optionally 'dh_sigma') corresponds exactly to one period in 'dates'.
 
     CSV file structure:
-        bin_start, bin_stop, date_start, date_end, dh, dh_sigma, ref_dem, ref_dem_year
-        edge0, edge1, date_start_1, date_end_1, dh_bin1_period1, dh_sigma_bin1_period1, ref_dem, ref_dem_year
-        edge1, edge2, date_start_1, date_end_1, dh_bin2_period1, dh_sigma_bin2_period1, ref_dem, ref_dem_year
+        bin_start, bin_stop, bin_area, date_start, date_end, dh, dh_sigma, ref_dem, ref_dem_year
+        edge0, edge1, area0, date_start_1, date_end_1, dh_bin1_period1, dh_sigma_bin1_period1, ref_dem, ref_dem_year
+        edge1, edge2, area1, date_start_1, date_end_1, dh_bin2_period1, dh_sigma_bin2_period1, ref_dem, ref_dem_year
         ...
-        edgeN-1, edgeN, date_start_1, date_end_1, dh_binN_period1, dh_sigma_binN_period1, ref_dem, ref_dem_year
-        edge0, edge1, date_start_2, date_end_2, dh_bin1_period2, dh_sigma_bin1_period2, ref_dem, ref_dem_year
+        edgeN-1, edgeN, areaN-1, date_start_1, date_end_1, dh_binN-1_period1, dh_sigma_binN-1_period1, ref_dem, ref_dem_year
+        edge0, edge1, area0, date_start_2, date_end_2, dh_bin1_period2, dh_sigma_bin1_period2, ref_dem, ref_dem_year
         ...
-        edgeN-1, edgeN, date_start_M, date_end_M, dh_binN_periodM, dh_sigma_binN_periodM, ref_dem, ref_dem_year
+        edgeN-1, edgeN, areaN-1, date_start_M, date_end_M, dh_binN-1_periodM, dh_sigma_binN-1_periodM, ref_dem, ref_dem_year
 
     Notes:
         - Each set of 'date_start' and 'date_end' defines one elevation change period.
         - Dates must be stored as strings in 'YYYY-MM-DD' format.
         - Rows with the same ('date_start', 'date_end') values correspond to a single period,
         with one row per elevation bin.
+        - 'bin_area' should contain M × (N-1) entries, where M is the number of periods and N is the number of bin edges. Units are in square meters. (optional).
         - 'dh' should contain M × (N-1) entries, where M is the number of periods and N is the number of bin edges. Units are in meters.
         - 'dh_sigma' should contain M × (N-1) entries, where M is the number of periods and N is the number of bin edges. Units are in meters.
         - 'ref_dem' is constant for all rows and indicates the acquisition year of the reference DEM used for elevation-binning.
@@ -255,19 +257,28 @@ def csv_to_elev_change_1d_dict(csv_path):
     # Get all unique bin edges
     bin_edges = sorted(set(df['bin_start']).union(df['bin_stop']))
 
+    if 'bin_area' in df.keys():
+        bin_area = df['bin_area'].tolist()
+    else:
+        bin_area = False
+
     # Validate reference DEM - should only be one unique string
-    dem = df['ref_dem'].dropna().unique()
-    if len(dem) != 1:
-        raise ValueError(f"'ref_dem' must have exactly one unique value, but found {len(dem)}: {dem}")
-    if not isinstance(dem, (str)):
-        raise TypeError(f"'ref_dem' must be a string, but got {dem} ({type(dem).__name__}).")
+    dems = df['ref_dem'].dropna().unique()
+    if len(dems) != 1:
+        raise ValueError(f"'ref_dem' must have exactly one unique value, but found {len(dems)}: {dems.tolist()}")
+    dem = dems[0]
+    if not isinstance(dem, str):
+        raise TypeError(f"'ref_dem' must be a string, but got {type(dem).__name__}: {dem}")
 
     # Validate reference DEM year - should only be one constant integer value
-    dem_year = df['ref_dem_year'].dropna().unique()
-    if len(dem_year) != 1:
-        raise ValueError(f"'ref_dem_year' must have exactly one unique value, but found {len(dem_year)}: {dem_year}")
-    if not isinstance(dem_year, (int)):
-        raise TypeError(f"'ref_dem_year' must be an integer, but got {dem_year} ({type(dem_year).__name__}).")
+    years = df['ref_dem_year'].dropna().unique()
+    if len(years) != 1:
+        raise ValueError(f"'ref_dem_year' must have exactly one unique value, but found {len(years)}: {years.tolist()}")
+    dem_year = years[0]
+    if not isinstance(dem_year, (int, np.integer)):
+        raise TypeError(f"'ref_dem_year' must be an integer, but got {type(dem_year).__name__}: {dem_year}")
+    # convert to plain int
+    dem_year = int(dem_year)
 
     # Get all unique date pairs (preserving order)
     date_pairs = df[['date_start', 'date_end']].drop_duplicates().apply(tuple, axis=1).tolist()
@@ -285,8 +296,12 @@ def csv_to_elev_change_1d_dict(csv_path):
         'ref_dem_year': dem_year,
         'dates': [(str(ds), str(de)) for ds, de in date_pairs],
         'bin_edges': bin_edges,
+        'bin_area': bin_area,
         'dh': dh_all,
         'dh_sigma': sigma_all,
     }
+
+    if not bin_area:  # remove bin_area if flag is False
+        del data['bin_area']
 
     return data
