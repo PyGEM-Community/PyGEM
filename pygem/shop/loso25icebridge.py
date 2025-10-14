@@ -503,15 +503,15 @@ class oib:
             'ref_dem_year': int,
             'dates':        [(period1_start, period1_end), (period2_start, period2_end), ... (periodM_start, periodM_end)],
             'bin_edges':    [edge0, edge1, ..., edgeN],
-            'bin_area':     [area0, area1, ..., areaN],
-            'dh':           [[dh_bin1_period1, dh_bin2_period1, ..., dh_binN_period1],
-                            [dh_bin1_period2, dh_bin2_period2, ..., dh_binN_period2],
+            'bin_area':     [area0, area1, ..., areaN-1],
+            'dh':           [[dh_bin1_period1, dh_bin2_period1, ..., dh_binN-1_period1],
+                            [dh_bin1_period2, dh_bin2_period2, ..., dh_binN-1_period2],
                             ...
-                            [dh_bin1_periodM, dh_bin2_periodM, ..., dh_binN_periodM]],
-            'dh_sigma':        [[sigma_bin1_period1, sigma_bin2_period1, ..., sigma_binN_period1],
-                            [sigma_bin1_period2, sigma_bin2_period2, ..., sigma_binN_period2],
+                            [dh_bin1_periodM, dh_bin2_periodM, ..., dh_binN-1_periodM]],
+            'dh_sigma':     [[sigma_bin1_period1, sigma_bin2_period1, ..., sigma_binN-1_period1],
+                            [sigma_bin1_period2, sigma_bin2_period2, ..., sigma_binN-1_period2],
                             ...
-                            [sigma_bin1_periodM, sigma_bin2_periodM, ..., sigma_binN_periodM]],
+                            [sigma_bin1_periodM, sigma_bin2_periodM, ..., sigma_binN-1_periodM]],
         }
         note: 'ref_dem' is the reference DEM used for elevation-binning.
         'ref_dem_year' is the acquisition year of the reference DEM.
