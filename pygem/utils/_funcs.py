@@ -51,14 +51,14 @@ def annualweightedmean_array(var, dates_table):
     var : np.ndarray
         Variable with monthly or daily timestep
     dates_table : pd.DataFrame
-        Table of dates, year, month, daysinmonth, wateryear, and season for each timestep
+        Table of dates, year, month, days_in_step, wateryear, and season for each timestep
     Returns
     -------
     var_annual : np.ndarray
         Annual weighted mean of variable
     """
     if pygem_prms['time']['timestep'] == 'monthly':
-        dayspermonth = dates_table['daysinmonth'].values.reshape(-1, 12)
+        dayspermonth = dates_table['days_in_step'].values.reshape(-1, 12)
         #  creates matrix (rows-years, columns-months) of the number of days per month
         daysperyear = dayspermonth.sum(axis=1)
         #  creates an array of the days per year (includes leap years)
@@ -80,11 +80,10 @@ def annualweightedmean_array(var, dates_table):
         if var_annual.shape[1] == 1:
             var_annual = var_annual.reshape(var_annual.shape[0])
     elif pygem_prms['time']['timestep'] == 'daily':
-        print(
-            '\nError: need to code the groupbyyearsum and groupbyyearmean for daily timestep.'
-            'Exiting the model run.\n'
-        )
-        exit()
+        var_annual = var.mean(1)
+    else:
+        # var_annual = var.mean(1)
+        assert 1==0, 'add this functionality for weighting that is not monthly or daily'
     return var_annual
 
 

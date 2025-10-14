@@ -547,11 +547,13 @@ def run(list_packed_vars):
         gcm_tempstd = np.zeros((main_glac_rgi.shape[0], dates_table.shape[0]))
         ref_tempstd = np.zeros((main_glac_rgi.shape[0], dates_table_ref.shape[0]))
     elif pygem_prms['mb']['option_ablation'] == 2 and sim_climate_name in ['ERA5']:
+        assert pygem_prms['time']['timestep'] != 'daily', 'Option 2 for ablation should not be used with daily data'
         gcm_tempstd, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(
             gcm.tempstd_fn, gcm.tempstd_vn, main_glac_rgi, dates_table
         )
         ref_tempstd = gcm_tempstd
     elif pygem_prms['mb']['option_ablation'] == 2 and args.ref_climate_name in ['ERA5']:
+        assert pygem_prms['time']['timestep'] != 'daily', 'Option 2 for ablation should not be used with daily data'
         # Compute temp std based on reference climate data
         ref_tempstd, ref_dates = ref_gcm.importGCMvarnearestneighbor_xarray(
             ref_gcm.tempstd_fn, ref_gcm.tempstd_vn, main_glac_rgi, dates_table_ref
@@ -565,24 +567,26 @@ def run(list_packed_vars):
         ref_tempstd = np.zeros((main_glac_rgi.shape[0], dates_table_ref.shape[0]))
 
     # Lapse rate
-    if sim_climate_name in ['ERA-Interim', 'ERA5']:
-        gcm_lr, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(
-            gcm.lr_fn, gcm.lr_vn, main_glac_rgi, dates_table
-        )
-        ref_lr = gcm_lr
+    if pygem_prms['sim']['params']['use_constant_lapserate']:
+        gcm_lr = np.zeros((main_glac_rgi.shape[0], dates_table.shape[0])) + pygem_prms['sim']['params']['lapserate']
+        ref_lr = np.zeros((main_glac_rgi.shape[0], dates_table_ref.shape[0])) + pygem_prms['sim']['params']['lapserate']
     else:
-        # Compute lapse rates based on reference climate data
-        ref_lr, ref_dates = ref_gcm.importGCMvarnearestneighbor_xarray(
-            ref_gcm.lr_fn, ref_gcm.lr_vn, main_glac_rgi, dates_table_ref
-        )
-        # Monthly average from reference climate data
-        gcm_lr = gcmbiasadj.monthly_avg_array_rolled(
-            ref_lr,
-            dates_table_ref,
-            dates_table_full,
-            args.sim_startyear,
-            args.ref_startyear,
-        )
+        if sim_climate_name in ['ERA-Interim', 'ERA5']:
+            gcm_lr, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(
+                gcm.lr_fn, gcm.lr_vn, main_glac_rgi, dates_table)
+            ref_lr = gcm_lr
+        else:
+            # Compute lapse rates based on reference climate data
+            ref_lr, ref_dates = ref_gcm.importGCMvarnearestneighbor_xarray(
+                ref_gcm.lr_fn, ref_gcm.lr_vn, main_glac_rgi, dates_table_ref)
+            # Monthly average from reference climate data
+            gcm_lr = gcmbiasadj.monthly_avg_array_rolled(
+                ref_lr,
+                dates_table_ref,
+                dates_table_full,
+                args.sim_startyear,
+                args.ref_startyear,
+            )
 
     # ===== RUN MASS BALANCE =====
     # Number of simulations
@@ -596,7 +600,8 @@ def run(list_packed_vars):
         nyears = int(dates_table.shape[0] / 12)
         nyears_ref = int(dates_table_ref.shape[0] / 12)
     else:
-        assert True == False, 'Adjust nyears for non-monthly timestep'
+        nyears = np.unique(dates_table['year']).shape[0]
+        nyears_ref = np.unique(dates_table_ref['year']).shape[0]
 
     for glac in range(main_glac_rgi.shape[0]):
         if glac == 0:
@@ -611,8 +616,8 @@ def run(list_packed_vars):
         reg_str = str(glacier_rgi_table.O1Region).zfill(2)
         rgiid = main_glac_rgi.loc[main_glac_rgi.index.values[glac], 'RGIId']
 
-        try:
-            # for batman in [0]:
+        # try:
+        for batman in [0]:
 
             # ===== Load glacier data: area (km2), ice thickness (m), width (km) =====
             if (
@@ -883,43 +888,40 @@ def run(list_packed_vars):
 
                 # Time attributes and values
                 if pygem_prms['climate']['sim_wateryear'] == 'hydro':
-                    annual_columns = np.unique(dates_table['wateryear'].values)[
-                        0 : int(dates_table.shape[0] / 12)
-                    ]
+                    annual_columns = np.unique(dates_table['wateryear'].values)
                 else:
-                    annual_columns = np.unique(dates_table['year'].values)[
-                        0 : int(dates_table.shape[0] / 12)
-                    ]
+                    annual_columns = np.unique(dates_table['year'].values)
+
                 # append additional year to year_values to account for mass and area at end of period
                 year_values = annual_columns
                 year_values = np.concatenate(
                     (year_values, np.array([annual_columns[-1] + 1]))
                 )
-                output_glac_temp_monthly = (
+                output_glac_temp_steps = (
                     np.zeros((dates_table.shape[0], nsims)) * np.nan
                 )
-                output_glac_prec_monthly = (
+                output_glac_prec_steps = (
                     np.zeros((dates_table.shape[0], nsims)) * np.nan
                 )
-                output_glac_acc_monthly = (
+                output_glac_acc_steps = (
                     np.zeros((dates_table.shape[0], nsims)) * np.nan
                 )
-                output_glac_refreeze_monthly = (
+                output_glac_refreeze_steps = (
                     np.zeros((dates_table.shape[0], nsims)) * np.nan
                 )
-                output_glac_melt_monthly = (
+                output_glac_melt_steps = (
                     np.zeros((dates_table.shape[0], nsims)) * np.nan
                 )
-                output_glac_frontalablation_monthly = (
+                output_glac_frontalablation_steps = (
                     np.zeros((dates_table.shape[0], nsims)) * np.nan
                 )
-                output_glac_massbaltotal_monthly = (
+                output_glac_massbaltotal_steps = (
                     np.zeros((dates_table.shape[0], nsims)) * np.nan
                 )
-                output_glac_runoff_monthly = (
+                output_glac_runoff_steps = (
                     np.zeros((dates_table.shape[0], nsims)) * np.nan
                 )
-                output_glac_snowline_monthly = (
+                output_glac_snowline_steps = (
                     np.zeros((dates_table.shape[0], nsims)) * np.nan
                 )
                 output_glac_area_annual = (
@@ -937,19 +939,19 @@ def run(list_packed_vars):
                 output_glac_ELA_annual = (
                     np.zeros((year_values.shape[0], nsims)) * np.nan
                 )
-                output_offglac_prec_monthly = (
+                output_offglac_prec_steps = (
                     np.zeros((dates_table.shape[0], nsims)) * np.nan
                 )
-                output_offglac_refreeze_monthly = (
+                output_offglac_refreeze_steps = (
                     np.zeros((dates_table.shape[0], nsims)) * np.nan
                 )
-                output_offglac_melt_monthly = (
+                output_offglac_melt_steps = (
                     np.zeros((dates_table.shape[0], nsims)) * np.nan
                 )
-                output_offglac_snowpack_monthly = (
+                output_offglac_snowpack_steps = (
                     np.zeros((dates_table.shape[0], nsims)) * np.nan
                 )
-                output_offglac_runoff_monthly = (
+                output_offglac_runoff_steps = (
                     np.zeros((dates_table.shape[0], nsims)) * np.nan
                 )
                 output_glac_bin_icethickness_annual = None
@@ -1106,7 +1108,8 @@ def run(list_packed_vars):
                             graphics.plot_modeloutput_section(ev_model)
                             plt.show()
 
-                        try:
+                        # try:
+                        for batman in [0]:
                             diag = ev_model.run_until_and_store(args.sim_endyear + 1)
                             ev_model.mb_model.glac_wide_volume_annual[-1] = (
                                 diag.volume_m3[-1]
@@ -1171,155 +1174,155 @@ def run(list_packed_vars):
                                         ),
                                     )
 
-                        except RuntimeError as e:
-                            if 'Glacier exceeds domain boundaries' in repr(e):
-                                count_exceed_boundary_errors += 1
-                                successful_run = False
+                        # except RuntimeError as e:
+                        #     if 'Glacier exceeds domain boundaries' in repr(e):
+                        #         count_exceed_boundary_errors += 1
+                        #         successful_run = False
 
-                                # LOG FAILURE
-                                fail_domain_fp = (
-                                    pygem_prms['root']
-                                    + '/Output/simulations/fail-exceed_domain/'
-                                    + reg_str
-                                    + '/'
-                                    + sim_climate_name
-                                    + '/'
-                                )
-                                if sim_climate_name not in [
-                                    'ERA-Interim',
-                                    'ERA5',
-                                    'COAWST',
-                                ]:
-                                    fail_domain_fp += sim_climate_scenario + '/'
-                                if not os.path.exists(fail_domain_fp):
-                                    os.makedirs(fail_domain_fp, exist_ok=True)
-                                txt_fn_fail = glacier_str + '-sim_failed.txt'
-                                with open(
-                                    fail_domain_fp + txt_fn_fail, 'w'
-                                ) as text_file:
-                                    text_file.write(
-                                        glacier_str
-                                        + ' failed to complete '
-                                        + str(count_exceed_boundary_errors)
-                                        + ' simulations'
-                                    )
-                            elif gdir.is_tidewater:
-                                if debug:
-                                    print(
-                                        'OGGM dynamics failed, using mass redistribution curves'
-                                    )
-                                # Mass redistribution curves glacier dynamics model
-                                ev_model = MassRedistributionCurveModel(
-                                    nfls,
-                                    mb_model=mbmod,
-                                    y0=args.sim_startyear,
-                                    glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier,
-                                    fs=fs,
-                                    is_tidewater=gdir.is_tidewater,
-                                    water_level=water_level,
-                                )
-                                _, diag = ev_model.run_until_and_store(
-                                    args.sim_endyear + 1
-                                )
-                                ev_model.mb_model.glac_wide_volume_annual = (
-                                    diag.volume_m3.values
-                                )
-                                ev_model.mb_model.glac_wide_area_annual = (
-                                    diag.area_m2.values
-                                )
+                        #         # LOG FAILURE
+                        #         fail_domain_fp = (
+                        #             pygem_prms['root']
+                        #             + '/Output/simulations/fail-exceed_domain/'
+                        #             + reg_str
+                        #             + '/'
+                        #             + sim_climate_name
+                        #             + '/'
+                        #         )
+                        #         if sim_climate_name not in [
+                        #             'ERA-Interim',
+                        #             'ERA5',
+                        #             'COAWST',
+                        #         ]:
+                        #             fail_domain_fp += sim_climate_scenario + '/'
+                        #         if not os.path.exists(fail_domain_fp):
+                        #             os.makedirs(fail_domain_fp, exist_ok=True)
+                        #         txt_fn_fail = glacier_str + '-sim_failed.txt'
+                        #         with open(
+                        #             fail_domain_fp + txt_fn_fail, 'w'
+                        #         ) as text_file:
+                        #             text_file.write(
+                        #                 glacier_str
+                        #                 + ' failed to complete '
+                        #                 + str(count_exceed_boundary_errors)
+                        #                 + ' simulations'
+                        #             )
+                        #     elif gdir.is_tidewater:
+                        #         if debug:
+                        #             print(
+                        #                 'OGGM dynamics failed, using mass redistribution curves'
+                        #             )
+                        #         # Mass redistribution curves glacier dynamics model
+                        #         ev_model = MassRedistributionCurveModel(
+                        #             nfls,
+                        #             mb_model=mbmod,
+                        #             y0=args.sim_startyear,
+                        #             glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier,
+                        #             fs=fs,
+                        #             is_tidewater=gdir.is_tidewater,
+                        #             water_level=water_level,
+                        #         )
+                        #         _, diag = ev_model.run_until_and_store(
+                        #             args.sim_endyear + 1
+                        #         )
+                        #         ev_model.mb_model.glac_wide_volume_annual = (
+                        #             diag.volume_m3.values
+                        #         )
+                        #         ev_model.mb_model.glac_wide_area_annual = (
+                        #             diag.area_m2.values
+                        #         )
 
-                                # Record frontal ablation for tidewater glaciers and update total mass balance
-                                # Update glacier-wide frontal ablation (m3 w.e.)
-                                ev_model.mb_model.glac_wide_frontalablation = (
-                                    ev_model.mb_model.glac_bin_frontalablation.sum(0)
-                                )
-                                # Update glacier-wide total mass balance (m3 w.e.)
-                                ev_model.mb_model.glac_wide_massbaltotal = (
-                                    ev_model.mb_model.glac_wide_massbaltotal
-                                    - ev_model.mb_model.glac_wide_frontalablation
-                                )
+                        #         # Record frontal ablation for tidewater glaciers and update total mass balance
+                        #         # Update glacier-wide frontal ablation (m3 w.e.)
+                        #         ev_model.mb_model.glac_wide_frontalablation = (
+                        #             ev_model.mb_model.glac_bin_frontalablation.sum(0)
+                        #         )
+                        #         # Update glacier-wide total mass balance (m3 w.e.)
+                        #         ev_model.mb_model.glac_wide_massbaltotal = (
+                        #             ev_model.mb_model.glac_wide_massbaltotal
+                        #             - ev_model.mb_model.glac_wide_frontalablation
+                        #         )
 
-                                if debug:
-                                    print(
-                                        'avg frontal ablation [Gta]:',
-                                        np.round(
-                                            ev_model.mb_model.glac_wide_frontalablation.sum()
-                                            / 1e9
-                                            / nyears,
-                                            4,
-                                        ),
-                                    )
-                                    print(
-                                        'avg frontal ablation [Gta]:',
-                                        np.round(
-                                            ev_model.calving_m3_since_y0
-                                            * pygem_prms['constants']['density_ice']
-                                            / 1e12
-                                            / nyears,
-                                            4,
-                                        ),
-                                    )
+                        #         if debug:
+                        #             print(
+                        #                 'avg frontal ablation [Gta]:',
+                        #                 np.round(
+                        #                     ev_model.mb_model.glac_wide_frontalablation.sum()
+                        #                     / 1e9
+                        #                     / nyears,
+                        #                     4,
+                        #                 ),
+                        #             )
+                        #             print(
+                        #                 'avg frontal ablation [Gta]:',
+                        #                 np.round(
+                        #                     ev_model.calving_m3_since_y0
+                        #                     * pygem_prms['constants']['density_ice']
+                        #                     / 1e12
+                        #                     / nyears,
+                        #                     4,
+                        #                 ),
+                        #             )
 
-                        except:
-                            if gdir.is_tidewater:
-                                if debug:
-                                    print(
-                                        'OGGM dynamics failed, using mass redistribution curves'
-                                    )
-                                    # Mass redistribution curves glacier dynamics model
-                                ev_model = MassRedistributionCurveModel(
-                                    nfls,
-                                    mb_model=mbmod,
-                                    y0=args.sim_startyear,
-                                    glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier,
-                                    fs=fs,
-                                    is_tidewater=gdir.is_tidewater,
-                                    water_level=water_level,
-                                )
-                                _, diag = ev_model.run_until_and_store(
-                                    args.sim_endyear + 1
-                                )
-                                ev_model.mb_model.glac_wide_volume_annual = (
-                                    diag.volume_m3.values
-                                )
-                                ev_model.mb_model.glac_wide_area_annual = (
-                                    diag.area_m2.values
-                                )
+                        # except:
+                        #     if gdir.is_tidewater:
+                        #         if debug:
+                        #             print(
+                        #                 'OGGM dynamics failed, using mass redistribution curves'
+                        #             )
+                        #             # Mass redistribution curves glacier dynamics model
+                        #         ev_model = MassRedistributionCurveModel(
+                        #             nfls,
+                        #             mb_model=mbmod,
+                        #             y0=args.sim_startyear,
+                        #             glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier,
+                        #             fs=fs,
+                        #             is_tidewater=gdir.is_tidewater,
+                        #             water_level=water_level,
+                        #         )
+                        #         _, diag = ev_model.run_until_and_store(
+                        #             args.sim_endyear + 1
+                        #         )
+                        #         ev_model.mb_model.glac_wide_volume_annual = (
+                        #             diag.volume_m3.values
+                        #         )
+                        #         ev_model.mb_model.glac_wide_area_annual = (
+                        #             diag.area_m2.values
+                        #         )
 
-                                # Record frontal ablation for tidewater glaciers and update total mass balance
-                                # Update glacier-wide frontal ablation (m3 w.e.)
-                                ev_model.mb_model.glac_wide_frontalablation = (
-                                    ev_model.mb_model.glac_bin_frontalablation.sum(0)
-                                )
-                                # Update glacier-wide total mass balance (m3 w.e.)
-                                ev_model.mb_model.glac_wide_massbaltotal = (
-                                    ev_model.mb_model.glac_wide_massbaltotal
-                                    - ev_model.mb_model.glac_wide_frontalablation
-                                )
+                        #         # Record frontal ablation for tidewater glaciers and update total mass balance
+                        #         # Update glacier-wide frontal ablation (m3 w.e.)
+                        #         ev_model.mb_model.glac_wide_frontalablation = (
+                        #             ev_model.mb_model.glac_bin_frontalablation.sum(0)
+                        #         )
+                        #         # Update glacier-wide total mass balance (m3 w.e.)
+                        #         ev_model.mb_model.glac_wide_massbaltotal = (
+                        #             ev_model.mb_model.glac_wide_massbaltotal
+                        #             - ev_model.mb_model.glac_wide_frontalablation
+                        #         )
 
-                                if debug:
-                                    print(
-                                        'avg frontal ablation [Gta]:',
-                                        np.round(
-                                            ev_model.mb_model.glac_wide_frontalablation.sum()
-                                            / 1e9
-                                            / nyears,
-                                            4,
-                                        ),
-                                    )
-                                    print(
-                                        'avg frontal ablation [Gta]:',
-                                        np.round(
-                                            ev_model.calving_m3_since_y0
-                                            * pygem_prms['constants']['density_ice']
-                                            / 1e12
-                                            / nyears,
-                                            4,
-                                        ),
-                                    )
+                        #         if debug:
+                        #             print(
+                        #                 'avg frontal ablation [Gta]:',
+                        #                 np.round(
+                        #                     ev_model.mb_model.glac_wide_frontalablation.sum()
+                        #                     / 1e9
+                        #                     / nyears,
+                        #                     4,
+                        #                 ),
+                        #             )
+                        #             print(
+                        #                 'avg frontal ablation [Gta]:',
+                        #                 np.round(
+                        #                     ev_model.calving_m3_since_y0
+                        #                     * pygem_prms['constants']['density_ice']
+                        #                     / 1e12
+                        #                     / nyears,
+                        #                     4,
+                        #                 ),
+                        #             )
 
-                            else:
-                                raise
+                        #     else:
+                        #         raise
 
                     # Mass redistribution model
                     elif args.option_dynamics == 'MassRedistributionCurves':
@@ -1521,7 +1524,7 @@ def run(list_packed_vars):
                                 print('  mb_mbmod [mwea]:', np.round(mb_mwea_mbmod, 2))
 
                             if np.abs(mb_mwea_diag - mb_mwea_mbmod) > 1e-6:
-                                ev_model.mb_model.ensure_mass_conservation(diag)
+                                ev_model.mb_model.ensure_mass_conservation(diag, dates_table)
 
                         if debug:
                             print(
@@ -1530,21 +1533,21 @@ def run(list_packed_vars):
                             )
 
                         # RECORD PARAMETERS TO DATASET
-                        output_glac_temp_monthly[:, n_iter] = mbmod.glac_wide_temp
-                        output_glac_prec_monthly[:, n_iter] = mbmod.glac_wide_prec
-                        output_glac_acc_monthly[:, n_iter] = mbmod.glac_wide_acc
-                        output_glac_refreeze_monthly[:, n_iter] = (
+                        output_glac_temp_steps[:, n_iter] = mbmod.glac_wide_temp
+                        output_glac_prec_steps[:, n_iter] = mbmod.glac_wide_prec
+                        output_glac_acc_steps[:, n_iter] = mbmod.glac_wide_acc
+                        output_glac_refreeze_steps[:, n_iter] = (
                             mbmod.glac_wide_refreeze
                         )
-                        output_glac_melt_monthly[:, n_iter] = mbmod.glac_wide_melt
-                        output_glac_frontalablation_monthly[:, n_iter] = (
+                        output_glac_melt_steps[:, n_iter] = mbmod.glac_wide_melt
+                        output_glac_frontalablation_steps[:, n_iter] = (
                             mbmod.glac_wide_frontalablation
                         )
-                        output_glac_massbaltotal_monthly[:, n_iter] = (
+                        output_glac_massbaltotal_steps[:, n_iter] = (
                             mbmod.glac_wide_massbaltotal
                         )
-                        output_glac_runoff_monthly[:, n_iter] = mbmod.glac_wide_runoff
-                        output_glac_snowline_monthly[:, n_iter] = (
+                        output_glac_runoff_steps[:, n_iter] = mbmod.glac_wide_runoff
+                        output_glac_snowline_steps[:, n_iter] = (
                             mbmod.glac_wide_snowline
                         )
                         output_glac_area_annual[:, n_iter] = diag.area_m2.values
@@ -1561,16 +1564,16 @@ def run(list_packed_vars):
                             * pygem_prms['constants']['density_ice']
                         )
                         output_glac_ELA_annual[:, n_iter] = mbmod.glac_wide_ELA_annual
-                        output_offglac_prec_monthly[:, n_iter] = mbmod.offglac_wide_prec
+                        output_offglac_prec_steps[:, n_iter] = mbmod.offglac_wide_prec
 
-                        output_offglac_refreeze_monthly[:, n_iter] = (
+                        output_offglac_refreeze_steps[:, n_iter] = (
                             mbmod.offglac_wide_refreeze
                         )
-                        output_offglac_melt_monthly[:, n_iter] = mbmod.offglac_wide_melt
-                        output_offglac_snowpack_monthly[:, n_iter] = (
+                        output_offglac_melt_steps[:, n_iter] = mbmod.offglac_wide_melt
+                        output_offglac_snowpack_steps[:, n_iter] = (
                             mbmod.offglac_wide_snowpack
                         )
-                        output_offglac_runoff_monthly[:, n_iter] = (
+                        output_offglac_runoff_steps[:, n_iter] = (
                             mbmod.offglac_wide_runoff
                         )
 
@@ -1631,42 +1634,42 @@ def run(list_packed_vars):
                             output_glac_bin_massbalclim_annual = (
                                 output_glac_bin_massbalclim_annual_sim[:, :, np.newaxis]
                             )
-                            output_glac_bin_massbalclim_monthly_sim = np.zeros(
+                            output_glac_bin_massbalclim_steps_sim = np.zeros(
                                 mbmod.glac_bin_massbalclim.shape
                             )
-                            output_glac_bin_massbalclim_monthly_sim = (
+                            output_glac_bin_massbalclim_steps_sim = (
                                 mbmod.glac_bin_massbalclim
                             )
-                            output_glac_bin_massbalclim_monthly = (
-                                output_glac_bin_massbalclim_monthly_sim[
+                            output_glac_bin_massbalclim_steps = (
+                                output_glac_bin_massbalclim_steps_sim[
                                     :, :, np.newaxis
                                 ]
                             )
-                            # accum
-                            output_glac_bin_acc_monthly_sim = np.zeros(
+                            # accumulation
+                            output_glac_bin_acc_steps_sim = np.zeros(
                                 mbmod.bin_acc.shape
                             )
-                            output_glac_bin_acc_monthly_sim = mbmod.bin_acc
-                            output_glac_bin_acc_monthly = (
-                                output_glac_bin_acc_monthly_sim[:, :, np.newaxis]
+                            output_glac_bin_acc_steps_sim = mbmod.bin_acc
+                            output_glac_bin_acc_steps = (
+                                output_glac_bin_acc_steps_sim[:, :, np.newaxis]
                             )
                             # refreeze
-                            output_glac_bin_refreeze_monthly_sim = np.zeros(
+                            output_glac_bin_refreeze_steps_sim = np.zeros(
                                 mbmod.glac_bin_refreeze.shape
                             )
-                            output_glac_bin_refreeze_monthly_sim = (
+                            output_glac_bin_refreeze_steps_sim = (
                                 mbmod.glac_bin_refreeze
                             )
-                            output_glac_bin_refreeze_monthly = (
-                                output_glac_bin_refreeze_monthly_sim[:, :, np.newaxis]
+                            output_glac_bin_refreeze_steps = (
+                                output_glac_bin_refreeze_steps_sim[:, :, np.newaxis]
                             )
                             # melt
-                            output_glac_bin_melt_monthly_sim = np.zeros(
+                            output_glac_bin_melt_steps_sim = np.zeros(
                                 mbmod.glac_bin_melt.shape
                             )
-                            output_glac_bin_melt_monthly_sim = mbmod.glac_bin_melt
-                            output_glac_bin_melt_monthly = (
-                                output_glac_bin_melt_monthly_sim[:, :, np.newaxis]
+                            output_glac_bin_melt_steps_sim = mbmod.glac_bin_melt
+                            output_glac_bin_melt_steps = (
+                                output_glac_bin_melt_steps_sim[:, :, np.newaxis]
                             )
 
                         else:
@@ -1736,570 +1739,580 @@ def run(list_packed_vars):
                                 ],
                                 axis=2,
                             )
-                            output_glac_bin_massbalclim_monthly_sim = np.zeros(
+                            output_glac_bin_massbalclim_steps_sim = np.zeros(
                                 mbmod.glac_bin_massbalclim.shape
                             )
-                            output_glac_bin_massbalclim_monthly_sim = (
+                            output_glac_bin_massbalclim_steps_sim = (
                                 mbmod.glac_bin_massbalclim
                             )
-                            output_glac_bin_massbalclim_monthly = np.append(
-                                output_glac_bin_massbalclim_monthly,
-                                output_glac_bin_massbalclim_monthly_sim[
+                            output_glac_bin_massbalclim_steps = np.append(
+                                output_glac_bin_massbalclim_steps,
+                                output_glac_bin_massbalclim_steps_sim[
                                     :, :, np.newaxis
                                 ],
                                 axis=2,
                             )
-                            # accum
-                            output_glac_bin_acc_monthly_sim = np.zeros(
+                            # accumulation
+                            output_glac_bin_acc_steps_sim = np.zeros(
                                 mbmod.bin_acc.shape
                             )
-                            output_glac_bin_acc_monthly_sim = mbmod.bin_acc
-                            output_glac_bin_acc_monthly = np.append(
-                                output_glac_bin_acc_monthly,
-                                output_glac_bin_acc_monthly_sim[:, :, np.newaxis],
+                            output_glac_bin_acc_steps_sim = mbmod.bin_acc
+                            output_glac_bin_acc_steps = np.append(
+                                output_glac_bin_acc_steps,
+                                output_glac_bin_acc_steps_sim[:, :, np.newaxis],
                                 axis=2,
                             )
                             # melt
-                            output_glac_bin_melt_monthly_sim = np.zeros(
+                            output_glac_bin_melt_steps_sim = np.zeros(
                                 mbmod.glac_bin_melt.shape
                             )
-                            output_glac_bin_melt_monthly_sim = mbmod.glac_bin_melt
-                            output_glac_bin_melt_monthly = np.append(
-                                output_glac_bin_melt_monthly,
-                                output_glac_bin_melt_monthly_sim[:, :, np.newaxis],
+                            output_glac_bin_melt_steps_sim = mbmod.glac_bin_melt
+                            output_glac_bin_melt_steps = np.append(
+                                output_glac_bin_melt_steps,
+                                output_glac_bin_melt_steps_sim[:, :, np.newaxis],
                                 axis=2,
                             )
                             # refreeze
-                            output_glac_bin_refreeze_monthly_sim = np.zeros(
+                            output_glac_bin_refreeze_steps_sim = np.zeros(
                                 mbmod.glac_bin_refreeze.shape
                             )
-                            output_glac_bin_refreeze_monthly_sim = (
+                            output_glac_bin_refreeze_steps_sim = (
                                 mbmod.glac_bin_refreeze
                             )
-                            output_glac_bin_refreeze_monthly = np.append(
-                                output_glac_bin_refreeze_monthly,
-                                output_glac_bin_refreeze_monthly_sim[:, :, np.newaxis],
+                            output_glac_bin_refreeze_steps = np.append(
+                                output_glac_bin_refreeze_steps,
+                                output_glac_bin_refreeze_steps_sim[:, :, np.newaxis],
                                 axis=2,
                             )
 
-                # ===== Export Results =====
-                if count_exceed_boundary_errors < nsims:
-                    # ----- STATS OF ALL VARIABLES -----
-                    # Output statistics
-                    if args.export_all_simiters and nsims > 1:
-                        # Instantiate dataset
-                        output_stats = output.glacierwide_stats(
-                            glacier_rgi_table=glacier_rgi_table,
-                            dates_table=dates_table,
-                            nsims=1,
-                            sim_climate_name=sim_climate_name,
-                            sim_climate_scenario=sim_climate_scenario,
-                            realization=realization,
-                            modelprms=modelprms,
-                            ref_startyear=args.ref_startyear,
-                            ref_endyear=ref_endyear,
-                            sim_startyear=args.sim_startyear,
-                            sim_endyear=args.sim_endyear,
-                            option_calibration=args.option_calibration,
-                            option_bias_adjustment=args.option_bias_adjustment,
-                            extra_vars=args.export_extra_vars,
-                        )
-                        for n_iter in range(nsims):
-                            # pass model params for iteration and update output dataset model params
-                            output_stats.set_modelprms(
-                                {
-                                    key: modelprms_all[key][n_iter]
-                                    for key in modelprms_all
-                                }
-                            )
-                            # create and return xarray dataset
-                            output_stats.create_xr_ds()
-                            output_ds_all_stats = output_stats.get_xr_ds()
-                            # fill values
-                            output_ds_all_stats['glac_runoff_monthly'].values[0, :] = (
-                                output_glac_runoff_monthly[:, n_iter]
-                            )
-                            output_ds_all_stats['glac_area_annual'].values[0, :] = (
-                                output_glac_area_annual[:, n_iter]
-                            )
-                            output_ds_all_stats['glac_mass_annual'].values[0, :] = (
-                                output_glac_mass_annual[:, n_iter]
-                            )
-                            output_ds_all_stats['glac_mass_bsl_annual'].values[0, :] = (
-                                output_glac_mass_bsl_annual[:, n_iter]
-                            )
-                            output_ds_all_stats['glac_ELA_annual'].values[0, :] = (
-                                output_glac_ELA_annual[:, n_iter]
-                            )
-                            output_ds_all_stats['offglac_runoff_monthly'].values[
-                                0, :
-                            ] = output_offglac_runoff_monthly[:, n_iter]
-                            if args.export_extra_vars:
-                                output_ds_all_stats['glac_temp_monthly'].values[
-                                    0, :
-                                ] = output_glac_temp_monthly[:, n_iter] + 273.15
-                                output_ds_all_stats['glac_prec_monthly'].values[
-                                    0, :
-                                ] = output_glac_prec_monthly[:, n_iter]
-                                output_ds_all_stats['glac_acc_monthly'].values[0, :] = (
-                                    output_glac_acc_monthly[:, n_iter]
-                                )
-                                output_ds_all_stats['glac_refreeze_monthly'].values[
-                                    0, :
-                                ] = output_glac_refreeze_monthly[:, n_iter]
-                                output_ds_all_stats['glac_melt_monthly'].values[
-                                    0, :
-                                ] = output_glac_melt_monthly[:, n_iter]
-                                output_ds_all_stats[
-                                    'glac_frontalablation_monthly'
-                                ].values[0, :] = output_glac_frontalablation_monthly[
-                                    :, n_iter
-                                ]
-                                output_ds_all_stats['glac_massbaltotal_monthly'].values[
-                                    0, :
-                                ] = output_glac_massbaltotal_monthly[:, n_iter]
-                                output_ds_all_stats['glac_snowline_monthly'].values[
-                                    0, :
-                                ] = output_glac_snowline_monthly[:, n_iter]
-                                output_ds_all_stats[
-                                    'glac_mass_change_ignored_annual'
-                                ].values[0, :] = output_glac_mass_change_ignored_annual[
-                                    :, n_iter
-                                ]
-                                output_ds_all_stats['offglac_prec_monthly'].values[
-                                    0, :
-                                ] = output_offglac_prec_monthly[:, n_iter]
-                                output_ds_all_stats['offglac_melt_monthly'].values[
-                                    0, :
-                                ] = output_offglac_melt_monthly[:, n_iter]
-                                output_ds_all_stats['offglac_refreeze_monthly'].values[
-                                    0, :
-                                ] = output_offglac_refreeze_monthly[:, n_iter]
-                                output_ds_all_stats['offglac_snowpack_monthly'].values[
-                                    0, :
-                                ] = output_offglac_snowpack_monthly[:, n_iter]
+    #             # ===== Export Results =====
+    #             if count_exceed_boundary_errors < nsims:
+    #                 # ----- STATS OF ALL VARIABLES -----
+    #                 # Output statistics
+    #                 if args.export_all_simiters and nsims > 1:
+    #                     # Instantiate dataset
+    #                     output_stats = output.glacierwide_stats(
+    #                         glacier_rgi_table=glacier_rgi_table,
+    #                         dates_table=dates_table,
+    #                         nsims=1,
+    #                         sim_climate_name=sim_climate_name,
+    #                         sim_climate_scenario=sim_climate_scenario,
+    #                         realization=realization,
+    #                         modelprms=modelprms,
+    #                         ref_startyear=args.ref_startyear,
+    #                         ref_endyear=ref_endyear,
+    #                         sim_startyear=args.sim_startyear,
+    #                         sim_endyear=args.sim_endyear,
+    #                         option_calibration=args.option_calibration,
+    #                         option_bias_adjustment=args.option_bias_adjustment,
+    #                         extra_vars=args.export_extra_vars,
+    #                     )
+    #                     for n_iter in range(nsims):
+    #                         # pass model params for iteration and update output dataset model params
+    #                         output_stats.set_modelprms(
+    #                             {
+    #                                 key: modelprms_all[key][n_iter]
+    #                                 for key in modelprms_all
+    #                             }
+    #                         )
+    #                         # create and return xarray dataset
+    #                         output_stats.create_xr_ds()
+    #                         output_ds_all_stats = output_stats.get_xr_ds()
+    #                         # fill values
+    #                         output_ds_all_stats['glac_runoff_monthly'].values[0, :] = (
+    #                             output_glac_runoff_monthly[:, n_iter]
+    #                         )
+    #                         output_ds_all_stats['glac_area_annual'].values[0, :] = (
+    #                             output_glac_area_annual[:, n_iter]
+    #                         )
+    #                         output_ds_all_stats['glac_mass_annual'].values[0, :] = (
+    #                             output_glac_mass_annual[:, n_iter]
+    #                         )
+    #                         output_ds_all_stats['glac_mass_bsl_annual'].values[0, :] = (
+    #                             output_glac_mass_bsl_annual[:, n_iter]
+    #                         )
+    #                         output_ds_all_stats['glac_ELA_annual'].values[0, :] = (
+    #                             output_glac_ELA_annual[:, n_iter]
+    #                         )
+    #                         output_ds_all_stats['offglac_runoff_monthly'].values[
+    #                             0, :
+    #                         ] = output_offglac_runoff_monthly[:, n_iter]
+    #                         if args.export_extra_vars:
+    #                             output_ds_all_stats['glac_temp_monthly'].values[
+    #                                 0, :
+    #                             ] = output_glac_temp_monthly[:, n_iter] + 273.15
+    #                             output_ds_all_stats['glac_prec_monthly'].values[
+    #                                 0, :
+    #                             ] = output_glac_prec_monthly[:, n_iter]
+    #                             output_ds_all_stats['glac_acc_monthly'].values[0, :] = (
+    #                                 output_glac_acc_monthly[:, n_iter]
+    #                             )
+    #                             output_ds_all_stats['glac_refreeze_monthly'].values[
+    #                                 0, :
+    #                             ] = output_glac_refreeze_monthly[:, n_iter]
+    #                             output_ds_all_stats['glac_melt_monthly'].values[
+    #                                 0, :
+    #                             ] = output_glac_melt_monthly[:, n_iter]
+    #                             output_ds_all_stats[
+    #                                 'glac_frontalablation_monthly'
+    #                             ].values[0, :] = output_glac_frontalablation_monthly[
+    #                                 :, n_iter
+    #                             ]
+    #                             output_ds_all_stats['glac_massbaltotal_monthly'].values[
+    #                                 0, :
+    #                             ] = output_glac_massbaltotal_monthly[:, n_iter]
+    #                             output_ds_all_stats['glac_snowline_monthly'].values[
+    #                                 0, :
+    #                             ] = output_glac_snowline_monthly[:, n_iter]
+    #                             output_ds_all_stats[
+    #                                 'glac_mass_change_ignored_annual'
+    #                             ].values[0, :] = output_glac_mass_change_ignored_annual[
+    #                                 :, n_iter
+    #                             ]
+    #                             output_ds_all_stats['offglac_prec_monthly'].values[
+    #                                 0, :
+    #                             ] = output_offglac_prec_monthly[:, n_iter]
+    #                             output_ds_all_stats['offglac_melt_monthly'].values[
+    #                                 0, :
+    #                             ] = output_offglac_melt_monthly[:, n_iter]
+    #                             output_ds_all_stats['offglac_refreeze_monthly'].values[
+    #                                 0, :
+    #                             ] = output_offglac_refreeze_monthly[:, n_iter]
+    #                             output_ds_all_stats['offglac_snowpack_monthly'].values[
+    #                                 0, :
+    #                             ] = output_offglac_snowpack_monthly[:, n_iter]
 
-                            # export glacierwide stats for iteration
-                            output_stats.set_fn(
-                                output_stats.get_fn().replace('SETS', f'set{n_iter}')
-                                + args.outputfn_sfix
-                                + 'all.nc'
-                            )
-                            output_stats.save_xr_ds()
+    #                         # export glacierwide stats for iteration
+    #                         output_stats.set_fn(
+    #                             output_stats.get_fn().replace('SETS', f'set{n_iter}')
+    #                             + args.outputfn_sfix
+    #                             + 'all.nc'
+    #                         )
+    #                         output_stats.save_xr_ds()
 
-                    # instantiate dataset for merged simulations
-                    output_stats = output.glacierwide_stats(
-                        glacier_rgi_table=glacier_rgi_table,
-                        dates_table=dates_table,
-                        nsims=nsims,
-                        sim_climate_name=sim_climate_name,
-                        sim_climate_scenario=sim_climate_scenario,
-                        realization=realization,
-                        modelprms=modelprms,
-                        ref_startyear=args.ref_startyear,
-                        ref_endyear=ref_endyear,
-                        sim_startyear=args.sim_startyear,
-                        sim_endyear=args.sim_endyear,
-                        option_calibration=args.option_calibration,
-                        option_bias_adjustment=args.option_bias_adjustment,
-                        extra_vars=args.export_extra_vars,
-                    )
-                    # create and return xarray dataset
-                    output_stats.create_xr_ds()
-                    output_ds_all_stats = output_stats.get_xr_ds()
+    #                 # instantiate dataset for merged simulations
+    #                 output_stats = output.glacierwide_stats(
+    #                     glacier_rgi_table=glacier_rgi_table,
+    #                     dates_table=dates_table,
+    #                     nsims=nsims,
+    #                     sim_climate_name=sim_climate_name,
+    #                     sim_climate_scenario=sim_climate_scenario,
+    #                     realization=realization,
+    #                     modelprms=modelprms,
+    #                     ref_startyear=args.ref_startyear,
+    #                     ref_endyear=ref_endyear,
+    #                     sim_startyear=args.sim_startyear,
+    #                     sim_endyear=args.sim_endyear,
+    #                     option_calibration=args.option_calibration,
+    #                     option_bias_adjustment=args.option_bias_adjustment,
+    #                     extra_vars=args.export_extra_vars,
+    #                 )
+    #                 # create and return xarray dataset
+    #                 output_stats.create_xr_ds()
+    #                 output_ds_all_stats = output_stats.get_xr_ds()
 
-                    # get stats from all simulations which will be stored
-                    output_glac_runoff_monthly_stats = calc_stats_array(
-                        output_glac_runoff_monthly
-                    )
-                    output_glac_area_annual_stats = calc_stats_array(
-                        output_glac_area_annual
-                    )
-                    output_glac_mass_annual_stats = calc_stats_array(
-                        output_glac_mass_annual
-                    )
-                    output_glac_mass_bsl_annual_stats = calc_stats_array(
-                        output_glac_mass_bsl_annual
-                    )
-                    output_glac_ELA_annual_stats = calc_stats_array(
-                        output_glac_ELA_annual
-                    )
-                    output_offglac_runoff_monthly_stats = calc_stats_array(
-                        output_offglac_runoff_monthly
-                    )
-                    if args.export_extra_vars:
-                        output_glac_temp_monthly_stats = calc_stats_array(
-                            output_glac_temp_monthly
-                        )
-                        output_glac_prec_monthly_stats = calc_stats_array(
-                            output_glac_prec_monthly
-                        )
-                        output_glac_acc_monthly_stats = calc_stats_array(
-                            output_glac_acc_monthly
-                        )
-                        output_glac_refreeze_monthly_stats = calc_stats_array(
-                            output_glac_refreeze_monthly
-                        )
-                        output_glac_melt_monthly_stats = calc_stats_array(
-                            output_glac_melt_monthly
-                        )
-                        output_glac_frontalablation_monthly_stats = calc_stats_array(
-                            output_glac_frontalablation_monthly
-                        )
-                        output_glac_massbaltotal_monthly_stats = calc_stats_array(
-                            output_glac_massbaltotal_monthly
-                        )
-                        output_glac_snowline_monthly_stats = calc_stats_array(
-                            output_glac_snowline_monthly
-                        )
-                        output_glac_mass_change_ignored_annual_stats = calc_stats_array(
-                            output_glac_mass_change_ignored_annual
-                        )
-                        output_offglac_prec_monthly_stats = calc_stats_array(
-                            output_offglac_prec_monthly
-                        )
-                        output_offglac_melt_monthly_stats = calc_stats_array(
-                            output_offglac_melt_monthly
-                        )
-                        output_offglac_refreeze_monthly_stats = calc_stats_array(
-                            output_offglac_refreeze_monthly
-                        )
-                        output_offglac_snowpack_monthly_stats = calc_stats_array(
-                            output_offglac_snowpack_monthly
-                        )
+    #                 # get stats from all simulations which will be stored
+    #                 output_glac_runoff_monthly_stats = calc_stats_array(
+    #                     output_glac_runoff_monthly
+    #                 )
+    #                 output_glac_area_annual_stats = calc_stats_array(
+    #                     output_glac_area_annual
+    #                 )
+    #                 output_glac_mass_annual_stats = calc_stats_array(
+    #                     output_glac_mass_annual
+    #                 )
+    #                 output_glac_mass_bsl_annual_stats = calc_stats_array(
+    #                     output_glac_mass_bsl_annual
+    #                 )
+    #                 output_glac_ELA_annual_stats = calc_stats_array(
+    #                     output_glac_ELA_annual
+    #                 )
+    #                 output_offglac_runoff_monthly_stats = calc_stats_array(
+    #                     output_offglac_runoff_monthly
+    #                 )
+    #                 if args.export_extra_vars:
+    #                     output_glac_temp_monthly_stats = calc_stats_array(
+    #                         output_glac_temp_monthly
+    #                     )
+    #                     output_glac_prec_monthly_stats = calc_stats_array(
+    #                         output_glac_prec_monthly
+    #                     )
+    #                     output_glac_acc_monthly_stats = calc_stats_array(
+    #                         output_glac_acc_monthly
+    #                     )
+    #                     output_glac_refreeze_monthly_stats = calc_stats_array(
+    #                         output_glac_refreeze_monthly
+    #                     )
+    #                     output_glac_melt_monthly_stats = calc_stats_array(
+    #                         output_glac_melt_monthly
+    #                     )
+    #                     output_glac_frontalablation_monthly_stats = calc_stats_array(
+    #                         output_glac_frontalablation_monthly
+    #                     )
+    #                     output_glac_massbaltotal_monthly_stats = calc_stats_array(
+    #                         output_glac_massbaltotal_monthly
+    #                     )
+    #                     output_glac_snowline_monthly_stats = calc_stats_array(
+    #                         output_glac_snowline_monthly
+    #                     )
+    #                     output_glac_mass_change_ignored_annual_stats = calc_stats_array(
+    #                         output_glac_mass_change_ignored_annual
+    #                     )
+    #                     output_offglac_prec_monthly_stats = calc_stats_array(
+    #                         output_offglac_prec_monthly
+    #                     )
+    #                     output_offglac_melt_monthly_stats = calc_stats_array(
+    #                         output_offglac_melt_monthly
+    #                     )
+    #                     output_offglac_refreeze_monthly_stats = calc_stats_array(
+    #                         output_offglac_refreeze_monthly
+    #                     )
+    #                     output_offglac_snowpack_monthly_stats = calc_stats_array(
+    #                         output_offglac_snowpack_monthly
+    #                     )
 
-                    # output mean/median from all simulations
-                    output_ds_all_stats['glac_runoff_monthly'].values[0, :] = (
-                        output_glac_runoff_monthly_stats[:, 0]
-                    )
-                    output_ds_all_stats['glac_area_annual'].values[0, :] = (
-                        output_glac_area_annual_stats[:, 0]
-                    )
-                    output_ds_all_stats['glac_mass_annual'].values[0, :] = (
-                        output_glac_mass_annual_stats[:, 0]
-                    )
-                    output_ds_all_stats['glac_mass_bsl_annual'].values[0, :] = (
-                        output_glac_mass_bsl_annual_stats[:, 0]
-                    )
-                    output_ds_all_stats['glac_ELA_annual'].values[0, :] = (
-                        output_glac_ELA_annual_stats[:, 0]
-                    )
-                    output_ds_all_stats['offglac_runoff_monthly'].values[0, :] = (
-                        output_offglac_runoff_monthly_stats[:, 0]
-                    )
-                    if args.export_extra_vars:
-                        output_ds_all_stats['glac_temp_monthly'].values[0, :] = (
-                            output_glac_temp_monthly_stats[:, 0] + 273.15
-                        )
-                        output_ds_all_stats['glac_prec_monthly'].values[0, :] = (
-                            output_glac_prec_monthly_stats[:, 0]
-                        )
-                        output_ds_all_stats['glac_acc_monthly'].values[0, :] = (
-                            output_glac_acc_monthly_stats[:, 0]
-                        )
-                        output_ds_all_stats['glac_refreeze_monthly'].values[0, :] = (
-                            output_glac_refreeze_monthly_stats[:, 0]
-                        )
-                        output_ds_all_stats['glac_melt_monthly'].values[0, :] = (
-                            output_glac_melt_monthly_stats[:, 0]
-                        )
-                        output_ds_all_stats['glac_frontalablation_monthly'].values[
-                            0, :
-                        ] = output_glac_frontalablation_monthly_stats[:, 0]
-                        output_ds_all_stats['glac_massbaltotal_monthly'].values[
-                            0, :
-                        ] = output_glac_massbaltotal_monthly_stats[:, 0]
-                        output_ds_all_stats['glac_snowline_monthly'].values[0, :] = (
-                            output_glac_snowline_monthly_stats[:, 0]
-                        )
-                        output_ds_all_stats['glac_mass_change_ignored_annual'].values[
-                            0, :
-                        ] = output_glac_mass_change_ignored_annual_stats[:, 0]
-                        output_ds_all_stats['offglac_prec_monthly'].values[0, :] = (
-                            output_offglac_prec_monthly_stats[:, 0]
-                        )
-                        output_ds_all_stats['offglac_melt_monthly'].values[0, :] = (
-                            output_offglac_melt_monthly_stats[:, 0]
-                        )
-                        output_ds_all_stats['offglac_refreeze_monthly'].values[0, :] = (
-                            output_offglac_refreeze_monthly_stats[:, 0]
-                        )
-                        output_ds_all_stats['offglac_snowpack_monthly'].values[0, :] = (
-                            output_offglac_snowpack_monthly_stats[:, 0]
-                        )
+    #                 # output mean/median from all simulations
+    #                 output_ds_all_stats['glac_runoff_monthly'].values[0, :] = (
+    #                     output_glac_runoff_monthly_stats[:, 0]
+    #                 )
+    #                 output_ds_all_stats['glac_area_annual'].values[0, :] = (
+    #                     output_glac_area_annual_stats[:, 0]
+    #                 )
+    #                 output_ds_all_stats['glac_mass_annual'].values[0, :] = (
+    #                     output_glac_mass_annual_stats[:, 0]
+    #                 )
+    #                 output_ds_all_stats['glac_mass_bsl_annual'].values[0, :] = (
+    #                     output_glac_mass_bsl_annual_stats[:, 0]
+    #                 )
+    #                 output_ds_all_stats['glac_ELA_annual'].values[0, :] = (
+    #                     output_glac_ELA_annual_stats[:, 0]
+    #                 )
+    #                 output_ds_all_stats['offglac_runoff_monthly'].values[0, :] = (
+    #                     output_offglac_runoff_monthly_stats[:, 0]
+    #                 )
+    #                 if args.export_extra_vars:
+    #                     output_ds_all_stats['glac_temp_monthly'].values[0, :] = (
+    #                         output_glac_temp_monthly_stats[:, 0] + 273.15
+    #                     )
+    #                     output_ds_all_stats['glac_prec_monthly'].values[0, :] = (
+    #                         output_glac_prec_monthly_stats[:, 0]
+    #                     )
+    #                     output_ds_all_stats['glac_acc_monthly'].values[0, :] = (
+    #                         output_glac_acc_monthly_stats[:, 0]
+    #                     )
+    #                     output_ds_all_stats['glac_refreeze_monthly'].values[0, :] = (
+    #                         output_glac_refreeze_monthly_stats[:, 0]
+    #                     )
+    #                     output_ds_all_stats['glac_melt_monthly'].values[0, :] = (
+    #                         output_glac_melt_monthly_stats[:, 0]
+    #                     )
+    #                     output_ds_all_stats['glac_frontalablation_monthly'].values[
+    #                         0, :
+    #                     ] = output_glac_frontalablation_monthly_stats[:, 0]
+    #                     output_ds_all_stats['glac_massbaltotal_monthly'].values[
+    #                         0, :
+    #                     ] = output_glac_massbaltotal_monthly_stats[:, 0]
+    #                     output_ds_all_stats['glac_snowline_monthly'].values[0, :] = (
+    #                         output_glac_snowline_monthly_stats[:, 0]
+    #                     )
+    #                     output_ds_all_stats['glac_mass_change_ignored_annual'].values[
+    #                         0, :
+    #                     ] = output_glac_mass_change_ignored_annual_stats[:, 0]
+    #                     output_ds_all_stats['offglac_prec_monthly'].values[0, :] = (
+    #                         output_offglac_prec_monthly_stats[:, 0]
+    #                     )
+    #                     output_ds_all_stats['offglac_melt_monthly'].values[0, :] = (
+    #                         output_offglac_melt_monthly_stats[:, 0]
+    #                     )
+    #                     output_ds_all_stats['offglac_refreeze_monthly'].values[0, :] = (
+    #                         output_offglac_refreeze_monthly_stats[:, 0]
+    #                     )
+    #                     output_ds_all_stats['offglac_snowpack_monthly'].values[0, :] = (
+    #                         output_offglac_snowpack_monthly_stats[:, 0]
+    #                     )
 
-                    # output median absolute deviation
-                    if nsims > 1:
-                        output_ds_all_stats['glac_runoff_monthly_mad'].values[0, :] = (
-                            output_glac_runoff_monthly_stats[:, 1]
-                        )
-                        output_ds_all_stats['glac_area_annual_mad'].values[0, :] = (
-                            output_glac_area_annual_stats[:, 1]
-                        )
-                        output_ds_all_stats['glac_mass_annual_mad'].values[0, :] = (
-                            output_glac_mass_annual_stats[:, 1]
-                        )
-                        output_ds_all_stats['glac_mass_bsl_annual_mad'].values[0, :] = (
-                            output_glac_mass_bsl_annual_stats[:, 1]
-                        )
-                        output_ds_all_stats['glac_ELA_annual_mad'].values[0, :] = (
-                            output_glac_ELA_annual_stats[:, 1]
-                        )
-                        output_ds_all_stats['offglac_runoff_monthly_mad'].values[
-                            0, :
-                        ] = output_offglac_runoff_monthly_stats[:, 1]
-                        if args.export_extra_vars:
-                            output_ds_all_stats['glac_temp_monthly_mad'].values[
-                                0, :
-                            ] = output_glac_temp_monthly_stats[:, 1]
-                            output_ds_all_stats['glac_prec_monthly_mad'].values[
-                                0, :
-                            ] = output_glac_prec_monthly_stats[:, 1]
-                            output_ds_all_stats['glac_acc_monthly_mad'].values[0, :] = (
-                                output_glac_acc_monthly_stats[:, 1]
-                            )
-                            output_ds_all_stats['glac_refreeze_monthly_mad'].values[
-                                0, :
-                            ] = output_glac_refreeze_monthly_stats[:, 1]
-                            output_ds_all_stats['glac_melt_monthly_mad'].values[
-                                0, :
-                            ] = output_glac_melt_monthly_stats[:, 1]
-                            output_ds_all_stats[
-                                'glac_frontalablation_monthly_mad'
-                            ].values[0, :] = output_glac_frontalablation_monthly_stats[
-                                :, 1
-                            ]
-                            output_ds_all_stats['glac_massbaltotal_monthly_mad'].values[
-                                0, :
-                            ] = output_glac_massbaltotal_monthly_stats[:, 1]
-                            output_ds_all_stats['glac_snowline_monthly_mad'].values[
-                                0, :
-                            ] = output_glac_snowline_monthly_stats[:, 1]
-                            output_ds_all_stats[
-                                'glac_mass_change_ignored_annual_mad'
-                            ].values[
-                                0, :
-                            ] = output_glac_mass_change_ignored_annual_stats[:, 1]
-                            output_ds_all_stats['offglac_prec_monthly_mad'].values[
-                                0, :
-                            ] = output_offglac_prec_monthly_stats[:, 1]
-                            output_ds_all_stats['offglac_melt_monthly_mad'].values[
-                                0, :
-                            ] = output_offglac_melt_monthly_stats[:, 1]
-                            output_ds_all_stats['offglac_refreeze_monthly_mad'].values[
-                                0, :
-                            ] = output_offglac_refreeze_monthly_stats[:, 1]
-                            output_ds_all_stats['offglac_snowpack_monthly_mad'].values[
-                                0, :
-                            ] = output_offglac_snowpack_monthly_stats[:, 1]
+    #                 # output median absolute deviation
+    #                 if nsims > 1:
+    #                     output_ds_all_stats['glac_runoff_monthly_mad'].values[0, :] = (
+    #                         output_glac_runoff_monthly_stats[:, 1]
+    #                     )
+    #                     output_ds_all_stats['glac_area_annual_mad'].values[0, :] = (
+    #                         output_glac_area_annual_stats[:, 1]
+    #                     )
+    #                     output_ds_all_stats['glac_mass_annual_mad'].values[0, :] = (
+    #                         output_glac_mass_annual_stats[:, 1]
+    #                     )
+    #                     output_ds_all_stats['glac_mass_bsl_annual_mad'].values[0, :] = (
+    #                         output_glac_mass_bsl_annual_stats[:, 1]
+    #                     )
+    #                     output_ds_all_stats['glac_ELA_annual_mad'].values[0, :] = (
+    #                         output_glac_ELA_annual_stats[:, 1]
+    #                     )
+    #                     output_ds_all_stats['offglac_runoff_monthly_mad'].values[
+    #                         0, :
+    #                     ] = output_offglac_runoff_monthly_stats[:, 1]
+    #                     if args.export_extra_vars:
+    #                         output_ds_all_stats['glac_temp_monthly_mad'].values[
+    #                             0, :
+    #                         ] = output_glac_temp_monthly_stats[:, 1]
+    #                         output_ds_all_stats['glac_prec_monthly_mad'].values[
+    #                             0, :
+    #                         ] = output_glac_prec_monthly_stats[:, 1]
+    #                         output_ds_all_stats['glac_acc_monthly_mad'].values[0, :] = (
+    #                             output_glac_acc_monthly_stats[:, 1]
+    #                         )
+    #                         output_ds_all_stats['glac_refreeze_monthly_mad'].values[
+    #                             0, :
+    #                         ] = output_glac_refreeze_monthly_stats[:, 1]
+    #                         output_ds_all_stats['glac_melt_monthly_mad'].values[
+    #                             0, :
+    #                         ] = output_glac_melt_monthly_stats[:, 1]
+    #                         output_ds_all_stats[
+    #                             'glac_frontalablation_monthly_mad'
+    #                         ].values[0, :] = output_glac_frontalablation_monthly_stats[
+    #                             :, 1
+    #                         ]
+    #                         output_ds_all_stats['glac_massbaltotal_monthly_mad'].values[
+    #                             0, :
+    #                         ] = output_glac_massbaltotal_monthly_stats[:, 1]
+    #                         output_ds_all_stats['glac_snowline_monthly_mad'].values[
+    #                             0, :
+    #                         ] = output_glac_snowline_monthly_stats[:, 1]
+    #                         output_ds_all_stats[
+    #                             'glac_mass_change_ignored_annual_mad'
+    #                         ].values[
+    #                             0, :
+    #                         ] = output_glac_mass_change_ignored_annual_stats[:, 1]
+    #                         output_ds_all_stats['offglac_prec_monthly_mad'].values[
+    #                             0, :
+    #                         ] = output_offglac_prec_monthly_stats[:, 1]
+    #                         output_ds_all_stats['offglac_melt_monthly_mad'].values[
+    #                             0, :
+    #                         ] = output_offglac_melt_monthly_stats[:, 1]
+    #                         output_ds_all_stats['offglac_refreeze_monthly_mad'].values[
+    #                             0, :
+    #                         ] = output_offglac_refreeze_monthly_stats[:, 1]
+    #                         output_ds_all_stats['offglac_snowpack_monthly_mad'].values[
+    #                             0, :
+    #                         ] = output_offglac_snowpack_monthly_stats[:, 1]
 
-                    # export merged netcdf glacierwide stats
-                    output_stats.set_fn(
-                        output_stats.get_fn().replace('SETS', f'{nsims}sets')
-                        + args.outputfn_sfix
-                        + 'all.nc'
-                    )
-                    output_stats.save_xr_ds()
+    #                 # export merged netcdf glacierwide stats
+    #                 output_stats.set_fn(
+    #                     output_stats.get_fn().replace('SETS', f'{nsims}sets')
+    #                     + args.outputfn_sfix
+    #                     + 'all.nc'
+    #                 )
+    #                 output_stats.save_xr_ds()
 
-                    # ----- DECADAL ICE THICKNESS STATS FOR OVERDEEPENINGS -----
-                    if (
-                        args.export_binned_data
-                        and glacier_rgi_table.Area
-                        > pygem_prms['sim']['out']['export_binned_area_threshold']
-                    ):
-                        # Distance from top of glacier downglacier
-                        output_glac_bin_dist = np.arange(nfls[0].nx) * nfls[0].dx_meter
+    #                 # ----- DECADAL ICE THICKNESS STATS FOR OVERDEEPENINGS -----
+    #                 if (
+    #                     args.export_binned_data
+    #                     and glacier_rgi_table.Area
+    #                     > pygem_prms['sim']['out']['export_binned_area_threshold']
+    #                 ):
+    #                     # Distance from top of glacier downglacier
+    #                     output_glac_bin_dist = np.arange(nfls[0].nx) * nfls[0].dx_meter
 
-                        if args.export_all_simiters and nsims > 1:
-                            # Instantiate dataset
-                            output_binned = output.binned_stats(
-                                glacier_rgi_table=glacier_rgi_table,
-                                dates_table=dates_table,
-                                nsims=1,
-                                nbins=surface_h_initial.shape[0],
-                                binned_components=args.export_binned_components,
-                                sim_climate_name=sim_climate_name,
-                                sim_climate_scenario=sim_climate_scenario,
-                                realization=realization,
-                                modelprms=modelprms,
-                                ref_startyear=args.ref_startyear,
-                                ref_endyear=ref_endyear,
-                                sim_startyear=args.sim_startyear,
-                                sim_endyear=args.sim_endyear,
-                                option_calibration=args.option_calibration,
-                                option_bias_adjustment=args.option_bias_adjustment,
-                            )
-                            for n_iter in range(nsims):
-                                # pass model params for iteration and update output dataset model params
-                                output_binned.set_modelprms(
-                                    {
-                                        key: modelprms_all[key][n_iter]
-                                        for key in modelprms_all
-                                    }
-                                )
-                                # create and return xarray dataset
-                                output_binned.create_xr_ds()
-                                output_ds_binned_stats = output_binned.get_xr_ds()
-                                # fill values
-                                output_ds_binned_stats['bin_distance'].values[0, :] = (
-                                    output_glac_bin_dist
-                                )
-                                output_ds_binned_stats['bin_surface_h_initial'].values[
-                                    0, :
-                                ] = surface_h_initial
-                                output_ds_binned_stats['bin_area_annual'].values[
-                                    0, :, :
-                                ] = output_glac_bin_area_annual[:, :, n_iter]
-                                output_ds_binned_stats['bin_mass_annual'].values[
-                                    0, :, :
-                                ] = output_glac_bin_mass_annual[:, :, n_iter]
-                                output_ds_binned_stats['bin_thick_annual'].values[
-                                    0, :, :
-                                ] = output_glac_bin_icethickness_annual[:, :, n_iter]
-                                output_ds_binned_stats['bin_massbalclim_annual'].values[
-                                    0, :, :
-                                ] = output_glac_bin_massbalclim_annual[:, :, n_iter]
-                                output_ds_binned_stats[
-                                    'bin_massbalclim_monthly'
-                                ].values[0, :, :] = output_glac_bin_massbalclim_monthly[
-                                    :, :, n_iter
-                                ]
-                                if args.export_binned_components:
-                                    output_ds_binned_stats[
-                                        'bin_accumulation_monthly'
-                                    ].values[0, :, :] = output_glac_bin_acc_monthly[
-                                        :, :, n_iter
-                                    ]
-                                    output_ds_binned_stats['bin_melt_monthly'].values[
-                                        0, :, :
-                                    ] = output_glac_bin_melt_monthly[:, :, n_iter]
-                                    output_ds_binned_stats[
-                                        'bin_refreeze_monthly'
-                                    ].values[
-                                        0, :, :
-                                    ] = output_glac_bin_refreeze_monthly[:, :, n_iter]
+    #                     if args.export_all_simiters and nsims > 1:
+    #                         # Instantiate dataset
+    #                         output_binned = output.binned_stats(
+    #                             glacier_rgi_table=glacier_rgi_table,
+    #                             dates_table=dates_table,
+    #                             nsims=1,
+    #                             nbins=surface_h_initial.shape[0],
+    #                             binned_components=args.export_binned_components,
+    #                             sim_climate_name=sim_climate_name,
+    #                             sim_climate_scenario=sim_climate_scenario,
+    #                             realization=realization,
+    #                             modelprms=modelprms,
+    #                             ref_startyear=args.ref_startyear,
+    #                             ref_endyear=ref_endyear,
+    #                             sim_startyear=args.sim_startyear,
+    #                             sim_endyear=args.sim_endyear,
+    #                             option_calibration=args.option_calibration,
+    #                             option_bias_adjustment=args.option_bias_adjustment,
+    #                         )
+    #                         for n_iter in range(nsims):
+    #                             # pass model params for iteration and update output dataset model params
+    #                             output_binned.set_modelprms(
+    #                                 {
+    #                                     key: modelprms_all[key][n_iter]
+    #                                     for key in modelprms_all
+    #                                 }
+    #                             )
+    #                             # create and return xarray dataset
+    #                             output_binned.create_xr_ds()
+    #                             output_ds_binned_stats = output_binned.get_xr_ds()
+    #                             # fill values
+    #                             output_ds_binned_stats['bin_distance'].values[0, :] = (
+    #                                 output_glac_bin_dist
+    #                             )
+    #                             output_ds_binned_stats['bin_surface_h_initial'].values[
+    #                                 0, :
+    #                             ] = surface_h_initial
+    #                             output_ds_binned_stats['bin_area_annual'].values[
+    #                                 0, :, :
+    #                             ] = output_glac_bin_area_annual[:, :, n_iter]
+    #                             output_ds_binned_stats['bin_mass_annual'].values[
+    #                                 0, :, :
+    #                             ] = output_glac_bin_mass_annual[:, :, n_iter]
+    #                             output_ds_binned_stats['bin_thick_annual'].values[
+    #                                 0, :, :
+    #                             ] = output_glac_bin_icethickness_annual[:, :, n_iter]
+    #                             output_ds_binned_stats['bin_massbalclim_annual'].values[
+    #                                 0, :, :
+    #                             ] = output_glac_bin_massbalclim_annual[:, :, n_iter]
+    #                             output_ds_binned_stats[
+    #                                 'bin_massbalclim_monthly'
+    #                             ].values[0, :, :] = output_glac_bin_massbalclim_monthly[
+    #                                 :, :, n_iter
+    #                             ]
+    #                             if args.export_binned_components:
+    #                                 output_ds_binned_stats[
+    #                                     'bin_accumulation_monthly'
+    #                                 ].values[0, :, :] = output_glac_bin_acc_monthly[
+    #                                     :, :, n_iter
+    #                                 ]
+    #                                 output_ds_binned_stats['bin_melt_monthly'].values[
+    #                                     0, :, :
+    #                                 ] = output_glac_bin_melt_monthly[:, :, n_iter]
+    #                                 output_ds_binned_stats[
+    #                                     'bin_refreeze_monthly'
+    #                                 ].values[
+    #                                     0, :, :
+    #                                 ] = output_glac_bin_refreeze_monthly[:, :, n_iter]
 
-                                # export binned stats for iteration
-                                output_binned.set_fn(
-                                    output_binned.get_fn().replace(
-                                        'SETS', f'set{n_iter}'
-                                    )
-                                    + args.outputfn_sfix
-                                    + 'binned.nc'
-                                )
-                                output_binned.save_xr_ds()
+    #                             # export binned stats for iteration
+    #                             output_binned.set_fn(
+    #                                 output_binned.get_fn().replace(
+    #                                     'SETS', f'set{n_iter}'
+    #                                 )
+    #                                 + args.outputfn_sfix
+    #                                 + 'binned.nc'
+    #                             )
+    #                             output_binned.save_xr_ds()
 
-                        # instantiate dataset for merged simulations
-                        output_binned = output.binned_stats(
-                            glacier_rgi_table=glacier_rgi_table,
-                            dates_table=dates_table,
-                            nsims=nsims,
-                            nbins=surface_h_initial.shape[0],
-                            binned_components=args.export_binned_components,
-                            sim_climate_name=sim_climate_name,
-                            sim_climate_scenario=sim_climate_scenario,
-                            realization=realization,
-                            modelprms=modelprms,
-                            ref_startyear=args.ref_startyear,
-                            ref_endyear=ref_endyear,
-                            sim_startyear=args.sim_startyear,
-                            sim_endyear=args.sim_endyear,
-                            option_calibration=args.option_calibration,
-                            option_bias_adjustment=args.option_bias_adjustment,
-                        )
-                        # create and return xarray dataset
-                        output_binned.create_xr_ds()
-                        output_ds_binned_stats = output_binned.get_xr_ds()
+    #                     # instantiate dataset for merged simulations
+    #                     output_binned = output.binned_stats(
+    #                         glacier_rgi_table=glacier_rgi_table,
+    #                         dates_table=dates_table,
+    #                         nsims=nsims,
+    #                         nbins=surface_h_initial.shape[0],
+    #                         binned_components=args.export_binned_components,
+    #                         sim_climate_name=sim_climate_name,
+    #                         sim_climate_scenario=sim_climate_scenario,
+    #                         realization=realization,
+    #                         modelprms=modelprms,
+    #                         ref_startyear=args.ref_startyear,
+    #                         ref_endyear=ref_endyear,
+    #                         sim_startyear=args.sim_startyear,
+    #                         sim_endyear=args.sim_endyear,
+    #                         option_calibration=args.option_calibration,
+    #                         option_bias_adjustment=args.option_bias_adjustment,
+    #                     )
+    #                     # create and return xarray dataset
+    #                     output_binned.create_xr_ds()
+    #                     output_ds_binned_stats = output_binned.get_xr_ds()
 
-                        # populate dataset with stats from each variable of interest
-                        output_ds_binned_stats[
-                            'bin_distance'
-                        ].values = output_glac_bin_dist[np.newaxis, :]
-                        output_ds_binned_stats[
-                            'bin_surface_h_initial'
-                        ].values = surface_h_initial[np.newaxis, :]
-                        output_ds_binned_stats['bin_area_annual'].values = np.median(
-                            output_glac_bin_area_annual, axis=2
-                        )[np.newaxis, :, :]
-                        output_ds_binned_stats['bin_mass_annual'].values = np.median(
-                            output_glac_bin_mass_annual, axis=2
-                        )[np.newaxis, :, :]
-                        output_ds_binned_stats['bin_thick_annual'].values = np.median(
-                            output_glac_bin_icethickness_annual, axis=2
-                        )[np.newaxis, :, :]
-                        output_ds_binned_stats[
-                            'bin_massbalclim_annual'
-                        ].values = np.median(
-                            output_glac_bin_massbalclim_annual, axis=2
-                        )[np.newaxis, :, :]
-                        output_ds_binned_stats[
-                            'bin_massbalclim_monthly'
-                        ].values = np.median(
-                            output_glac_bin_massbalclim_monthly, axis=2
-                        )[np.newaxis, :, :]
-                        if args.export_binned_components:
-                            output_ds_binned_stats[
-                                'bin_accumulation_monthly'
-                            ].values = np.median(output_glac_bin_acc_monthly, axis=2)[
-                                np.newaxis, :, :
-                            ]
-                            output_ds_binned_stats[
-                                'bin_melt_monthly'
-                            ].values = np.median(output_glac_bin_melt_monthly, axis=2)[
-                                np.newaxis, :, :
-                            ]
-                            output_ds_binned_stats[
-                                'bin_refreeze_monthly'
-                            ].values = np.median(
-                                output_glac_bin_refreeze_monthly, axis=2
-                            )[np.newaxis, :, :]
-                        if nsims > 1:
-                            output_ds_binned_stats[
-                                'bin_mass_annual_mad'
-                            ].values = median_abs_deviation(
-                                output_glac_bin_mass_annual, axis=2
-                            )[np.newaxis, :, :]
-                            output_ds_binned_stats[
-                                'bin_thick_annual_mad'
-                            ].values = median_abs_deviation(
-                                output_glac_bin_icethickness_annual, axis=2
-                            )[np.newaxis, :, :]
-                            output_ds_binned_stats[
-                                'bin_massbalclim_annual_mad'
-                            ].values = median_abs_deviation(
-                                output_glac_bin_massbalclim_annual, axis=2
-                            )[np.newaxis, :, :]
+    #                     # populate dataset with stats from each variable of interest
+    #                     output_ds_binned_stats[
+    #                         'bin_distance'
+    #                     ].values = output_glac_bin_dist[np.newaxis, :]
+    #                     output_ds_binned_stats[
+    #                         'bin_surface_h_initial'
+    #                     ].values = surface_h_initial[np.newaxis, :]
+    #                     output_ds_binned_stats['bin_area_annual'].values = np.median(
+    #                         output_glac_bin_area_annual, axis=2
+    #                     )[np.newaxis, :, :]
+    #                     output_ds_binned_stats['bin_mass_annual'].values = np.median(
+    #                         output_glac_bin_mass_annual, axis=2
+    #                     )[np.newaxis, :, :]
+    #                     output_ds_binned_stats['bin_thick_annual'].values = np.median(
+    #                         output_glac_bin_icethickness_annual, axis=2
+    #                     )[np.newaxis, :, :]
+    #                     output_ds_binned_stats[
+    #                         'bin_massbalclim_annual'
+    #                     ].values = np.median(
+    #                         output_glac_bin_massbalclim_annual, axis=2
+    #                     )[np.newaxis, :, :]
+    #                     output_ds_binned_stats[
+    #                         'bin_massbalclim_monthly'
+    #                     ].values = np.median(
+    #                         output_glac_bin_massbalclim_monthly, axis=2
+    #                     )[np.newaxis, :, :]
+    #                     if args.export_binned_components:
+    #                         output_ds_binned_stats[
+    #                             'bin_accumulation_monthly'
+    #                         ].values = np.median(output_glac_bin_acc_monthly, axis=2)[
+    #                             np.newaxis, :, :
+    #                         ]
+    #                         output_ds_binned_stats[
+    #                             'bin_melt_monthly'
+    #                         ].values = np.median(output_glac_bin_melt_monthly, axis=2)[
+    #                             np.newaxis, :, :
+    #                         ]
+    #                         output_ds_binned_stats[
+    #                             'bin_refreeze_monthly'
+    #                         ].values = np.median(
+    #                             output_glac_bin_refreeze_monthly, axis=2
+    #                         )[np.newaxis, :, :]
+    #                     if nsims > 1:
+    #                         output_ds_binned_stats[
+    #                             'bin_mass_annual_mad'
+    #                         ].values = median_abs_deviation(
+    #                             output_glac_bin_mass_annual, axis=2
+    #                         )[np.newaxis, :, :]
+    #                         output_ds_binned_stats[
+    #                             'bin_thick_annual_mad'
+    #                         ].values = median_abs_deviation(
+    #                             output_glac_bin_icethickness_annual, axis=2
+    #                         )[np.newaxis, :, :]
+    #                         output_ds_binned_stats[
+    #                             'bin_massbalclim_annual_mad'
+    #                         ].values = median_abs_deviation(
+    #                             output_glac_bin_massbalclim_annual, axis=2
+    #                         )[np.newaxis, :, :]
 
-                        # export merged netcdf glacierwide stats
-                        output_binned.set_fn(
-                            output_binned.get_fn().replace('SETS', f'{nsims}sets')
-                            + args.outputfn_sfix
-                            + 'binned.nc'
-                        )
-                        output_binned.save_xr_ds()
+    #                     # export merged netcdf glacierwide stats
+    #                     output_binned.set_fn(
+    #                         output_binned.get_fn().replace('SETS', f'{nsims}sets')
+    #                         + args.outputfn_sfix
+    #                         + 'binned.nc'
+    #                     )
+    #                     output_binned.save_xr_ds()
 
-        except Exception as err:
-            # LOG FAILURE
-            fail_fp = (
-                pygem_prms['root']
-                + '/Output/simulations/failed/'
-                + reg_str
-                + '/'
-                + sim_climate_name
-                + '/'
-            )
-            if sim_climate_name not in ['ERA-Interim', 'ERA5', 'COAWST']:
-                fail_fp += sim_climate_scenario + '/'
-            if not os.path.exists(fail_fp):
-                os.makedirs(fail_fp, exist_ok=True)
-            txt_fn_fail = glacier_str + '-sim_failed.txt'
-            with open(fail_fp + txt_fn_fail, 'w') as text_file:
-                text_file.write(glacier_str + f' failed to complete simulation: {err}')
+    #     except Exception as err:
+    #         # LOG FAILURE
+    #         fail_fp = (
+    #             pygem_prms['root']
+    #             + '/Output/simulations/failed/'
+    #             + reg_str
+    #             + '/'
+    #             + sim_climate_name
+    #             + '/'
+    #         )
+    #         if sim_climate_name not in ['ERA-Interim', 'ERA5', 'COAWST']:
+    #             fail_fp += sim_climate_scenario + '/'
+    #         if not os.path.exists(fail_fp):
+    #             os.makedirs(fail_fp, exist_ok=True)
+    #         txt_fn_fail = glacier_str + '-sim_failed.txt'
+    #         with open(fail_fp + txt_fn_fail, 'w') as text_file:
+    #             text_file.write(glacier_str + f' failed to complete simulation: {err}')
 
     # Global variables for Spyder development
     if args.ncores == 1:
         global main_vars
         main_vars = inspect.currentframe().f_locals
+
+        # ----- DEVELOPMENT TO ACCESS VARIABLES -----
+        import pickle
+        export_dict = {'dates_table':dates_table,
+                       'dates_table_ref':dates_table_ref,
+                       'gcm_prec_adj':gcm_prec_adj,
+                       'gcm_temp_adj':gcm_prec_adj,
+                       'ref_prec':ref_prec}
+        with open('development.pkl', 'wb') as f:
+            pickle.dump(export_dict, f)
 
 
 # %% PARALLEL PROCESSING

@@ -82,14 +82,14 @@ def datesmodelrun(
         # Select attributes of DateTimeIndex (dt.year, dt.month, and dt.daysinmonth)
         dates_table['year'] = dates_table['date'].dt.year
         dates_table['month'] = dates_table['date'].dt.month
-        dates_table['daysinmonth'] = dates_table['date'].dt.daysinmonth
+        dates_table['days_in_step'] = dates_table['date'].dt.daysinmonth
         dates_table['timestep'] = np.arange(len(dates_table['date']))
         # Set date as index
         dates_table.set_index('timestep', inplace=True)
         # Remove leap year days if user selected this with option_leapyear
         if pygem_prms['time']['option_leapyear'] == 0:
-            mask1 = dates_table['daysinmonth'] == 29
-            dates_table.loc[mask1, 'daysinmonth'] = 28
+            mask1 = dates_table['days_in_step'] == 29
+            dates_table.loc[mask1, 'days_in_step'] = 28
     elif pygem_prms['time']['timestep'] == 'daily':
         # Automatically generate daily (freq = 'D') dates
         dates_table = pd.DataFrame(
@@ -99,15 +99,15 @@ def datesmodelrun(
         dates_table['year'] = dates_table['date'].dt.year
         dates_table['month'] = dates_table['date'].dt.month
         dates_table['day'] = dates_table['date'].dt.day
-        dates_table['daysinmonth'] = dates_table['date'].dt.daysinmonth
+        dates_table['days_in_step'] = 1
         dates_table['timestep'] = np.arange(len(dates_table['date']))
         # Set date as index
         dates_table.set_index('timestep', inplace=True)
         # Remove leap year days if user selected this with option_leapyear
         if pygem_prms['time']['option_leapyear'] == 0:
-            # First, change 'daysinmonth' number
-            mask1 = dates_table['daysinmonth'] == 29
-            dates_table.loc[mask1, 'daysinmonth'] = 28
+            # First, change 'days_in_step' number
+            mask1 = dates_table['days_in_step'] == 29
+            dates_table.loc[mask1, 'days_in_step'] = 28
             # Next, remove the 29th days from the dates
             mask2 = (dates_table['month'] == 2) & (dates_table['day'] == 29)
             dates_table.drop(dates_table[mask2].index, inplace=True)
