@@ -66,7 +66,6 @@ climate:
   # ===== CLIMATE DATA FILEPATHS AND FILENAMES =====
   paths:
     # ERA5 (default reference climate data)
-    era5_fullpath: False # bool. 'True' ignores 'root' and 'era5_relpath' for ERA5 data and assumes below filenames are absolute
     era5_relpath: /climate_data/ERA5/
     era5_temp_fn: ERA5_temp_monthly.nc
     era5_tempstd_fn: ERA5_tempstd_monthly.nc
@@ -151,6 +150,8 @@ calib:
   
   # MCMC params
   MCMC_params:
+    option_calib_meltextent_1d: false             # option to calibrate against 1d melt extent data (true or false)
+    option_calib_snowline_1d: false               # option to calibrate against 1d snowline data (true or false)
     option_use_emulator: true                     # use emulator or full model (if true, calibration must have first been run with option_calibretion=='emulator')
     emulator_sims: 100
     tbias_step: 0.1
@@ -199,6 +200,13 @@ calib:
     # ice thickness
     icethickness:
       h_ref_relpath: /IceThickness_Farinotti/composite_thickness_RGI60-all_regions/ 
+    # 1d melt extents
+    meltextent_1d:
+      meltextent_1d_relpath: /SAR_data/merged/                                                       # relative to main data path. per-glacier files within will be expected as <rgi_id>_melt_extent_elev.csv (e.g., 01.00570_melt_extent_elev.csv)
+    # 1d snowlines
+    snowline_1d:
+      snowline_1d_relpath: /SAR_data/merged/                                                          # relative to main data path. per-glacier files within will be expected as <rgi_id>_snowline_elev.csv (e.g., 01.00570_snowline_elev.csv)
+
 
   icethickness_cal_frac_byarea: 0.9               # Regional glacier area fraction that is used to calibrate the ice thickness
                                                   #  e.g., 0.9 means only the largest 90% of glaciers by area will be used to calibrate

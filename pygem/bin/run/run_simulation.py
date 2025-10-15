@@ -430,17 +430,17 @@ def run(list_packed_vars):
     # ----- Select Temperature and Precipitation Data -----
     # Air temperature [degC]
     gcm_temp, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(
-        gcm.temp_fn, gcm.temp_vn, main_glac_rgi, dates_table_full
+        gcm.temp_fn, gcm.temp_vn, main_glac_rgi, dates_table_full, verbose=debug
     )
     ref_temp, ref_dates = ref_gcm.importGCMvarnearestneighbor_xarray(
-        ref_gcm.temp_fn, ref_gcm.temp_vn, main_glac_rgi, dates_table_ref
+        ref_gcm.temp_fn, ref_gcm.temp_vn, main_glac_rgi, dates_table_ref, verbose=debug
     )
     # Precipitation [m]
     gcm_prec, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(
-        gcm.prec_fn, gcm.prec_vn, main_glac_rgi, dates_table_full
+        gcm.prec_fn, gcm.prec_vn, main_glac_rgi, dates_table_full, verbose=debug
     )
     ref_prec, ref_dates = ref_gcm.importGCMvarnearestneighbor_xarray(
-        ref_gcm.prec_fn, ref_gcm.prec_vn, main_glac_rgi, dates_table_ref
+        ref_gcm.prec_fn, ref_gcm.prec_vn, main_glac_rgi, dates_table_ref, verbose=debug
     )
     # Elevation [m asl]
     try:
@@ -549,14 +549,18 @@ def run(list_packed_vars):
     elif pygem_prms['mb']['option_ablation'] == 2 and sim_climate_name in ['ERA5']:
         assert pygem_prms['time']['timestep'] != 'daily', 'Option 2 for ablation should not be used with daily data'
         gcm_tempstd, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(
-            gcm.tempstd_fn, gcm.tempstd_vn, main_glac_rgi, dates_table
+            gcm.tempstd_fn, gcm.tempstd_vn, main_glac_rgi, dates_table, verbose=debug
         )
         ref_tempstd = gcm_tempstd
     elif pygem_prms['mb']['option_ablation'] == 2 and args.ref_climate_name in ['ERA5']:
         assert pygem_prms['time']['timestep'] != 'daily', 'Option 2 for ablation should not be used with daily data'
         # Compute temp std based on reference climate data
         ref_tempstd, ref_dates = ref_gcm.importGCMvarnearestneighbor_xarray(
-            ref_gcm.tempstd_fn, ref_gcm.tempstd_vn, main_glac_rgi, dates_table_ref
+            ref_gcm.tempstd_fn,
+            ref_gcm.tempstd_vn,
+            main_glac_rgi,
+            dates_table_ref,
+            verbose=debug,
         )
         # Monthly average from reference climate data
         gcm_tempstd = gcmbiasadj.monthly_avg_array_rolled(
