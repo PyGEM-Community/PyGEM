@@ -991,7 +991,6 @@ def run(list_packed_vars):
                             + str(np.round(modelprms['tbias'], 2))
                         )
 
-                    # %%
                     # ----- ICE THICKNESS INVERSION using OGGM -----
                     if args.option_dynamics is not None:
                         # Apply inversion_filter on mass balance with debris to avoid negative flux
@@ -1078,7 +1077,9 @@ def run(list_packed_vars):
                         option_areaconstant=False,
                     )
 
-                    # Glacier dynamics model
+                    ######################################
+                    ### OGGM dynamical evolution model ###
+                    ######################################
                     if args.option_dynamics == 'OGGM':
                         if debug:
                             print('OGGM GLACIER DYNAMICS!')
@@ -1108,223 +1109,73 @@ def run(list_packed_vars):
                             graphics.plot_modeloutput_section(ev_model)
                             plt.show()
 
-                        # try:
-                        for batman in [0]:
-                            diag = ev_model.run_until_and_store(args.sim_endyear + 1)
-                            ev_model.mb_model.glac_wide_volume_annual[-1] = (
-                                diag.volume_m3[-1]
+                        diag = ev_model.run_until_and_store(args.sim_endyear + 1)
+                        ev_model.mb_model.glac_wide_volume_annual[-1] = (
+                            diag.volume_m3[-1]
+                        )
+                        ev_model.mb_model.glac_wide_area_annual[-1] = diag.area_m2[
+                            -1
+                        ]
+
+                        # Record frontal ablation for tidewater glaciers and update total mass balance
+                        if gdir.is_tidewater:
+                            # Glacier-wide frontal ablation (m3 w.e.)
+                            # - note: diag.calving_m3 is cumulative calving
+                            if debug:
+                                print(
+                                    '\n\ndiag.calving_m3:', diag.calving_m3.values
+                                )
+                                print(
+                                    'calving_m3_since_y0:',
+                                    ev_model.calving_m3_since_y0,
+                                )
+                            calving_m3_annual = (
+                                (
+                                    diag.calving_m3.values[1:]
+                                    - diag.calving_m3.values[0:-1]
+                                )
+                                * pygem_prms['constants']['density_ice']
+                                / pygem_prms['constants']['density_water']
                             )
-                            ev_model.mb_model.glac_wide_area_annual[-1] = diag.area_m2[
-                                -1
-                            ]
+                            for n in np.arange(calving_m3_annual.shape[0]):
+                                ev_model.mb_model.glac_wide_frontalablation[
+                                    12 * n + 11
+                                ] = calving_m3_annual[n]
 
-                            # Record frontal ablation for tidewater glaciers and update total mass balance
-                            if gdir.is_tidewater:
-                                # Glacier-wide frontal ablation (m3 w.e.)
-                                # - note: diag.calving_m3 is cumulative calving
-                                if debug:
-                                    print(
-                                        '\n\ndiag.calving_m3:', diag.calving_m3.values
-                                    )
-                                    print(
-                                        'calving_m3_since_y0:',
-                                        ev_model.calving_m3_since_y0,
-                                    )
-                                calving_m3_annual = (
-                                    (
-                                        diag.calving_m3.values[1:]
-                                        - diag.calving_m3.values[0:-1]
-                                    )
-                                    * pygem_prms['constants']['density_ice']
-                                    / pygem_prms['constants']['density_water']
+                            # Glacier-wide total mass balance (m3 w.e.)
+                            ev_model.mb_model.glac_wide_massbaltotal = (
+                                ev_model.mb_model.glac_wide_massbaltotal
+                                - ev_model.mb_model.glac_wide_frontalablation
+                            )
+
+                            if debug:
+                                print(
+                                    'avg calving_m3:',
+                                    calving_m3_annual.sum() / nyears,
                                 )
-                                for n in np.arange(calving_m3_annual.shape[0]):
-                                    ev_model.mb_model.glac_wide_frontalablation[
-                                        12 * n + 11
-                                    ] = calving_m3_annual[n]
-
-                                # Glacier-wide total mass balance (m3 w.e.)
-                                ev_model.mb_model.glac_wide_massbaltotal = (
-                                    ev_model.mb_model.glac_wide_massbaltotal
-                                    - ev_model.mb_model.glac_wide_frontalablation
+                                print(
+                                    'avg frontal ablation [Gta]:',
+                                    np.round(
+                                        ev_model.mb_model.glac_wide_frontalablation.sum()
+                                        / 1e9
+                                        / nyears,
+                                        4,
+                                    ),
+                                )
+                                print(
+                                    'avg frontal ablation [Gta]:',
+                                    np.round(
+                                        ev_model.calving_m3_since_y0
+                                        * pygem_prms['constants']['density_ice']
+                                        / 1e12
+                                        / nyears,
+                                        4,
+                                    ),
                                 )
 
-                                if debug:
-                                    print(
-                                        'avg calving_m3:',
-                                        calving_m3_annual.sum() / nyears,
-                                    )
-                                    print(
-                                        'avg frontal ablation [Gta]:',
-                                        np.round(
-                                            ev_model.mb_model.glac_wide_frontalablation.sum()
-                                            / 1e9
-                                            / nyears,
-                                            4,
-                                        ),
-                                    )
-                                    print(
-                                        'avg frontal ablation [Gta]:',
-                                        np.round(
-                                            ev_model.calving_m3_since_y0
-                                            * pygem_prms['constants']['density_ice']
-                                            / 1e12
-                                            / nyears,
-                                            4,
-                                        ),
-                                    )
-
-                        # except RuntimeError as e:
-                        #     if 'Glacier exceeds domain boundaries' in repr(e):
-                        #         count_exceed_boundary_errors += 1
-                        #         successful_run = False
-
-                        #         # LOG FAILURE
-                        #         fail_domain_fp = (
-                        #             pygem_prms['root']
-                        #             + '/Output/simulations/fail-exceed_domain/'
-                        #             + reg_str
-                        #             + '/'
-                        #             + sim_climate_name
-                        #             + '/'
-                        #         )
-                        #         if sim_climate_name not in [
-                        #             'ERA-Interim',
-                        #             'ERA5',
-                        #             'COAWST',
-                        #         ]:
-                        #             fail_domain_fp += sim_climate_scenario + '/'
-                        #         if not os.path.exists(fail_domain_fp):
-                        #             os.makedirs(fail_domain_fp, exist_ok=True)
-                        #         txt_fn_fail = glacier_str + '-sim_failed.txt'
-                        #         with open(
-                        #             fail_domain_fp + txt_fn_fail, 'w'
-                        #         ) as text_file:
-                        #             text_file.write(
-                        #                 glacier_str
-                        #                 + ' failed to complete '
-                        #                 + str(count_exceed_boundary_errors)
-                        #                 + ' simulations'
-                        #             )
-                        #     elif gdir.is_tidewater:
-                        #         if debug:
-                        #             print(
-                        #                 'OGGM dynamics failed, using mass redistribution curves'
-                        #             )
-                        #         # Mass redistribution curves glacier dynamics model
-                        #         ev_model = MassRedistributionCurveModel(
-                        #             nfls,
-                        #             mb_model=mbmod,
-                        #             y0=args.sim_startyear,
-                        #             glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier,
-                        #             fs=fs,
-                        #             is_tidewater=gdir.is_tidewater,
-                        #             water_level=water_level,
-                        #         )
-                        #         _, diag = ev_model.run_until_and_store(
-                        #             args.sim_endyear + 1
-                        #         )
-                        #         ev_model.mb_model.glac_wide_volume_annual = (
-                        #             diag.volume_m3.values
-                        #         )
-                        #         ev_model.mb_model.glac_wide_area_annual = (
-                        #             diag.area_m2.values
-                        #         )
-
-                        #         # Record frontal ablation for tidewater glaciers and update total mass balance
-                        #         # Update glacier-wide frontal ablation (m3 w.e.)
-                        #         ev_model.mb_model.glac_wide_frontalablation = (
-                        #             ev_model.mb_model.glac_bin_frontalablation.sum(0)
-                        #         )
-                        #         # Update glacier-wide total mass balance (m3 w.e.)
-                        #         ev_model.mb_model.glac_wide_massbaltotal = (
-                        #             ev_model.mb_model.glac_wide_massbaltotal
-                        #             - ev_model.mb_model.glac_wide_frontalablation
-                        #         )
-
-                        #         if debug:
-                        #             print(
-                        #                 'avg frontal ablation [Gta]:',
-                        #                 np.round(
-                        #                     ev_model.mb_model.glac_wide_frontalablation.sum()
-                        #                     / 1e9
-                        #                     / nyears,
-                        #                     4,
-                        #                 ),
-                        #             )
-                        #             print(
-                        #                 'avg frontal ablation [Gta]:',
-                        #                 np.round(
-                        #                     ev_model.calving_m3_since_y0
-                        #                     * pygem_prms['constants']['density_ice']
-                        #                     / 1e12
-                        #                     / nyears,
-                        #                     4,
-                        #                 ),
-                        #             )
-
-                        # except:
-                        #     if gdir.is_tidewater:
-                        #         if debug:
-                        #             print(
-                        #                 'OGGM dynamics failed, using mass redistribution curves'
-                        #             )
-                        #             # Mass redistribution curves glacier dynamics model
-                        #         ev_model = MassRedistributionCurveModel(
-                        #             nfls,
-                        #             mb_model=mbmod,
-                        #             y0=args.sim_startyear,
-                        #             glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier,
-                        #             fs=fs,
-                        #             is_tidewater=gdir.is_tidewater,
-                        #             water_level=water_level,
-                        #         )
-                        #         _, diag = ev_model.run_until_and_store(
-                        #             args.sim_endyear + 1
-                        #         )
-                        #         ev_model.mb_model.glac_wide_volume_annual = (
-                        #             diag.volume_m3.values
-                        #         )
-                        #         ev_model.mb_model.glac_wide_area_annual = (
-                        #             diag.area_m2.values
-                        #         )
-
-                        #         # Record frontal ablation for tidewater glaciers and update total mass balance
-                        #         # Update glacier-wide frontal ablation (m3 w.e.)
-                        #         ev_model.mb_model.glac_wide_frontalablation = (
-                        #             ev_model.mb_model.glac_bin_frontalablation.sum(0)
-                        #         )
-                        #         # Update glacier-wide total mass balance (m3 w.e.)
-                        #         ev_model.mb_model.glac_wide_massbaltotal = (
-                        #             ev_model.mb_model.glac_wide_massbaltotal
-                        #             - ev_model.mb_model.glac_wide_frontalablation
-                        #         )
-
-                        #         if debug:
-                        #             print(
-                        #                 'avg frontal ablation [Gta]:',
-                        #                 np.round(
-                        #                     ev_model.mb_model.glac_wide_frontalablation.sum()
-                        #                     / 1e9
-                        #                     / nyears,
-                        #                     4,
-                        #                 ),
-                        #             )
-                        #             print(
-                        #                 'avg frontal ablation [Gta]:',
-                        #                 np.round(
-                        #                     ev_model.calving_m3_since_y0
-                        #                     * pygem_prms['constants']['density_ice']
-                        #                     / 1e12
-                        #                     / nyears,
-                        #                     4,
-                        #                 ),
-                        #             )
-
-                        #     else:
-                        #         raise
-
-                    # Mass redistribution model
+                    ######################################
+                    ##### mass redistrubution model  #####
+                    ######################################
                     elif args.option_dynamics == 'MassRedistributionCurves':
                         if debug:
                             print('MASS REDISTRIBUTION CURVES!')
@@ -1335,7 +1186,7 @@ def run(list_packed_vars):
                             glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier,
                             fs=fs,
                             is_tidewater=gdir.is_tidewater,
-                            #                                water_level=gdir.get_diagnostics().get('calving_water_level', None)
+                            # water_level=gdir.get_diagnostics().get('calving_water_level', None)
                             water_level=water_level,
                         )
 
@@ -1343,84 +1194,52 @@ def run(list_packed_vars):
                             print('New glacier vol', ev_model.volume_m3)
                             graphics.plot_modeloutput_section(ev_model)
                             plt.show()
-                        try:
-                            _, diag = ev_model.run_until_and_store(args.sim_endyear + 1)
-                            #                            print('shape of volume:', ev_model.mb_model.glac_wide_volume_annual.shape, diag.volume_m3.shape)
-                            ev_model.mb_model.glac_wide_volume_annual = (
-                                diag.volume_m3.values
+
+                        _, diag = ev_model.run_until_and_store(args.sim_endyear + 1)
+                    #    print('shape of volume:', ev_model.mb_model.glac_wide_volume_annual.shape, diag.volume_m3.shape)
+                        ev_model.mb_model.glac_wide_volume_annual = (
+                            diag.volume_m3.values
+                        )
+                        ev_model.mb_model.glac_wide_area_annual = (
+                            diag.area_m2.values
+                        )
+
+                        # Record frontal ablation for tidewater glaciers and update total mass balance
+                        if gdir.is_tidewater:
+                            # Update glacier-wide frontal ablation (m3 w.e.)
+                            ev_model.mb_model.glac_wide_frontalablation = (
+                                ev_model.mb_model.glac_bin_frontalablation.sum(0)
                             )
-                            ev_model.mb_model.glac_wide_area_annual = (
-                                diag.area_m2.values
+                            # Update glacier-wide total mass balance (m3 w.e.)
+                            ev_model.mb_model.glac_wide_massbaltotal = (
+                                ev_model.mb_model.glac_wide_massbaltotal
+                                - ev_model.mb_model.glac_wide_frontalablation
                             )
 
-                            # Record frontal ablation for tidewater glaciers and update total mass balance
-                            if gdir.is_tidewater:
-                                # Update glacier-wide frontal ablation (m3 w.e.)
-                                ev_model.mb_model.glac_wide_frontalablation = (
-                                    ev_model.mb_model.glac_bin_frontalablation.sum(0)
+                            if debug:
+                                print(
+                                    'avg frontal ablation [Gta]:',
+                                    np.round(
+                                        ev_model.mb_model.glac_wide_frontalablation.sum()
+                                        / 1e9
+                                        / nyears,
+                                        4,
+                                    ),
                                 )
-                                # Update glacier-wide total mass balance (m3 w.e.)
-                                ev_model.mb_model.glac_wide_massbaltotal = (
-                                    ev_model.mb_model.glac_wide_massbaltotal
-                                    - ev_model.mb_model.glac_wide_frontalablation
+                                print(
+                                    'avg frontal ablation [Gta]:',
+                                    np.round(
+                                        ev_model.calving_m3_since_y0
+                                        * pygem_prms['constants']['density_ice']
+                                        / 1e12
+                                        / nyears,
+                                        4,
+                                    ),
                                 )
 
-                                if debug:
-                                    print(
-                                        'avg frontal ablation [Gta]:',
-                                        np.round(
-                                            ev_model.mb_model.glac_wide_frontalablation.sum()
-                                            / 1e9
-                                            / nyears,
-                                            4,
-                                        ),
-                                    )
-                                    print(
-                                        'avg frontal ablation [Gta]:',
-                                        np.round(
-                                            ev_model.calving_m3_since_y0
-                                            * pygem_prms['constants']['density_ice']
-                                            / 1e12
-                                            / nyears,
-                                            4,
-                                        ),
-                                    )
-
-                        except RuntimeError as e:
-                            if 'Glacier exceeds domain boundaries' in repr(e):
-                                count_exceed_boundary_errors += 1
-                                successful_run = False
-
-                                # LOG FAILURE
-                                fail_domain_fp = (
-                                    pygem_prms['root']
-                                    + '/Output/simulations/fail-exceed_domain/'
-                                    + reg_str
-                                    + '/'
-                                    + sim_climate_name
-                                    + '/'
-                                )
-                                if sim_climate_name not in [
-                                    'ERA-Interim',
-                                    'ERA5',
-                                    'COAWST',
-                                ]:
-                                    fail_domain_fp += sim_climate_scenario + '/'
-                                if not os.path.exists(fail_domain_fp):
-                                    os.makedirs(fail_domain_fp, exist_ok=True)
-                                txt_fn_fail = glacier_str + '-sim_failed.txt'
-                                with open(
-                                    fail_domain_fp + txt_fn_fail, 'w'
-                                ) as text_file:
-                                    text_file.write(
-                                        glacier_str
-                                        + ' failed to complete '
-                                        + str(count_exceed_boundary_errors)
-                                        + ' simulations'
-                                    )
-                            else:
-                                raise
-
+                    ######################################
+                    ######### no dynamical model #########
+                    ######################################
                     elif args.option_dynamics is None:
                         # Mass balance model
                         ev_model = None
