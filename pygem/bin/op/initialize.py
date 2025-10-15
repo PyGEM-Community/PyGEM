@@ -115,7 +115,7 @@ def main():
     # Define the base directory
     basedir = os.path.join(os.path.expanduser('~'), 'PyGEM')
     # Google Drive file id for sample dataset
-    file_id = '1Wu4ZqpOKxnc4EYhcRHQbwGq95FoOxMfZ'
+    file_id = '16l2nEdWACwkpdNd8pdIX0ajyfGIsUf_B'
     # download and unzip
     out = download_and_unzip_from_google_drive(file_id, basedir)
 
