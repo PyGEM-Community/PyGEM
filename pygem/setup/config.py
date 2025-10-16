@@ -6,9 +6,9 @@ copyright © 2018 David Rounce <drounce@cmu.edu>
 Distributed under the MIT license
 """
 
+import fnmatch
 import os
 import shutil
-import fnmatch
 
 import ruamel.yaml
 
@@ -100,7 +100,16 @@ class ConfigManager:
         Parameters:
         config (dict): The configuration dictionary to be validated.
         """
-        skip_patterns = ["*cesm2*", "*cmip5*", "*gfdl*", "*h_ref*", "*frontalablation*", "*snowline*", "*meltextent*", "*elev_change_1d*"]
+        skip_patterns = [
+            '*cesm2*',
+            '*cmip5*',
+            '*gfdl*',
+            '*h_ref*',
+            '*frontalablation*',
+            '*snowline*',
+            '*meltextent*',
+            '*elev_change_1d*',
+        ]
 
         # --- Type validation (existing code) ---
         for key, expected_type in self.EXPECTED_TYPES.items():
@@ -110,7 +119,7 @@ class ConfigManager:
                 if isinstance(sub_data, dict) and sub_key in sub_data:
                     sub_data = sub_data[sub_key]
                 else:
-                    raise KeyError(f"Missing required key in configuration: {key}")
+                    raise KeyError(f'Missing required key in configuration: {key}')
 
             if not isinstance(sub_data, expected_type):
                 raise TypeError(
@@ -128,7 +137,7 @@ class ConfigManager:
         def flatten_dict(d, parent_key=''):
             items = {}
             for k, v in d.items():
-                new_key = f"{parent_key}.{k}" if parent_key else k
+                new_key = f'{parent_key}.{k}' if parent_key else k
                 if isinstance(v, dict):
                     items.update(flatten_dict(v, new_key))
                 else:
