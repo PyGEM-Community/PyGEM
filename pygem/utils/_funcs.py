@@ -79,9 +79,7 @@ def annualweightedmean_array(var, dates_table):
         var_annual = var.mean(1)
     else:
         # var_annual = var.mean(1)
-        assert 1 == 0, (
-            'add this functionality for weighting that is not monthly or daily'
-        )
+        assert 1 == 0, 'add this functionality for weighting that is not monthly or daily'
     return var_annual
 
 

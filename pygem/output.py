@@ -639,10 +639,8 @@ class glacierwide_stats(single_glacier):
                     'units': 'm3',
                     'temporal_resolution': self.time_step,
                 }
-                self.output_coords_dict['glac_frontalablation_mad'] = (
-                    collections.OrderedDict(
-                        [('glac', self.glac_values), ('time', self.time_values)]
-                    )
+                self.output_coords_dict['glac_frontalablation_mad'] = collections.OrderedDict(
+                    [('glac', self.glac_values), ('time', self.time_values)]
                 )
                 self.output_attrs_dict['glac_frontalablation_mad'] = {
                     'long_name': 'glacier-wide frontal ablation, in water equivalent, median absolute deviation',
@@ -653,10 +651,8 @@ class glacierwide_stats(single_glacier):
                         'waterline and subaqueous frontal melting below the waterline'
                     ),
                 }
-                self.output_coords_dict['glac_massbaltotal_mad'] = (
-                    collections.OrderedDict(
-                        [('glac', self.glac_values), ('time', self.time_values)]
-                    )
+                self.output_coords_dict['glac_massbaltotal_mad'] = collections.OrderedDict(
+                    [('glac', self.glac_values), ('time', self.time_values)]
                 )
                 self.output_attrs_dict['glac_massbaltotal_mad'] = {
                     'long_name': 'glacier-wide total mass balance, in water equivalent, median absolute deviation',
@@ -691,10 +687,8 @@ class glacierwide_stats(single_glacier):
                     'temporal_resolution': self.time_step,
                     'comment': 'only the liquid precipitation, solid precipitation excluded',
                 }
-                self.output_coords_dict['offglac_refreeze_mad'] = (
-                    collections.OrderedDict(
-                        [('glac', self.glac_values), ('time', self.time_values)]
-                    )
+                self.output_coords_dict['offglac_refreeze_mad'] = collections.OrderedDict(
+                    [('glac', self.glac_values), ('time', self.time_values)]
                 )
                 self.output_attrs_dict['offglac_refreeze_mad'] = {
                     'long_name': 'off-glacier-wide refreeze, in water equivalent, median absolute deviation',
@@ -710,10 +704,8 @@ class glacierwide_stats(single_glacier):
                     'temporal_resolution': self.time_step,
                     'comment': 'only melt of snow and refreeze since off-glacier',
                 }
-                self.output_coords_dict['offglac_snowpack_mad'] = (
-                    collections.OrderedDict(
-                        [('glac', self.glac_values), ('time', self.time_values)]
-                    )
+                self.output_coords_dict['offglac_snowpack_mad'] = collections.OrderedDict(
+                    [('glac', self.glac_values), ('time', self.time_values)]
                 )
                 self.output_attrs_dict['offglac_snowpack_mad'] = {
                     'long_name': 'off-glacier-wide snowpack, in water equivalent, median absolute deviation',

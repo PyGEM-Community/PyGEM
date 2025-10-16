@@ -1776,9 +1776,7 @@ def run(list_packed_vars):
                     ]
                     # Melt
                     # energy available for melt [degC day]
-                    melt_energy_available = (
-                        T_minelev * dates_table['days_in_step'].values
-                    )
+                    melt_energy_available = T_minelev * dates_table['days_in_step'].values
                     melt_energy_available[melt_energy_available < 0] = 0
                     # assume all snow melt because anything more would melt underlying ice in lowermost bin
                     # SNOW MELT [m w.e.]
