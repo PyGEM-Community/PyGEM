@@ -1528,9 +1528,7 @@ def run(list_packed_vars):
                             output_glac_mass_bsl_annual_stats[:, 1]
                         )
                         output_ds_all_stats['glac_ELA_annual_mad'].values[0, :] = output_glac_ELA_annual_stats[:, 1]
-                        output_ds_all_stats['offglac_runoff_mad'].values[0, :] = (
-                            output_offglac_runoff_steps_stats[:, 1]
-                        )
+                        output_ds_all_stats['offglac_runoff_mad'].values[0, :] = output_offglac_runoff_steps_stats[:, 1]
                         output_ds_all_stats['offglac_runoff_mad'].values[0, :] = output_offglac_runoff_steps_stats[:, 1]
                         if args.export_extra_vars:
                             output_ds_all_stats['glac_temp_mad'].values[0, :] = output_glac_temp_steps_stats[:, 1]
