@@ -12,6 +12,7 @@ import argparse
 import json
 
 import numpy as np
+from scipy.interpolate import interp1d
 
 from pygem.setup.config import ConfigManager
 
@@ -65,12 +66,7 @@ def annualweightedmean_array(var, dates_table):
         weights = (dayspermonth / daysperyear[:, np.newaxis]).reshape(-1)
         #  computes weights for each element, then reshapes it from matrix (rows-years, columns-months) to an array,
         #  where each column (each monthly timestep) is the weight given to that specific month
-        var_annual = (
-            (var * weights[np.newaxis, :])
-            .reshape(-1, 12)
-            .sum(axis=1)
-            .reshape(-1, daysperyear.shape[0])
-        )
+        var_annual = (var * weights[np.newaxis, :]).reshape(-1, 12).sum(axis=1).reshape(-1, daysperyear.shape[0])
         #  computes matrix (rows - bins, columns - year) of weighted average for each year
         #  explanation: var*weights[np.newaxis,:] multiplies each element by its corresponding weight; .reshape(-1,12)
         #    reshapes the matrix to only have 12 columns (1 year), so the size is (rows*cols/12, 12); .sum(axis=1)
@@ -81,8 +77,7 @@ def annualweightedmean_array(var, dates_table):
             var_annual = var_annual.reshape(var_annual.shape[0])
     elif pygem_prms['time']['timestep'] == 'daily':
         print(
-            '\nError: need to code the groupbyyearsum and groupbyyearmean for daily timestep.'
-            'Exiting the model run.\n'
+            '\nError: need to code the groupbyyearsum and groupbyyearmean for daily timestep.Exiting the model run.\n'
         )
         exit()
     return var_annual
@@ -113,13 +108,56 @@ def haversine_dist(grid_lons, grid_lats, target_lons, target_lats):
     dlon = grid_lons - target_lons
     dlat = grid_lats - target_lats
 
-    a = (
-        np.sin(dlat / 2.0) ** 2
-        + np.cos(target_lats) * np.cos(grid_lats) * np.sin(dlon / 2.0) ** 2
-    )
+    a = np.sin(dlat / 2.0) ** 2 + np.cos(target_lats) * np.cos(grid_lats) * np.sin(dlon / 2.0) ** 2
     c = 2 * np.arcsin(np.sqrt(a))
 
     return R * c  # (n_targets, ncol)
+
+
+def interp1d_fill_gaps(x):
+    """
+    Interpolate valid (non-NaN) values in a 1D array using linear interpolation,
+    without extrapolating from NaNs at the edges.
+
+    Parameters:
+    ----------
+    x : ndarray
+        A 1D array with possible NaN values to interpolate.
+
+    Returns:
+    -------
+    x : ndarray
+        The 1D array with interpolated values for the NaN entries, leaving the valid values unchanged.
+
+    Notes:
+    ------
+    This function assumes that the input array `x` has evenly spaced data. It interpolates within the valid range of
+    data and does not extrapolate beyond the first and last valid data points.
+    """
+    # Find valid (non-NaN) indices
+    mask = ~np.isnan(x)
+
+    # If there are fewer than 2 valid values, return the array as is (no interpolation possible)
+    if mask.sum() < 2:
+        return x
+
+    # Indices of valid (non-NaN) values
+    valid_indices = np.where(mask)[0]
+    first, last = valid_indices[0], valid_indices[-1]  # Boundaries for valid range
+
+    # Create the interpolation function based on valid indices
+    interp_func = interp1d(
+        valid_indices,
+        x[mask],
+        kind='linear',
+        bounds_error=False,
+        fill_value='extrapolate',
+    )
+
+    # Interpolate only within the valid range (avoid extrapolation beyond valid indices)
+    x[first : last + 1] = interp_func(np.arange(first, last + 1))
+
+    return x
 
 
 def append_json(file_path, new_key, new_value):

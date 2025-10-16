@@ -29,9 +29,7 @@ class ConfigManager:
         self.config_filename = config_filename
         self.base_dir = base_dir or os.path.join(os.path.expanduser('~'), 'PyGEM')
         self.config_path = os.path.join(self.base_dir, self.config_filename)
-        self.source_config_path = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), 'config.yaml'
-        )
+        self.source_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.yaml')
         self.overwrite = overwrite
         self._ensure_config()
 
@@ -109,9 +107,7 @@ class ConfigManager:
                     raise KeyError(f'Missing required key in configuration: {key}')
 
             if not isinstance(sub_data, expected_type):
-                raise TypeError(
-                    f"Invalid type for '{key}': expected {expected_type}, not {type(sub_data)}"
-                )
+                raise TypeError(f"Invalid type for '{key}': expected {expected_type}, not {type(sub_data)}")
 
             # Check elements inside lists (if defined)
             if key in self.LIST_ELEMENT_TYPES and isinstance(sub_data, list):
@@ -120,6 +116,8 @@ class ConfigManager:
                     raise TypeError(
                         f"Invalid type for elements in '{key}': expected all elements to be {elem_type}, but got {sub_data}"
                     )
+
+        # check that all defined paths exist, raise error for any critical ones
 
     # expected config types
     EXPECTED_TYPES = {
@@ -222,8 +220,6 @@ class ConfigManager:
         'calib.emulator_params.ftol_opt': float,
         'calib.emulator_params.eps_opt': float,
         'calib.MCMC_params': dict,
-        'calib.MCMC_params.option_calib_meltextent_1d': bool,
-        'calib.MCMC_params.option_calib_snowline_1d': bool,
         'calib.MCMC_params.option_use_emulator': bool,
         'calib.MCMC_params.emulator_sims': int,
         'calib.MCMC_params.tbias_step': float,
@@ -253,6 +249,15 @@ class ConfigManager:
         'calib.MCMC_params.kp_sigma': float,
         'calib.MCMC_params.kp_bndlow': float,
         'calib.MCMC_params.kp_bndhigh': float,
+        'calib.MCMC_params.option_calib_elev_change_1d': bool,
+        'calib.MCMC_params.rhoabl_disttype': str,
+        'calib.MCMC_params.rhoabl_mu': (int, float),
+        'calib.MCMC_params.rhoabl_sigma': (int, float),
+        'calib.MCMC_params.rhoaccum_disttype': str,
+        'calib.MCMC_params.rhoaccum_mu': (int, float),
+        'calib.MCMC_params.rhoaccum_sigma': (int, float),
+        'calib.MCMC_params.option_calib_meltextent_1d': bool,
+        'calib.MCMC_params.option_calib_snowline_1d': bool,
         'calib.data': dict,
         'calib.data.massbalance': dict,
         'calib.data.massbalance.hugonnet2021_relpath': str,
@@ -263,9 +268,13 @@ class ConfigManager:
         'calib.data.frontalablation.frontalablation_cal_fn': str,
         'calib.data.icethickness': dict,
         'calib.data.icethickness.h_ref_relpath': str,
-        'calib.icethickness_cal_frac_byarea': float,
+        'calib.data.elev_change_1d': dict,
+        'calib.data.elev_change_1d.elev_change_1d_relpath': (str, type(None)),
+        'calib.data.meltextent_1d': dict,
         'calib.data.meltextent_1d.meltextent_1d_relpath': (str, type(None)),
+        'calib.data.snowline_1d': dict,
         'calib.data.snowline_1d.snowline_1d_relpath': (str, type(None)),
+        'calib.icethickness_cal_frac_byarea': float,
         'sim': dict,
         'sim.option_dynamics': (str, type(None)),
         'sim.option_bias_adjustment': int,

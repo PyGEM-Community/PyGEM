@@ -189,9 +189,7 @@ def run(args):
     nbatches = last_thous // batch_interval
 
     # split glaciers into groups of a thousand based on all glaciers in region
-    glacno_list_batches = modelsetup.split_list(
-        glacno_list_all, n=nbatches, group_thousands=True
-    )
+    glacno_list_batches = modelsetup.split_list(glacno_list_all, n=nbatches, group_thousands=True)
 
     # make sure batch sublists are sorted properly and that each goes from NN001 to N(N+1)000
     glacno_list_batches = sorted(glacno_list_batches, key=lambda x: x[0])
@@ -227,10 +225,7 @@ def run(args):
             )[0]
         else:
             fp = glob.glob(
-                base_dir
-                + gcm
-                + '/stats/'
-                + f'*{gcm}_{calibration}_ba{bias_adj}_*_{sim_startyear}_{sim_endyear}_all.nc'
+                base_dir + gcm + '/stats/' + f'*{gcm}_{calibration}_ba{bias_adj}_*_{sim_startyear}_{sim_endyear}_all.nc'
             )[0]
     # get number of sets from file name
     nsets = fp.split('/')[-1].split('_')[-4]
@@ -290,13 +285,9 @@ def run(args):
                 if nbatch == 0:
                     # Glaciers with successful runs to process
                     glacno_ran = [x.split('/')[-1].split('_')[0] for x in fps]
-                    glacno_ran = [
-                        x.split('.')[0].zfill(2) + '.' + x[-5:] for x in glacno_ran
-                    ]
+                    glacno_ran = [x.split('.')[0].zfill(2) + '.' + x[-5:] for x in glacno_ran]
                     main_glac_rgi = main_glac_rgi_all.loc[
-                        main_glac_rgi_all.apply(
-                            lambda x: x.rgino_str in glacno_ran, axis=1
-                        )
+                        main_glac_rgi_all.apply(lambda x: x.rgino_str in glacno_ran, axis=1)
                     ]
                     print(
                         f'Glaciers successfully simulated:\n  - {main_glac_rgi.shape[0]} of {main_glac_rgi_all.shape[0]} glaciers ({np.round(main_glac_rgi.shape[0] / main_glac_rgi_all.shape[0] * 100, 3)}%)'
@@ -432,20 +423,14 @@ def run(args):
             # time attributes - different for monthly v annual
             ds.time.attrs['long_name'] = 'time'
             if 'annual' in var:
-                ds.time.attrs['range'] = (
-                    str(year_values[0]) + ' - ' + str(year_values[-1])
-                )
+                ds.time.attrs['range'] = str(year_values[0]) + ' - ' + str(year_values[-1])
                 ds.time.attrs['comment'] = 'years referring to the start of each year'
             elif 'monthly' in var:
-                ds.time.attrs['range'] = (
-                    str(time_values[0]) + ' - ' + str(time_values[-1])
-                )
+                ds.time.attrs['range'] = str(time_values[0]) + ' - ' + str(time_values[-1])
                 ds.time.attrs['comment'] = 'start of the month'
 
             ds.RGIId.attrs['long_name'] = 'Randolph Glacier Inventory Id'
-            ds.RGIId.attrs['comment'] = (
-                'RGIv6.0 (https://nsidc.org/data/nsidc-0770/versions/6)'
-            )
+            ds.RGIId.attrs['comment'] = 'RGIv6.0 (https://nsidc.org/data/nsidc-0770/versions/6)'
             ds.RGIId.attrs['cf_role'] = 'timeseries_id'
 
             if realizations[0]:
@@ -504,9 +489,7 @@ def run(args):
             fp_merge_list_start = [int(f.split('-')[-2]) for f in fp_merge_list]
 
             if len(fp_merge_list) > 0:
-                fp_merge_list = [
-                    x for _, x in sorted(zip(fp_merge_list_start, fp_merge_list))
-                ]
+                fp_merge_list = [x for _, x in sorted(zip(fp_merge_list_start, fp_merge_list))]
 
                 ds = None
                 for fp in fp_merge_list:

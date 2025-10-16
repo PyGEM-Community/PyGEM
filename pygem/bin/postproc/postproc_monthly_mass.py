@@ -91,9 +91,7 @@ def get_monthly_mass(glac_mass_annual, glac_massbaltotal_monthly):
     # get running total monthly mass balance - reshape into subarrays of all values for a given year, then take cumulative sum
     oshape = glac_massbaltotal_monthly.shape
     running_glac_massbaltotal_monthly = (
-        np.reshape(glac_massbaltotal_monthly, (-1, 12), order='C')
-        .cumsum(axis=-1)
-        .reshape(oshape)
+        np.reshape(glac_massbaltotal_monthly, (-1, 12), order='C').cumsum(axis=-1).reshape(oshape)
     )
 
     # tile annual mass to then superimpose atop running glacier mass balance (trim off final year from annual mass)
@@ -128,9 +126,7 @@ def update_xrdataset(input_ds, glac_mass_monthly):
     time_values = input_ds.time.values
 
     output_coords_dict = collections.OrderedDict()
-    output_coords_dict['glac_mass_monthly'] = collections.OrderedDict(
-        [('glac', glac_values), ('time', time_values)]
-    )
+    output_coords_dict['glac_mass_monthly'] = collections.OrderedDict([('glac', glac_values), ('time', time_values)])
 
     # Attributes dictionary
     output_attrs_dict = {}
@@ -145,12 +141,7 @@ def update_xrdataset(input_ds, glac_mass_monthly):
     count_vn = 0
     encoding = {}
     for vn in output_coords_dict.keys():
-        empty_holder = np.zeros(
-            [
-                len(output_coords_dict[vn][i])
-                for i in list(output_coords_dict[vn].keys())
-            ]
-        )
+        empty_holder = np.zeros([len(output_coords_dict[vn][i]) for i in list(output_coords_dict[vn].keys())])
         output_ds = xr.Dataset(
             {vn: (list(output_coords_dict[vn].keys()), empty_holder)},
             coords=output_coords_dict[vn],
@@ -191,8 +182,7 @@ def run(simpath):
             # calculate monthly mass - pygem glac_massbaltotal_monthly is in units of m3, so convert to mass using density of ice
             glac_mass_monthly = get_monthly_mass(
                 statsds.glac_mass_annual.values,
-                statsds.glac_massbaltotal_monthly.values
-                * pygem_prms['constants']['density_ice'],
+                statsds.glac_massbaltotal_monthly.values * pygem_prms['constants']['density_ice'],
             )
             statsds.close()
 
@@ -203,9 +193,7 @@ def run(simpath):
             statsds.close()
 
             # append to existing stats netcdf
-            output_ds_stats.to_netcdf(
-                simpath, mode='a', encoding=encoding, engine='netcdf4'
-            )
+            output_ds_stats.to_netcdf(simpath, mode='a', encoding=encoding, engine='netcdf4')
 
             # close datasets
             output_ds_stats.close()
