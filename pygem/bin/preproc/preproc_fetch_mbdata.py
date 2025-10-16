@@ -53,9 +53,7 @@ def run(fp='', debug=False, overwrite=False):
     mbdf_subset = mbdf_subset.sort_values(by='rgiid')
 
     # rename some keys to work with what other scripts/functions expect
-    mbdf_subset = mbdf_subset.rename(
-        columns={'dmdtda': 'mb_mwea', 'err_dmdtda': 'mb_mwea_err'}
-    )
+    mbdf_subset = mbdf_subset.rename(columns={'dmdtda': 'mb_mwea', 'err_dmdtda': 'mb_mwea_err'})
 
     if fp[-4:] != '.csv':
         fp += '.csv'

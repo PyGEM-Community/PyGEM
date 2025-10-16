@@ -71,9 +71,7 @@ def debris_to_gdir(
     hd_dir = debris_dir + 'hd_tifs/' + gdir.rgi_region + '/'
     ed_dir = debris_dir + 'ed_tifs/' + gdir.rgi_region + '/'
 
-    glac_str_nolead = (
-        str(int(gdir.rgi_region)) + '.' + gdir.rgi_id.split('-')[1].split('.')[1]
-    )
+    glac_str_nolead = str(int(gdir.rgi_region)) + '.' + gdir.rgi_id.split('-')[1].split('.')[1]
 
     # If debris thickness data exists, then write to glacier directory
     if os.path.exists(hd_dir + glac_str_nolead + '_hdts_m.tif'):
@@ -157,9 +155,7 @@ def debris_to_gdir(
 
 
 @entity_task(log, writes=['inversion_flowlines'])
-def debris_binned(
-    gdir, ignore_debris=False, fl_str='inversion_flowlines', filesuffix=''
-):
+def debris_binned(gdir, ignore_debris=False, fl_str='inversion_flowlines', filesuffix=''):
     """Bin debris thickness and melt enhancement factors.
 
     Parameters
@@ -178,9 +174,7 @@ def debris_binned(
         flowlines = gdir.read_pickle(fl_str, filesuffix=filesuffix)
         fl = flowlines[0]
 
-        assert len(flowlines) == 1, (
-            'Error: binning debris only works for single flowlines at present'
-        )
+        assert len(flowlines) == 1, 'Error: binning debris only works for single flowlines at present'
 
     except:
         flowlines = None
@@ -216,9 +210,7 @@ def debris_binned(
             for nbin in np.arange(0, len(z_bin_edges) - 1):
                 bin_max = z_bin_edges[nbin]
                 bin_min = z_bin_edges[nbin + 1]
-                bin_idx = np.where((topo_onglac < bin_max) & (topo_onglac >= bin_min))[
-                    0
-                ]
+                bin_idx = np.where((topo_onglac < bin_max) & (topo_onglac >= bin_min))[0]
                 # Debris thickness and enhancement factors for on-glacier bins
                 if len(bin_idx) > 0:
                     with warnings.catch_warnings():

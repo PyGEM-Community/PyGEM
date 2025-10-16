@@ -12,9 +12,7 @@ class TestConfigManager:
     @pytest.fixture(autouse=True)
     def setup(self, tmp_path):
         """Setup a ConfigManager instance for each test."""
-        self.config_manager = ConfigManager(
-            config_filename='config.yaml', base_dir=tmp_path, overwrite=True
-        )
+        self.config_manager = ConfigManager(config_filename='config.yaml', base_dir=tmp_path, overwrite=True)
 
     def test_config_created(self, tmp_path):
         config_path = pathlib.Path(tmp_path) / 'config.yaml'
@@ -28,9 +26,7 @@ class TestConfigManager:
 
     def test_update_config_unrecognized_key_error(self):
         """Test that a KeyError is raised when updating a value with an unrecognized key."""
-        with pytest.raises(
-            KeyError, match='Unrecognized configuration key: invalid_key'
-        ):
+        with pytest.raises(KeyError, match='Unrecognized configuration key: invalid_key'):
             self.config_manager.update_config({'invalid_key': None})
 
     @pytest.mark.parametrize(
@@ -42,17 +38,14 @@ class TestConfigManager:
             ('rgi.rgi_cols_drop', 'not-a-list', 'list', 'str'),
         ],
     )
-    def test_update_config_type_error(
-        self, key, invalid_value, expected_type, invalid_type
-    ):
+    def test_update_config_type_error(self, key, invalid_value, expected_type, invalid_type):
         """
         Test that a TypeError is raised when updating a value with a new value of a
         wrong type.
         """
         with pytest.raises(
             TypeError,
-            match=f"Invalid type for '{key.replace('.', '\\.')}':"
-            f' expected.*{expected_type}.*, not.*{invalid_type}.*',
+            match=f"Invalid type for '{key.replace('.', '\\.')}': expected.*{expected_type}.*, not.*{invalid_type}.*",
         ):
             self.config_manager.update_config({key: invalid_value})
 
@@ -81,9 +74,7 @@ class TestConfigManager:
         with open(self.config_manager.config_path, 'w') as f:
             yaml.dump(config, f)
 
-        with pytest.raises(
-            KeyError, match=r'Missing required key in configuration: sim\.nsims'
-        ):
+        with pytest.raises(KeyError, match=r'Missing required key in configuration: sim\.nsims'):
             self.config_manager.read_config(validate=True)
 
     def test_update_config(self):
@@ -127,9 +118,7 @@ class TestConfigManager:
         config = self.config_manager.read_config()
         assert config['user']['name'] == 'David Rounce'
         assert config['user']['email'] == 'drounce@cmu.edu'
-        assert (
-            config['user']['institution'] == 'Carnegie Mellon University, Pittsburgh PA'
-        )
+        assert config['user']['institution'] == 'Carnegie Mellon University, Pittsburgh PA'
 
         updates = {
             'user': {

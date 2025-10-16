@@ -7,7 +7,6 @@ Distributed under the MIT license
 """
 
 # Built-in libaries
-import json
 import logging
 import os
 
@@ -60,23 +59,14 @@ def mb_df_to_gdir(
     """
     # get dataset name (could potentially be swapped with others besides Hugonnet21)
     mbdata_fp = f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["massbalance"]["hugonnet2021_relpath"]}'
-    mbdata_fp_fa = (
-        mbdata_fp
-        + pygem_prms['calib']['data']['massbalance']['hugonnet2021_facorrected_fn']
-    )
+    mbdata_fp_fa = mbdata_fp + pygem_prms['calib']['data']['massbalance']['hugonnet2021_facorrected_fn']
     if facorrected and os.path.exists(mbdata_fp_fa):
         mbdata_fp = mbdata_fp_fa
     else:
-        mbdata_fp = (
-            mbdata_fp + pygem_prms['calib']['data']['massbalance']['hugonnet2021_fn']
-        )
+        mbdata_fp = mbdata_fp + pygem_prms['calib']['data']['massbalance']['hugonnet2021_fn']
 
-    assert os.path.exists(mbdata_fp), (
-        'Error, mass balance dataset does not exist: {mbdata_fp}'
-    )
-    assert 'hugonnet2021' in mbdata_fp.lower(), (
-        'Error, mass balance dataset not yet supported: {mbdata_fp}'
-    )
+    assert os.path.exists(mbdata_fp), 'Error, mass balance dataset does not exist: {mbdata_fp}'
+    assert 'hugonnet2021' in mbdata_fp.lower(), 'Error, mass balance dataset not yet supported: {mbdata_fp}'
     rgiid_cn = 'rgiid'
     mb_cn = 'mb_mwea'
     mberr_cn = 'mb_mwea_err'
@@ -117,21 +107,16 @@ def mb_df_to_gdir(
             for key, value in {
                 'mb_mwea': float(mb_mwea),
                 'mb_mwea_err': float(mb_mwea_err),
-                'mb_clim_mwea': float(mb_clim_mwea)
-                if mb_clim_mwea is not None
-                else None,
-                'mb_clim_mwea_err': float(mb_clim_mwea_err)
-                if mb_clim_mwea_err is not None
-                else None,
+                'mb_clim_mwea': float(mb_clim_mwea) if mb_clim_mwea is not None else None,
+                'mb_clim_mwea_err': float(mb_clim_mwea_err) if mb_clim_mwea_err is not None else None,
                 't1_str': t1_str,
                 't2_str': t2_str,
                 'nyears': nyears,
             }.items()
             if value is not None
         }
-        mb_fn = gdir.get_filepath('mb_calib_pygem')
-        with open(mb_fn, 'w') as f:
-            json.dump(mbdata, f)
+
+        gdir.write_json(mbdata, 'mb_calib_pygem')
 
 
 # @entity_task(log, writes=['mb_obs'])

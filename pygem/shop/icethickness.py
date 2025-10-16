@@ -57,26 +57,15 @@ def consensus_gridded(
         where to write the data
     """
     # If binned mb data exists, then write to glacier directory
-    h_fn = (
-        h_consensus_fp
-        + 'RGI60-'
-        + gdir.rgi_region
-        + '/'
-        + gdir.rgi_id
-        + '_thickness.tif'
-    )
-    assert os.path.exists(h_fn), (
-        'Error: h_consensus_fullfn for ' + gdir.rgi_id + ' does not exist.'
-    )
+    h_fn = h_consensus_fp + 'RGI60-' + gdir.rgi_region + '/' + gdir.rgi_id + '_thickness.tif'
+    assert os.path.exists(h_fn), 'Error: h_consensus_fullfn for ' + gdir.rgi_id + ' does not exist.'
 
     # open consensus ice thickness estimate
     h_dr = rasterio.open(h_fn, 'r', driver='GTiff')
     h = h_dr.read(1).astype(rasterio.float32)
 
     # Glacier mass [kg]
-    glacier_mass_raw = (h * h_dr.res[0] * h_dr.res[1]).sum() * pygem_prms['constants'][
-        'density_ice'
-    ]
+    glacier_mass_raw = (h * h_dr.res[0] * h_dr.res[1]).sum() * pygem_prms['constants']['density_ice']
     #    print(glacier_mass_raw)
 
     if add_mass:
@@ -98,9 +87,7 @@ def consensus_gridded(
                 # Pixel area
                 pixel_m2 = abs(gdir.grid.dx * gdir.grid.dy)
                 # Glacier mass [kg] reprojoected (may lose or gain mass depending on resampling algorithm)
-                glacier_mass_reprojected = (data * pixel_m2).sum() * pygem_prms[
-                    'constants'
-                ]['density_ice']
+                glacier_mass_reprojected = (data * pixel_m2).sum() * pygem_prms['constants']['density_ice']
                 # Scale data to ensure conservation of mass during reprojection
                 data_scaled = data * glacier_mass_raw / glacier_mass_reprojected
                 #                glacier_mass = (data_scaled * pixel_m2).sum() * pygem_prms['constants']['density_ice']
@@ -139,9 +126,7 @@ def consensus_binned(gdir):
     flowlines = gdir.read_pickle('inversion_flowlines')
     fl = flowlines[0]
 
-    assert len(flowlines) == 1, (
-        'Error: binning debris data set up only for single flowlines at present'
-    )
+    assert len(flowlines) == 1, 'Error: binning debris data set up only for single flowlines at present'
 
     # Add binned debris thickness and enhancement factors to flowlines
     ds = xr.open_dataset(gdir.get_filepath('gridded_data'))

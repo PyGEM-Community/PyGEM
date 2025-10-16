@@ -63,7 +63,7 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
-line-length = 88  # Default
+line-length = 120
 
 [tool.ruff.format]
 quote-style = "single"
