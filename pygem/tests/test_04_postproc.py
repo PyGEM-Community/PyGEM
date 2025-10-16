@@ -16,14 +16,14 @@ def rootdir():
     return pygem_prms['root']
 
 
-def test_postproc_monthly_mass(rootdir):
+def test_postproc_subannual_mass(rootdir):
     """
-    Test the postproc_monthly_mass CLI script.
+    Test the postproc_subannual_mass CLI script.
     """
     simdir = os.path.join(rootdir, 'Output', 'simulations', '01', 'CESM2', 'ssp245', 'stats')
 
     # Run postproc_monthyl_mass CLI script
-    subprocess.run(['postproc_monthly_mass', '-simdir', simdir], check=True)
+    subprocess.run(['postproc_subannual_mass', '-simdir', simdir], check=True)
 
 
 def test_postproc_compile_simulations(rootdir):

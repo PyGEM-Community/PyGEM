@@ -12,16 +12,15 @@ derive sub-annual glacierwide mass for PyGEM simulation using annual glacier mas
 import argparse
 import collections
 import glob
+import json
 import multiprocessing
 import os
 import time
-import json
-import sys
 from functools import partial
 
 import matplotlib.pyplot as plt
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 # External libraries
 import xarray as xr
@@ -121,7 +120,7 @@ def get_subannual_mass(df_annual, df_sub, debug=False):
     if debug:
         # --- Quick plot of Jan start points (sub vs annual) ---
         # Plot all sub-annual masses as a line
-        plt.figure(figsize=(12,5))
+        plt.figure(figsize=(12, 5))
         plt.plot(df_sub['time'], df_sub['mass'], label='Sub-annual mass', color='blue')
 
         # Overlay annual masses as points/line
@@ -195,7 +194,7 @@ def update_xrdataset(input_ds, glac_mass, timestep):
             pass
         # Encoding (specify _FillValue, offsets, etc.)
         encoding[vn] = {'_FillValue': None, 'zlib': True, 'complevel': 9}
-    output_ds_all['glac_mass'].values = glac_mass[np.newaxis,:]
+    output_ds_all['glac_mass'].values = glac_mass[np.newaxis, :]
 
     return output_ds_all, encoding
 
@@ -215,21 +214,20 @@ def run(simpath, debug=False):
             timestep = json.loads(statsds.attrs['model_parameters'])['timestep']
             yvals = statsds.year.values
             # convert to pandas dataframe with annual mass
-            annual_df = pd.DataFrame({
-                                            "time": pd.to_datetime([f'{y}-01-01' for y in yvals]),
-                                            "mass": statsds.glac_mass_annual[0].values
-                                            })
+            annual_df = pd.DataFrame(
+                {'time': pd.to_datetime([f'{y}-01-01' for y in yvals]), 'mass': statsds.glac_mass_annual[0].values}
+            )
             tvals = statsds.time.values
-            # convert to pandas dataframe with sub-annual mass balance       
-            steps_df = pd.DataFrame({
-                                            "time": pd.to_datetime([t.strftime("%Y-%m-%d") for t in tvals]),
-                                            "massbaltotal": statsds.glac_massbaltotal[0].values * pygem_prms['constants']['density_ice']
-                                            })
+            # convert to pandas dataframe with sub-annual mass balance
+            steps_df = pd.DataFrame(
+                {
+                    'time': pd.to_datetime([t.strftime('%Y-%m-%d') for t in tvals]),
+                    'massbaltotal': statsds.glac_massbaltotal[0].values * pygem_prms['constants']['density_ice'],
+                }
+            )
 
             # calculate sub-annual mass - pygem glac_massbaltotal is in units of m3, so convert to mass using density of ice
-            glac_mass = get_subannual_mass(
-                annual_df, steps_df, debug=debug
-            )
+            glac_mass = get_subannual_mass(annual_df, steps_df, debug=debug)
             statsds.close()
 
             # update dataset to add sub-annual mass change
@@ -272,10 +270,8 @@ def main():
             ncores = 1
 
         # set up partial function with debug argument
-        run_partial = partial(
-            run,
-            debug=args.debug)
-    
+        run_partial = partial(run, debug=args.debug)
+
         # Parallel processing
         print('Processing with ' + str(ncores) + ' cores...')
         with multiprocessing.Pool(ncores) as p:

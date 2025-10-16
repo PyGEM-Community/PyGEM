@@ -11,6 +11,7 @@ compile individual glacier simulations to the regional level
 # imports
 import argparse
 import glob
+import json
 import multiprocessing
 import os
 import time
@@ -57,67 +58,67 @@ rgi_reg_dict = {
 
 # define metadata for each variable
 var_metadata = {
-    'glac_runoff_monthly': {
+    'glac_runoff': {
         'long_name': 'glacier-wide runoff',
         'units': 'm3',
-        'temporal_resolution': 'monthly',
+        'temporal_resolution': '',
         'comment': 'runoff from the glacier terminus, which moves over time',
     },
-    'offglac_runoff_monthly': {
+    'offglac_runoff': {
         'long_name': 'off-glacier-wide runoff',
         'units': 'm3',
-        'temporal_resolution': 'monthly',
+        'temporal_resolution': '',
         'comment': 'off-glacier runoff from area where glacier no longer exists',
     },
-    'glac_acc_monthly': {
+    'glac_acc': {
         'long_name': 'glacier-wide accumulation, in water equivalent',
         'units': 'm3',
-        'temporal_resolution': 'monthly',
+        'temporal_resolution': '',
         'comment': 'only the solid precipitation',
     },
-    'glac_melt_monthly': {
+    'glac_melt': {
         'long_name': 'glacier-wide melt, in water equivalent',
         'units': 'm3',
-        'temporal_resolution': 'monthly',
+        'temporal_resolution': '',
     },
-    'glac_refreeze_monthly': {
+    'glac_refreeze': {
         'long_name': 'glacier-wide refreeze, in water equivalent',
         'units': 'm3',
-        'temporal_resolution': 'monthly',
+        'temporal_resolution': '',
     },
-    'glac_frontalablation_monthly': {
+    'glac_frontalablation': {
         'long_name': 'glacier-wide frontal ablation, in water equivalent',
         'units': 'm3',
-        'temporal_resolution': 'monthly',
+        'temporal_resolution': '',
         'comment': (
             'mass losses from calving, subaerial frontal melting, sublimation above the waterline and '
             'subaqueous frontal melting below the waterline; positive values indicate mass lost like melt'
         ),
     },
-    'glac_snowline_monthly': {
+    'glac_snowline': {
         'long_name': 'transient snowline altitude above mean sea level',
         'units': 'm',
-        'temporal_resolution': 'monthly',
+        'temporal_resolution': '',
         'comment': 'transient snowline is altitude separating snow from ice/firn',
     },
-    'glac_massbaltotal_monthly': {
+    'glac_massbaltotal': {
         'long_name': 'glacier-wide total mass balance, in water equivalent',
         'units': 'm3',
-        'temporal_resolution': 'monthly',
+        'temporal_resolution': '',
         'comment': 'total mass balance is the sum of the climatic mass balance and frontal ablation',
     },
-    'glac_prec_monthly': {
+    'glac_prec': {
         'long_name': 'glacier-wide precipitation (liquid)',
         'units': 'm3',
-        'temporal_resolution': 'monthly',
+        'temporal_resolution': '',
         'comment': 'only the liquid precipitation, solid precipitation excluded',
     },
-    'glac_mass_monthly': {
+    'glac_mass': {
         'long_name': 'glacier mass',
         'units': 'kg',
-        'temporal_resolution': 'monthly',
+        'temporal_resolution': '',
         'comment': (
-            'mass of ice based on area and ice thickness at start of the year and the monthly total mass balance'
+            'mass of ice based on area and ice thickness at start of the year and the total mass balance over during the model year'
         ),
     },
     'glac_area_annual': {
@@ -233,6 +234,12 @@ def run(args):
     ds_glac = xr.open_dataset(fp)
     year_values = ds_glac.year.values
     time_values = ds_glac.time.values
+    # get model time step
+    timestep = json.loads(ds_glac.attrs['model_parameters'])['timestep']
+    if timestep.lower() in ['daily']:
+        period_name = 'day'
+    elif timestep.lower() in ['monthly']:
+        period_name = 'month'
     # check if desired vars are in ds
     ds_vars = list(ds_glac.keys())
     missing_vars = list(set(vars) - set(ds_vars))
@@ -317,19 +324,19 @@ def run(args):
                                 try:
                                     arr = getattr(ds_glac, var).values
                                 except AttributeError:
-                                    if 'monthly' in var:
-                                        arr = np.full((1, len(time_values)), np.nan)
-                                    elif 'annual' in var:
+                                    if 'annual' in var:
                                         arr = np.full((1, year_values.shape[0]), np.nan)
+                                    else:
+                                        arr = np.full((1, len(time_values)), np.nan)
                                 reg_gcm_data[var].append(arr)
 
                     # if glacier output DNE in sim output file, create empty nan arrays to keep record of missing glaciers
                     except:
                         for var in vars:
-                            if 'monthly' in var:
-                                arr = np.full((1, len(time_values)), np.nan)
-                            elif 'annual' in var:
+                            if 'annual' in var:
                                 arr = np.full((1, year_values.shape[0]), np.nan)
+                            else:
+                                arr = np.full((1, len(time_values)), np.nan)
                             reg_gcm_data[var].append(arr)
 
                 # stack all individual glacier data for each var, for the current GCM and append as 2D array to list of reg_all_gcms_data[var]
@@ -408,6 +415,8 @@ def run(args):
                 ]:
                     if attr_key in meta:
                         ds[var].attrs[attr_key] = meta[attr_key]
+                    if attr_key == 'temporal_resolution' and 'annual' not in var:
+                        ds[var].attrs[attr_key] = timestep
                 ds[var].attrs['grid_mapping'] = 'crs'
 
             # crs attributes - same for all vars
@@ -425,10 +434,9 @@ def run(args):
             if 'annual' in var:
                 ds.time.attrs['range'] = str(year_values[0]) + ' - ' + str(year_values[-1])
                 ds.time.attrs['comment'] = 'years referring to the start of each year'
-            elif 'monthly' in var:
+            else:
                 ds.time.attrs['range'] = str(time_values[0]) + ' - ' + str(time_values[-1])
-                ds.time.attrs['comment'] = 'start of the month'
-
+                ds.time.attrs['comment'] = f'start of the {period_name}'
             ds.RGIId.attrs['long_name'] = 'Randolph Glacier Inventory Id'
             ds.RGIId.attrs['comment'] = 'RGIv6.0 (https://nsidc.org/data/nsidc-0770/versions/6)'
             ds.RGIId.attrs['cf_role'] = 'timeseries_id'
@@ -590,18 +598,18 @@ def main():
     parser.add_argument(
         '-vars',
         type=str,
-        help='comm delimited list of PyGEM variables to compile (can take multiple, ex. "monthly_mass annual_area")',
+        help='comm delimited list of PyGEM variables to compile (can take multiple, ex. "glac_mass glac_area_annual")',
         choices=[
-            'glac_runoff_monthly',
-            'offglac_runoff_monthly',
-            'glac_acc_monthly',
-            'glac_melt_monthly',
-            'glac_refreeze_monthly',
-            'glac_frontalablation_monthly',
-            'glac_snowline_monthly',
-            'glac_massbaltotal_monthly',
-            'glac_prec_monthly',
-            'glac_mass_monthly',
+            'glac_runoff',
+            'offglac_runoff',
+            'glac_acc',
+            'glac_melt',
+            'glac_refreeze',
+            'glac_frontalablation',
+            'glac_snowline',
+            'glac_massbaltotal',
+            'glac_prec',
+            'glac_mass',
             'glac_mass_annual',
             'glac_area_annual',
             'glac_ELA_annual',
@@ -669,16 +677,16 @@ def main():
 
     if not vars:
         vars = [
-            'glac_runoff_monthly',
-            'offglac_runoff_monthly',
-            'glac_acc_monthly',
-            'glac_melt_monthly',
-            'glac_refreeze_monthly',
-            'glac_frontalablation_monthly',
-            'glac_snowline_monthly',
-            'glac_massbaltotal_monthly',
-            'glac_prec_monthly',
-            'glac_mass_monthly',
+            'glac_runoff',
+            'offglac_runoff',
+            'glac_acc',
+            'glac_melt',
+            'glac_refreeze',
+            'glac_frontalablation',
+            'glac_snowline',
+            'glac_massbaltotal',
+            'glac_prec',
+            'glac_mass',
             'glac_mass_annual',
             'glac_area_annual',
             'glac_ELA_annual',
