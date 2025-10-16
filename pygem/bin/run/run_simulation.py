@@ -611,12 +611,8 @@ def run(list_packed_vars):
         nsims = 1
 
     # Number of years (for OGGM's run_until_and_store)
-    if pygem_prms['time']['timestep'] == 'monthly':
-        nyears = int(dates_table.shape[0] / 12)
-        nyears_ref = int(dates_table_ref.shape[0] / 12)
-    else:
-        nyears = np.unique(dates_table['year']).shape[0]
-        nyears_ref = np.unique(dates_table_ref['year']).shape[0]
+    nyears = len(dates_table.year.unique())
+    nyears_ref = len(dates_table_ref.year.unique())
 
     for glac in range(main_glac_rgi.shape[0]):
         if glac == 0:
