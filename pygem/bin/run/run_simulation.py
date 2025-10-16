@@ -1377,7 +1377,7 @@ def run(list_packed_vars):
                         output_stats = output.glacierwide_stats(
                             glacier_rgi_table=glacier_rgi_table,
                             dates_table=dates_table,
-                            time_step=pygem_prms['time']['timestep'],
+                            timestep=pygem_prms['time']['timestep'],
                             nsims=1,
                             sim_climate_name=sim_climate_name,
                             sim_climate_scenario=sim_climate_scenario,
@@ -1448,7 +1448,7 @@ def run(list_packed_vars):
                     output_stats = output.glacierwide_stats(
                         glacier_rgi_table=glacier_rgi_table,
                         dates_table=dates_table,
-                        time_step=pygem_prms['time']['timestep'],
+                        timestep=pygem_prms['time']['timestep'],
                         nsims=nsims,
                         sim_climate_name=sim_climate_name,
                         sim_climate_scenario=sim_climate_scenario,
@@ -1578,7 +1578,7 @@ def run(list_packed_vars):
                             output_binned = output.binned_stats(
                                 glacier_rgi_table=glacier_rgi_table,
                                 dates_table=dates_table,
-                                time_step=pygem_prms['time']['timestep'],
+                                timestep=pygem_prms['time']['timestep'],
                                 nsims=1,
                                 nbins=surface_h_initial.shape[0],
                                 binned_components=args.export_binned_components,
@@ -1641,7 +1641,7 @@ def run(list_packed_vars):
                         output_binned = output.binned_stats(
                             glacier_rgi_table=glacier_rgi_table,
                             dates_table=dates_table,
-                            time_step=pygem_prms['time']['timestep'],
+                            timestep=pygem_prms['time']['timestep'],
                             nsims=nsims,
                             nbins=surface_h_initial.shape[0],
                             binned_components=args.export_binned_components,
