@@ -63,12 +63,12 @@ def test_check_compiled_product(rootdir):
     """
     # skip variables that are not in the compiled products
     vars_to_skip = [
-        'glac_temp_monthly',
+        'glac_temp',
         'glac_mass_change_ignored_annual',
-        'offglac_prec_monthly',
-        'offglac_refreeze_monthly',
-        'offglac_melt_monthly',
-        'offglac_snowpack_monthly',
+        'offglac_prec',
+        'offglac_refreeze',
+        'offglac_melt',
+        'offglac_snowpack',
     ]
 
     simpath = os.path.join(
