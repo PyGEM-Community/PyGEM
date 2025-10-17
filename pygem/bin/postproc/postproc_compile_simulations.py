@@ -220,13 +220,13 @@ def run(args):
                 + '/'
                 + sim_climate_scenario
                 + '/stats/'
-                + f'*{gcm}_{sim_climate_scenario}_{realizations[0]}_{calibration}_ba{bias_adj}_*_{sim_startyear}_{sim_endyear}_all.nc'.replace(
+                + f'*{gcm}_{sim_climate_scenario}_{realizations[0]}_{calibration}_ba{bias_adj}_*sets_{sim_startyear}_{sim_endyear}_all.nc'.replace(
                     '__', '_'
                 )
             )[0]
         else:
             fp = glob.glob(
-                base_dir + gcm + '/stats/' + f'*{gcm}_{calibration}_ba{bias_adj}_*_{sim_startyear}_{sim_endyear}_all.nc'
+                base_dir + gcm + '/stats/' + f'*{gcm}_{calibration}_ba{bias_adj}_*sets_{sim_startyear}_{sim_endyear}_all.nc'
             )[0]
     # get number of sets from file name
     nsets = fp.split('/')[-1].split('_')[-4]
