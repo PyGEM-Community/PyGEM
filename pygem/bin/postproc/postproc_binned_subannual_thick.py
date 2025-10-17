@@ -12,17 +12,16 @@ derive binned subannual ice thickness and mass from PyGEM simulation
 import argparse
 import collections
 import glob
+import json
 import multiprocessing
 import os
 import time
-import json
-import sys
 from functools import partial
 
 # External libraries
 import numpy as np
-import xarray as xr
 import pandas as pd
+import xarray as xr
 
 # pygem imports
 from pygem.setup.config import ConfigManager
@@ -68,13 +67,8 @@ def getparser():
 
 
 def get_binned_subannual(
-    bin_massbalclim,
-    bin_mass_annual,
-    bin_thick_annual,
-    dates_subannual,
-    dates_annual,
-    debug=False
-    ):
+    bin_massbalclim, bin_mass_annual, bin_thick_annual, dates_subannual, dates_annual, debug=False
+):
     """
     funciton to calculate the subannual binned ice thickness and mass
     from subannual climatic mass balance and annual mass and ice thickness products.
@@ -87,7 +81,7 @@ def get_binned_subannual(
 
     annual flux divergence is first estimated by combining the annual binned change in ice
     thickness and the annual binned mass balance. then, assume flux divergence is constant
-    throughout the year (divide annual by the number of steps in the binned climatic mass 
+    throughout the year (divide annual by the number of steps in the binned climatic mass
     balance to get subannual flux divergence).
 
     subannual binned flux divergence can then be combined with
@@ -131,7 +125,7 @@ def get_binned_subannual(
     years_subannual = np.array([d.year for d in dates_subannual])
     yrs = np.unique(years_subannual)
     nyrs = len(yrs)
-    assert nyrs > 1, "Need at least two annual steps for flux divergence estimation"
+    assert nyrs > 1, 'Need at least two annual steps for flux divergence estimation'
 
     #  --- Step 1: convert mass balance from m w.e. yr^-1 to m ice yr^-1 ---
     rho_w = pygem_prms['constants']['density_water']
@@ -189,10 +183,10 @@ def get_binned_subannual(
             # get last subannual index of that year
             idx = np.where(years_subannual == year)[0][-1]
             diff = bin_thick_subannual[:, :, idx] - bin_thick_annual[:, :, i + 1]
-            print(f"Year {year}, subannual idx: {idx}")
-            print("Max diff:", np.max(np.abs(diff)))
-            print("Min diff:", np.min(np.abs(diff)))
-            print("Mean diff:", np.mean(diff))
+            print(f'Year {year}, subannual idx: {idx}')
+            print('Max diff:', np.max(np.abs(diff)))
+            print('Min diff:', np.min(np.abs(diff)))
+            print('Mean diff:', np.mean(diff))
             print()
             # optional assertion
             np.testing.assert_allclose(
@@ -200,9 +194,9 @@ def get_binned_subannual(
                 bin_thick_annual[:, :, i + 1],
                 rtol=1e-6,
                 atol=1e-12,
-                err_msg=f"Mismatch in thickness for year {year}"
+                err_msg=f'Mismatch in thickness for year {year}',
             )
-    
+
     return bin_thick_subannual, bin_mass_subannual
 
 
@@ -312,21 +306,23 @@ def run(simpath, debug):
             bin_thick_annual=binned_ds.bin_thick_annual.values,
             dates_subannual=dates_subannual,
             dates_annual=dates_annual,
-            debug=debug
+            debug=debug,
         )
 
         # update dataset to add subannual binned thickness and mass
-        output_ds_binned, encoding_binned = update_xrdataset(binned_ds, bin_thick=bin_thick, bin_mass=bin_mass, timestep=timestep)
+        output_ds_binned, encoding_binned = update_xrdataset(
+            binned_ds, bin_thick=bin_thick, bin_mass=bin_mass, timestep=timestep
+        )
 
         # close input ds before write
         binned_ds.close()
-        
+
         # append to existing binned netcdf
         output_ds_binned.to_netcdf(simpath, mode='a', encoding=encoding_binned, engine='netcdf4')
-        
+
         # close datasets
         output_ds_binned.close()
-    
+
     return
 
 
