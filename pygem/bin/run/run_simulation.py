@@ -1392,6 +1392,9 @@ def run(list_packed_vars):
                             option_dynamics=args.option_dynamics,
                             extra_vars=args.export_extra_vars,
                         )
+                        base_fn = (
+                            output_stats.get_fn()
+                        )  # should contain 'SETS' which is later used to replace with the specific iteration
                         for n_iter in range(nsims):
                             # pass model params for iteration and update output dataset model params
                             output_stats.set_modelprms({key: modelprms_all[key][n_iter] for key in modelprms_all})
@@ -1439,9 +1442,7 @@ def run(list_packed_vars):
                                 ]
 
                             # export glacierwide stats for iteration
-                            output_stats.set_fn(
-                                output_stats.get_fn().replace('SETS', f'set{n_iter}') + args.outputfn_sfix + 'all.nc'
-                            )
+                            output_stats.set_fn(base_fn.replace('SETS', f'set{n_iter}') + args.outputfn_sfix + 'all.nc')
                             output_stats.save_xr_ds()
 
                     # instantiate dataset for merged simulations
@@ -1594,6 +1595,9 @@ def run(list_packed_vars):
                                 option_bias_adjustment=args.option_bias_adjustment,
                                 option_dynamics=args.option_dynamics,
                             )
+                            base_fn = (
+                                output_binned.get_fn()
+                            )  # should contain 'SETS' which is later used to replace with the specific iteration
                             for n_iter in range(nsims):
                                 # pass model params for iteration and update output dataset model params
                                 output_binned.set_modelprms({key: modelprms_all[key][n_iter] for key in modelprms_all})
@@ -1631,9 +1635,7 @@ def run(list_packed_vars):
 
                                 # export binned stats for iteration
                                 output_binned.set_fn(
-                                    output_binned.get_fn().replace('SETS', f'set{n_iter}')
-                                    + args.outputfn_sfix
-                                    + 'binned.nc'
+                                    base_fn.replace('SETS', f'set{n_iter}') + args.outputfn_sfix + 'binned.nc'
                                 )
                                 output_binned.save_xr_ds()
 
