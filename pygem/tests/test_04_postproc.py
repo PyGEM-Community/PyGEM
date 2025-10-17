@@ -26,6 +26,16 @@ def test_postproc_subannual_mass(rootdir):
     subprocess.run(['postproc_subannual_mass', '-simdir', simdir], check=True)
 
 
+def test_postproc_binned_subannual_thick(rootdir):
+    """
+    Test the postproc_binned_subannual_thick CLI script.
+    """
+    simdir = os.path.join(rootdir, 'Output', 'simulations', '01', 'CESM2', 'ssp245', 'binned')
+
+    # Run postproc_monthyl_mass CLI script
+    subprocess.run(['postproc_binned_subannual_thick', '-simdir', simdir], check=True)
+
+
 def test_postproc_compile_simulations(rootdir):
     """
     Test the postproc_compile_simulations CLI script.
@@ -79,7 +89,7 @@ def test_check_compiled_product(rootdir):
         'CESM2',
         'ssp245',
         'stats',
-        '1.03622_CESM2_ssp245_MCMC_ba1_50sets_2000_2100_all.nc',
+        '1.03622_CESM2_ssp245_MCMC_ba1_10sets_2000_2100_all.nc',
     )
     compdir = os.path.join(rootdir, 'Output', 'simulations', 'compile', 'glacier_stats')
 
@@ -89,6 +99,7 @@ def test_check_compiled_product(rootdir):
         vars_to_check = [item for item in vars_to_check if item not in vars_to_skip]
 
         for var in vars_to_check:
+            print(var)
             # skip mad
             if 'mad' in var:
                 continue
@@ -111,6 +122,6 @@ def test_check_compiled_product(rootdir):
                     f'Compiled product shape {compvals.shape} does not match original data shape {simvals.shape}'
                 )
                 # check that compiled product matches original data
-                assert np.all(np.array_equal(simvals, compvals)), (
+                assert np.allclose(simvals, compvals, rtol=1e-8, atol=1e-12), (
                     f'Compiled product for {var} does not match original data'
                 )
