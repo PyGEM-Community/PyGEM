@@ -127,7 +127,7 @@ def get_binned_subannual(
     nyrs = len(yrs)
     assert nyrs > 1, 'Need at least two annual steps for flux divergence estimation'
 
-    #  --- Step 1: convert mass balance from m w.e. yr^-1 to m ice yr^-1 ---
+    #  --- Step 1: convert mass balance from m w.e. to m ice  ---
     rho_w = pygem_prms['constants']['density_water']
     rho_i = pygem_prms['constants']['density_ice']
     bin_massbalclim_ice = bin_massbalclim * (rho_w / rho_i)
@@ -154,11 +154,11 @@ def get_binned_subannual(
     # --- Step 6: compute subannual thickness change ---
     bin_delta_thick_subannual = bin_massbalclim_ice - bin_flux_divergence_subannual
 
-    # --- Step 7: integrate cumulative thickness ---
-    running_bin_delta_thick_annual = np.cumsum(bin_delta_thick_subannual, axis=-1)
-    bin_thick_subannual = running_bin_delta_thick_annual + bin_thick_annual[:, :, 0][:, :, np.newaxis]
+    # --- Step 7: calculate subannual thickness ---
+    running_bin_delta_thick_subannual = np.cumsum(bin_delta_thick_subannual, axis=-1)
+    bin_thick_subannual = running_bin_delta_thick_subannual + bin_thick_annual[:, :, 0][:, :, np.newaxis]
 
-    # --- Step 8: Compute glacier volume and area on subannual timestep ---
+    # --- Step 8: compute glacier volume and area on subannual timestep ---
     bin_volume_annual = bin_mass_annual / rho_i  # annual volume [m^3] per bin
     bin_area_annual = np.divide(
         bin_volume_annual[:, :, 1:],  # exclude first year to match flux_div_annual

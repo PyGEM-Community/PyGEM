@@ -318,7 +318,7 @@ def calculate_elev_change_1d(
                     ev_model.mb_model.glac_wide_massbaltotal + ev_model.mb_model.glac_wide_frontalablation
                 )
 
-            mod_glacierwide_mb_mwea = (
+            glacierwide_mb_mwea = (
                 mbmod.glac_wide_massbaltotal[gdir.mbdata['t1_idx'] : gdir.mbdata['t2_idx'] + 1].sum()
                 / mbmod.glac_wide_area_annual[0]
                 / gdir.mbdata['nyears']
@@ -329,62 +329,65 @@ def calculate_elev_change_1d(
     except RuntimeError:
         return float('-inf'), float('-inf')
 
-    ### get monthly ice thickness
-    # grab components of interest
-    thickness_m = ds[0].thickness_m.values.T  # glacier thickness [m ice], (nbins, nyears)
+    ### get subannual elevation change
 
+    #  --- Step 1: convert mass balance from m w.e. to m ice ---
+    rho_w = pygem_prms['constants']['density_water']
+    rho_i = pygem_prms['constants']['density_ice']
+    bin_massbalclim_ice = mbmod.glac_bin_massbalclim * (rho_w / rho_i)  # binned climatic mass balance (nbins, nsteps)
+
+    # --- Step 2: expand flux divergence to subannual steps ---
+    # assume the flux divergence is constant througohut the year
+    # ie. take annual values and divide spread uniformly throughout model year
+    bin_flux_divergence_subannual = np.zeros_like(bin_massbalclim_ice)
+    for i, year in enumerate(gdir.dates_table.year.unique()):
+        idx = np.where(gdir.dates_table.year.values == year)[0]
+        bin_flux_divergence_subannual[:, idx] = -ds[0].flux_divergence_myr.values.T[:, i + 1][:, np.newaxis] / len(
+            idx
+        )  # note, oggm flux_divergence_myr is opposite sign of convention, hence negative
+
+    # --- Step 3: compute subannual thickness change ---
+    bin_delta_thick_subannual = bin_massbalclim_ice - bin_flux_divergence_subannual  # [m ice per month]
+
+    # --- Step 4: calculate subannual thickness ---
+    # get binned subannual thickness = running thickness change + initial thickness
+    thickness_m = ds[0].thickness_m.values.T  # glacier thickness [m ice], (nbins, nyears)
     # set any < 0 thickness to nan
     thickness_m[thickness_m <= 0] = np.nan
+    running_bin_delta_thick_subannual = np.cumsum(bin_delta_thick_subannual, axis=-1)
+    bin_thick_subannual = running_bin_delta_thick_subannual + thickness_m[:, 0][:, np.newaxis]
 
-    # climatic mass balance
-    dotb_monthly = mbmod.glac_bin_massbalclim  # climatic mass balance [m w.e.] per month
-    # convert to m ice
-    dotb_monthly = dotb_monthly * (pygem_prms['constants']['density_water'] / pygem_prms['constants']['density_ice'])
-
-    ### to get monthly thickness and mass we require monthly flux divergence ###
-    # we'll assume the flux divergence is constant througohut the year
-    # ie. take annual values and divide by 12 - use numpy repeat to repeat values across 12 months
-    flux_div_monthly_mmo = np.repeat(-ds[0].flux_divergence_myr.values.T[:, 1:] / 12, 12, axis=-1)
-
-    # get monthly binned change in thickness
-    delta_h_monthly = dotb_monthly - flux_div_monthly_mmo  # [m ice per month]
-
-    # get binned monthly thickness = running thickness change + initial thickness
-    running_delta_h_monthly = np.cumsum(delta_h_monthly, axis=-1)
-    h_monthly = running_delta_h_monthly + thickness_m[:, 0][:, np.newaxis]
-
+    # --- Step 5: rebin subannual thickness ---
     # get surface height at the specified reference year
-    ref_surface_h = ds[0].bed_h.values + ds[0].thickness_m.sel(time=gdir.elev_change_1d['ref_dem_year']).values
-
+    ref_surface_height = ds[0].bed_h.values + ds[0].thickness_m.sel(time=gdir.elev_change_1d['ref_dem_year']).values
     # aggregate model bin thicknesses as desired
     with warnings.catch_warnings():
         warnings.filterwarnings('ignore')
-        h_monthly = np.column_stack(
+        bin_thick_subannual = np.column_stack(
             [
                 stats.binned_statistic(
-                    x=ref_surface_h,
+                    x=ref_surface_height,
                     values=x,
                     statistic=np.nanmean,
                     bins=gdir.elev_change_1d['bin_edges'],
                 )[0]
-                for x in h_monthly.T
+                for x in bin_thick_subannual.T
             ]
         )
-
     # interpolate over any empty bins
-    h_monthly_ = np.column_stack([interp1d_fill_gaps(x.copy()) for x in h_monthly.T])
+    bin_thick_subannual = np.column_stack([interp1d_fill_gaps(x.copy()) for x in bin_thick_subannual.T])
 
-    # difference each set of inds in diff_inds_map
-    mod_elev_change_1d = np.column_stack(
+    # --- Step 6: calculate elevation change ---
+    elev_change_1d = np.column_stack(
         [
-            h_monthly_[:, tup[1]] - h_monthly_[:, tup[0]]
+            bin_thick_subannual[:, tup[1]] - bin_thick_subannual[:, tup[0]]
             if tup[0] is not None and tup[1] is not None
-            else np.full(h_monthly_.shape[0], np.nan)
+            else np.full(bin_thick_subannual.shape[0], np.nan)
             for tup in gdir.elev_change_1d['model2obs_inds_map']
         ]
     )
 
-    return mod_glacierwide_mb_mwea, mod_elev_change_1d
+    return glacierwide_mb_mwea, elev_change_1d
 
 
 # class for Gaussian Process model for mass balance emulator
