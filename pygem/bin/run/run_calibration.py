@@ -351,7 +351,7 @@ def calculate_elev_change_1d(
 
     # --- Step 4: calculate subannual thickness ---
     # calculate binned subannual thickness = running thickness change + initial thickness
-    bin_thick_initial =  ds[0].thickness_m.isel(time=0).values     # initial glacier thickness [m ice], (nbins)
+    bin_thick_initial = ds[0].thickness_m.isel(time=0).values  # initial glacier thickness [m ice], (nbins)
     running_bin_delta_thick_subannual = np.cumsum(bin_delta_thick_subannual, axis=-1)
     bin_thick_subannual = running_bin_delta_thick_subannual + bin_thick_initial[:, np.newaxis]
 
