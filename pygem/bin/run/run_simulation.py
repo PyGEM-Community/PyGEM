@@ -1056,9 +1056,8 @@ def run(list_packed_vars):
                         )
 
                         if debug:
-                            print('New glacier vol', ev_model.volume_m3)
-                            graphics.plot_modeloutput_section(ev_model)
-                            plt.show()
+                            fig, ax = plt.subplots(1)
+                            graphics.plot_modeloutput_section(ev_model, ax=ax)
 
                         _, diag = ev_model.run_until_and_store(args.sim_endyear + 1)
                         #    print('shape of volume:', ev_model.mb_model.glac_wide_volume_annual.shape, diag.volume_m3.shape)
