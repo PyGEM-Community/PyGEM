@@ -347,15 +347,13 @@ def calculate_elev_change_1d(
         )  # note, oggm flux_divergence_myr is opposite sign of convention, hence negative
 
     # --- Step 3: compute subannual thickness change ---
-    bin_delta_thick_subannual = bin_massbalclim_ice - bin_flux_divergence_subannual  # [m ice per month]
+    bin_delta_thick_subannual = bin_massbalclim_ice - bin_flux_divergence_subannual  # [m ice]
 
     # --- Step 4: calculate subannual thickness ---
-    # get binned subannual thickness = running thickness change + initial thickness
-    thickness_m = ds[0].thickness_m.values.T  # glacier thickness [m ice], (nbins, nyears)
-    # set any < 0 thickness to nan
-    thickness_m[thickness_m <= 0] = np.nan
+    # calculate binned subannual thickness = running thickness change + initial thickness
+    bin_thick_initial =  ds[0].thickness_m.isel(time=0).values     # initial glacier thickness [m ice], (nbins)
     running_bin_delta_thick_subannual = np.cumsum(bin_delta_thick_subannual, axis=-1)
-    bin_thick_subannual = running_bin_delta_thick_subannual + thickness_m[:, 0][:, np.newaxis]
+    bin_thick_subannual = running_bin_delta_thick_subannual + bin_thick_initial[:, np.newaxis]
 
     # --- Step 5: rebin subannual thickness ---
     # get surface height at the specified reference year
