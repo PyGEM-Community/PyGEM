@@ -34,8 +34,11 @@ from pygem.oggm_compat import (
 from pygem.utils._funcs import interp1d_fill_gaps
 
 
-# get model monthly deltah
-def get_elev_change_1d_hat(gdir):
+def calculate_elev_change_1d(gdir):
+    """
+    calculate the 1d elevation change from dynamical spinup.
+    assumes constant flux divergence througohut each model year.
+    """
     # load flowline_diagnostics from spinup
     f = gdir.get_filepath('fl_diagnostics', filesuffix='_dynamic_spinup_pygem_mb')
     with xr.open_dataset(f, group='fl_0') as ds_spn:
@@ -50,55 +53,65 @@ def get_elev_change_1d_hat(gdir):
             0,
         )
 
-    thickness_m = ds_spn.thickness_m.values.T  # glacier thickness [m ice], (nbins, nyears)
+    ### get monthly elevation change ###
+    # note, transpose and [:, 1:] indexing to access desired OGGM dataset outputs
+    # OGGM stores data following (nsteps, nbins) - while PyGEM follows (nbins, nsteps), hence .T operator
+    # OGGM also stores the 0th model year with np.nan values, hence [:,1:] indexing. Time index 1 corresponds to the output from model year 0-1
+    #  --- Step 1: convert mass balance from m w.e. to m ice ---
+    rho_w = pygem_prms['constants']['density_water']
+    rho_i = pygem_prms['constants']['density_ice']
+    bin_massbalclim_ice = ds_spn.climatic_mb_myr.values.T[:, 1:] * (
+        rho_w / rho_i
+    )  # binned climatic mass balance (nbins, nsteps)
 
-    # set any < 0 thickness to nan
-    thickness_m[thickness_m <= 0] = np.nan
+    # --- Step 2: expand annual climatic mass balance and flux divergence to monthly steps ---
+    # assume the climatic mass balance and flux divergence are constant througohut the year
+    # ie. take annual values and divide spread uniformly throughout model year
+    bin_massbalclim_ice_monthly = np.repeat(bin_massbalclim_ice / 12, 12, axis=-1)  # [m ice]
+    bin_flux_divergence_monthly = np.repeat(
+        -ds_spn.flux_divergence_myr.values.T[:, 1:] / 12, 12, axis=-1
+    )  # [m ice] note, oggm flux_divergence_myr is opposite sign of convention, hence negative
 
-    # climatic mass balance
-    dotb_monthly = np.repeat(ds_spn.climatic_mb_myr.values.T[:, 1:] / 12, 12, axis=-1)
+    # --- Step 3: compute monthly thickness change ---
+    bin_delta_thick_monthly = bin_massbalclim_ice_monthly - bin_flux_divergence_monthly  # [m ice]
 
-    # convert to m ice
-    dotb_monthly = dotb_monthly * (pygem_prms['constants']['density_water'] / pygem_prms['constants']['density_ice'])
-    ### to get monthly thickness and mass we require monthly flux divergence ###
-    # we'll assume the flux divergence is constant througohut the year (is this a good assumption?)
-    # ie. take annual values and divide by 12 - use numpy repeat to repeat values across 12 months
-    flux_div_monthly_mmo = np.repeat(-ds_spn.flux_divergence_myr.values.T[:, 1:] / 12, 12, axis=-1)
-    # get monthly binned change in thickness
-    delta_h_monthly = dotb_monthly - flux_div_monthly_mmo  # [m ice per month]
+    # --- Step 4: calculate monthly thickness ---
+    # calculate binned monthly thickness = running thickness change + initial thickness
+    bin_thick_initial = ds_spn.thickness_m.isel(time=0).values  # initial glacier thickness [m ice], (nbins)
+    running_bin_delta_thick_monthly = np.cumsum(bin_delta_thick_monthly, axis=-1)
+    bin_thick_monthly = running_bin_delta_thick_monthly + bin_thick_initial[:, np.newaxis]
 
-    # get binned monthly thickness = running thickness change + initial thickness
-    running_delta_h_monthly = np.cumsum(delta_h_monthly, axis=-1)
-    h_monthly = running_delta_h_monthly + thickness_m[:, 0][:, np.newaxis]
-
+    # --- Step 5: rebin monthly thickness ---
     # get surface height at the specified reference year
-    ref_surface_h = ds_spn.bed_h.values + ds_spn.thickness_m.sel(time=gdir.elev_change_1d['ref_dem_year']).values
-
-    # aggregate model bin thicknesses as desired
+    ref_surface_height = ds_spn.bed_h.values + ds_spn.thickness_m.sel(time=gdir.elev_change_1d['ref_dem_year']).values
+    # aggregate model bin thicknesses
     with warnings.catch_warnings():
         warnings.filterwarnings('ignore')
-        h_monthly = np.column_stack(
+        bin_thick_monthly = np.column_stack(
             [
                 binned_statistic(
-                    x=ref_surface_h, values=x, statistic=np.nanmean, bins=gdir.elev_change_1d['bin_edges']
+                    x=ref_surface_height,
+                    values=x,
+                    statistic=np.nanmean,
+                    bins=gdir.elev_change_1d['bin_edges'],
                 )[0]
-                for x in h_monthly.T
+                for x in bin_thick_monthly.T
             ]
         )
-
     # interpolate over any empty bins
-    h_monthly_ = np.column_stack([interp1d_fill_gaps(x.copy()) for x in h_monthly.T])
+    bin_thick_monthly = np.column_stack([interp1d_fill_gaps(x.copy()) for x in bin_thick_monthly.T])
 
-    # difference desired time steps, return np.nan array for any missing inds
-    dh = np.column_stack(
+    # --- Step 6: calculate elevation change ---
+    elev_change_1d = np.column_stack(
         [
-            h_monthly_[:, j] - h_monthly_[:, i]
-            if (i is not None and j is not None and 0 <= i < h_monthly_.shape[1] and 0 <= j < h_monthly_.shape[1])
-            else np.full(h_monthly_.shape[0], np.nan)
-            for i, j in gdir.elev_change_1d['model2obs_inds_map']
+            bin_thick_monthly[:, tup[1]] - bin_thick_monthly[:, tup[0]]
+            if tup[0] is not None and tup[1] is not None
+            else np.full(bin_thick_monthly.shape[0], np.nan)
+            for tup in gdir.elev_change_1d['model2obs_inds_map']
         ]
     )
-    return dh, ds_spn.dis_along_flowline.values, area
+
+    return elev_change_1d, ds_spn.dis_along_flowline.values, area
 
 
 def loss_with_penalty(x, obs, mod, threshold=100, weight=1.0):
@@ -286,7 +299,7 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
                         for start, end in gd.elev_change_1d['dates']
                     ]
 
-                    dh_hat, dist, bin_area = get_elev_change_1d_hat(gd)
+                    dh_hat, dist, bin_area = calculate_elev_change_1d(gd)
                     dhdt_hat = dh_hat / gd.elev_change_1d['nyrs']
 
                     # plot binned surface area
