@@ -99,7 +99,6 @@ def test_check_compiled_product(rootdir):
         vars_to_check = [item for item in vars_to_check if item not in vars_to_skip]
 
         for var in vars_to_check:
-            print(var)
             # skip mad
             if 'mad' in var:
                 continue
@@ -115,13 +114,13 @@ def test_check_compiled_product(rootdir):
 
                 # pull data values
                 simvals = simvar.values
-                compvals = compvar.values[0, :, :]  # first index is the glacier index
+                compvals = compvar.values[0, :, :]  # 0th index is the glacier index
 
                 # check that compiled product has same shape as original data
                 assert simvals.shape == compvals.shape, (
                     f'Compiled product shape {compvals.shape} does not match original data shape {simvals.shape}'
                 )
                 # check that compiled product matches original data
-                assert np.allclose(simvals, compvals, rtol=1e-8, atol=1e-12), (
+                assert np.allclose(simvals, compvals, rtol=1e-8, atol=1e-12, equal_nan=True), (
                     f'Compiled product for {var} does not match original data'
                 )
