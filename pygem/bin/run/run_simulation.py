@@ -1112,25 +1112,20 @@ def run(list_packed_vars):
                         years = np.arange(args.sim_startyear, args.sim_endyear + 1)
                         mb_all = []
                         for year in years:
-                            mb_annual = mbmod.get_annual_mb(
+                            # Calculate annual mass balance
+                            mbmod.get_annual_mb(
                                 nfls[0].surface_h,
                                 fls=nfls,
                                 fl_id=0,
                                 year=year,
-                                debug=True,
+                                debug=debug,
                             )
-                            mb_mwea = (
-                                mb_annual
-                                * 365
-                                * 24
-                                * 3600
-                                * pygem_prms['constants']['density_ice']
-                                / pygem_prms['constants']['density_water']
+                            # Record glacierwide annual mass balance
+                            t_start, t_stop = mbmod.get_step_inds(year)
+                            mb_all.append(
+                                mbmod.glac_wide_massbaltotal[t_start : t_stop + 1].sum()
+                                / mbmod.glacier_area_initial.sum()
                             )
-                            glac_wide_mb_mwea = (
-                                mb_mwea * mbmod.glacier_area_initial
-                            ).sum() / mbmod.glacier_area_initial.sum()
-                            mb_all.append(glac_wide_mb_mwea)
                         mbmod.glac_wide_area_annual[-1] = mbmod.glac_wide_area_annual[0]
                         mbmod.glac_wide_volume_annual[-1] = mbmod.glac_wide_volume_annual[0]
                         diag['area_m2'] = mbmod.glac_wide_area_annual
@@ -1147,10 +1142,6 @@ def run(list_packed_vars):
                                 'massbal (med):',
                                 np.round(np.median(mb_all), 3),
                             )
-
-                    #                            mb_em_mwea = run_emulator_mb(modelprms)
-                    #                            print('  emulator mb:', np.round(mb_em_mwea,3))
-                    #                            mb_em_sims.append(mb_em_mwea)
 
                     # Record output for successful runs
                     if successful_run:
