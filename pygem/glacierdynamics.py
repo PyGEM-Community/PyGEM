@@ -324,12 +324,9 @@ class MassRedistributionCurveModel(FlowlineModel):
         """Update geometry for a given year"""
 
         # get year index
-        year_idx = self.mb_model.get_year_index(year)
-        step_idxs = np.where(self.mb_model.dates_table.year == int(year))
-        # get start step for 0th step of specified year
-        t_start = step_idxs[0][0]
-        # get final step for specified year
-        t_stop = step_idxs[0][-1]
+        year_idx = self.get_year_index(year)
+        # get time step indices - note indexing should be [t_start:t_stop+1] to include final step in year
+        t_start, t_stop = self.get_step_inds(year)
         if debug:
             print('year:', year, f'({year_idx})')
             print('time steps:', f'[{t_start}, {t_stop}]')
@@ -385,7 +382,7 @@ class MassRedistributionCurveModel(FlowlineModel):
                         # If frontal ablation more than bin volume, remove entire bin
                         if fa_m3 > vol_last:
                             # Record frontal ablation (m3 w.e.) in mass balance model for output
-                            self.mb_model.glac_bin_frontalablation[last_idx, t_stop] = (
+                            self.mb_model.glac_bin_frontalablation[last_idx, t_stop + 1] = (
                                 vol_last
                                 * pygem_prms['constants']['density_ice']
                                 / pygem_prms['constants']['density_water']
@@ -402,7 +399,7 @@ class MassRedistributionCurveModel(FlowlineModel):
                             section_t0[last_idx] = section_t0[last_idx] - fa_m3 / fl.dx_meter
                             self.fls[fl_id].section = section_t0
                             # Record frontal ablation(m3 w.e.)
-                            self.mb_model.glac_bin_frontalablation[last_idx, t_stop] = (
+                            self.mb_model.glac_bin_frontalablation[last_idx, t_stop + 1] = (
                                 fa_m3
                                 * pygem_prms['constants']['density_ice']
                                 / pygem_prms['constants']['density_water']
