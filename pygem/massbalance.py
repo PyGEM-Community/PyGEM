@@ -994,7 +994,7 @@ class PyGEMMassBalance(MassBalanceModel):
         total volume change and therefore do not impose limitations like this because they do not estimate the flux
         divergence. As a result, they may systematically overestimate mass loss compared to OGGM's dynamical model.
         """
-        years = list(np.unique(dates_table['year']))
+        years = list(np.unique(self.dates_table['year']))
 
         # Compute annual volume change and melt values needed for adjustments
         vol_change_annual_mbmod = np.zeros(len(years))
@@ -1033,7 +1033,7 @@ class PyGEMMassBalance(MassBalanceModel):
             1 - vol_change_annual_dif[chg_idx_melt] / vol_change_annual_mbmod_melt[chg_idx_melt]
         )
 
-        vol_change_annual_melt_reduction_monthly = np.zeros(dates_table.shape[0])
+        vol_change_annual_melt_reduction_monthly = np.zeros(self.dates_table.shape[0])
         for nyear, year in enumerate(years):
             step_idxs = np.where(self.dates_table.year == int(year))
             t_start = step_idxs[0][0]

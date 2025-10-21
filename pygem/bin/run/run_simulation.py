@@ -1191,7 +1191,7 @@ def run(list_packed_vars):
                                 print('  mb_mbmod [mwea]:', np.round(mb_mwea_mbmod, 2))
 
                             if np.abs(mb_mwea_diag - mb_mwea_mbmod) > 1e-6:
-                                ev_model.mb_model.ensure_mass_conservation(diag, dates_table)
+                                ev_model.mb_model.ensure_mass_conservation(diag)
 
                         if debug:
                             print(
