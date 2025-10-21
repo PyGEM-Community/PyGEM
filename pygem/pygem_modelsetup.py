@@ -135,52 +135,6 @@ def datesmodelrun(
     return dates_table
 
 
-def daysinmonth(year, month):
-    """
-    Return days in month based on the month and year
-
-    Parameters
-    ----------
-    year : str
-    month : str
-
-    Returns
-    -------
-    integer of the days in the month
-    """
-    if year % 4 == 0:
-        daysinmonth_dict = {
-            1: 31,
-            2: 29,
-            3: 31,
-            4: 30,
-            5: 31,
-            6: 30,
-            7: 31,
-            8: 31,
-            9: 30,
-            10: 31,
-            11: 30,
-            12: 31,
-        }
-    else:
-        daysinmonth_dict = {
-            1: 31,
-            2: 28,
-            3: 31,
-            4: 30,
-            5: 31,
-            6: 30,
-            7: 31,
-            8: 31,
-            9: 30,
-            10: 31,
-            11: 30,
-            12: 31,
-        }
-    return daysinmonth_dict[month]
-
-
 def hypsometrystats(hyps_table, thickness_table):
     """Calculate the volume and mean associated with the hypsometry data.
 
