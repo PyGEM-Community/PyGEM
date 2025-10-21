@@ -324,9 +324,9 @@ class MassRedistributionCurveModel(FlowlineModel):
         """Update geometry for a given year"""
 
         # get year index
-        year_idx = self.get_year_index(year)
+        year_idx = self.mb_model.get_year_index(year)
         # get time step indices - note indexing should be [t_start:t_stop+1] to include final step in year
-        t_start, t_stop = self.get_step_inds(year)
+        t_start, t_stop = self.mb_model.get_step_inds(year)
         if debug:
             print('year:', year, f'({year_idx})')
             print('time steps:', f'[{t_start}, {t_stop}]')
