@@ -986,7 +986,9 @@ def run(list_packed_vars):
 
                         if debug:
                             fig, ax = plt.subplots(1)
-                            graphics.plot_modeloutput_section(ev_model, ax=ax)
+                            graphics.plot_modeloutput_section(
+                                ev_model, ax=ax, lnlabel=f'Glacier year {args.sim_startyear}'
+                            )
 
                         diag = ev_model.run_until_and_store(args.sim_endyear + 1)
                         ev_model.mb_model.glac_wide_volume_annual[-1] = diag.volume_m3[-1]
@@ -1057,7 +1059,9 @@ def run(list_packed_vars):
 
                         if debug:
                             fig, ax = plt.subplots(1)
-                            graphics.plot_modeloutput_section(ev_model, ax=ax)
+                            graphics.plot_modeloutput_section(
+                                ev_model, ax=ax, lnlabel=f'Glacier year {args.sim_startyear}'
+                            )
 
                         _, diag = ev_model.run_until_and_store(args.sim_endyear + 1)
                         #    print('shape of volume:', ev_model.mb_model.glac_wide_volume_annual.shape, diag.volume_m3.shape)
@@ -1147,7 +1151,9 @@ def run(list_packed_vars):
                     if successful_run:
                         if args.option_dynamics is not None:
                             if debug:
-                                graphics.plot_modeloutput_section(ev_model, ax=ax, srfls='--')
+                                graphics.plot_modeloutput_section(
+                                    ev_model, ax=ax, srfls='--', lnlabel=f'Glacier year {args.sim_endyear + 1}'
+                                )
                                 plt.figure()
                                 diag.volume_m3.plot()
                                 plt.show()
