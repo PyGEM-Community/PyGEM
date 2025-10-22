@@ -333,12 +333,10 @@ def main():
     if args.simpath:
         # filter out non-file paths
         simpath = [p for p in args.simpath if os.path.isfile(p)]
-
     elif args.simdir:
         # get list of sims
         simpath = sorted(glob.glob(args.simdir + '/*.nc'))
     if simpath:
-        print(simpath)
         # number of cores for parallel processing
         if args.ncores > 1:
             ncores = int(np.min([len(simpath), args.ncores]))

@@ -210,6 +210,18 @@ class PyGEMMassBalance(MassBalanceModel):
         assert year in self.years, f'{year} not found in model dates table'
         return self.year_to_index[year]
 
+    def get_step_inds(self, year):
+        """
+        Get time step start and stop indices for the specified model year.
+
+        Both indices are inclusive, so standard Python slicing would use
+        [t_start : t_stop + 1].
+        """
+        step_idxs = np.where(self.dates_table.year == int(year))[0]
+        if step_idxs.size == 0:
+            raise ValueError(f'Year {year} not found in dates_table.')
+        return step_idxs[0], step_idxs[-1]
+
     def get_annual_mb(
         self,
         heights,
@@ -243,12 +255,8 @@ class PyGEMMassBalance(MassBalanceModel):
 
         # get year index
         year_idx = self.get_year_index(year)
-        step_idxs = np.where(self.dates_table.year == int(year))
-        # get start step for 0th step of specified year
-        t_start = step_idxs[0][0]
-        # get stop step for specified year
-        # note, this is 1 greater than the final step which to include - python indexing will not include this step
-        t_stop = step_idxs[0][-1] + 1
+        # get time step indices - note indexing should be [t_start:t_stop+1] to include final step in year
+        t_start, t_stop = self.get_step_inds(year)
 
         fl = fls[fl_id]
 
@@ -303,11 +311,11 @@ class PyGEMMassBalance(MassBalanceModel):
             # AIR TEMPERATURE: Downscale the gcm temperature [deg C] to each bin
             # Downscale using gcm and glacier lapse rates
             #  T_bin = T_gcm + lr_gcm * (z_ref - z_gcm) + lr_glac * (z_bin - z_ref) + tempchange
-            self.bin_temp[:, t_start:t_stop] = (
-                self.glacier_gcm_temp[t_start:t_stop]
-                + self.glacier_gcm_lrgcm[t_start:t_stop]
+            self.bin_temp[:, t_start : t_stop + 1] = (
+                self.glacier_gcm_temp[t_start : t_stop + 1]
+                + self.glacier_gcm_lrgcm[t_start : t_stop + 1]
                 * (self.glacier_rgi_table.loc[pygem_prms['mb']['option_elev_ref_downscale']] - self.glacier_gcm_elev)
-                + self.glacier_gcm_lrglac[t_start:t_stop]
+                + self.glacier_gcm_lrglac[t_start : t_stop + 1]
                 * (heights - self.glacier_rgi_table.loc[pygem_prms['mb']['option_elev_ref_downscale']])[:, np.newaxis]
                 + self.modelprms['tbias']
             )
@@ -315,8 +323,8 @@ class PyGEMMassBalance(MassBalanceModel):
             # PRECIPITATION/ACCUMULATION: Downscale the precipitation (liquid and solid) to each bin
             # Precipitation using precipitation factor and precipitation gradient
             #  P_bin = P_gcm * prec_factor * (1 + prec_grad * (z_bin - z_ref))
-            bin_precsnow[:, t_start:t_stop] = (
-                self.glacier_gcm_prec[t_start:t_stop]
+            bin_precsnow[:, t_start : t_stop + 1] = (
+                self.glacier_gcm_prec[t_start : t_stop + 1]
                 * self.modelprms['kp']
                 * (
                     1
@@ -345,8 +353,8 @@ class PyGEMMassBalance(MassBalanceModel):
                     height_75 = heights[glac_idx_upper25].min()
                     glac_idx_75 = np.where(heights == height_75)[0][0]
                     # exponential decay
-                    bin_precsnow[glac_idx_upper25, t_start:t_stop] = (
-                        bin_precsnow[glac_idx_75, t_start:t_stop]
+                    bin_precsnow[glac_idx_upper25, t_start : t_stop + 1] = (
+                        bin_precsnow[glac_idx_75, t_start : t_stop + 1]
                         * np.exp(
                             -1
                             * (heights[glac_idx_upper25] - height_75)
@@ -356,61 +364,63 @@ class PyGEMMassBalance(MassBalanceModel):
                     # Precipitation cannot be less than 87.5% of the maximum accumulation elsewhere on the glacier
                     # compute max values for each step over glac_idx_t0, compare, and replace if needed
                     max_values = np.tile(
-                        0.875 * np.max(bin_precsnow[glac_idx_t0, t_start:t_stop], axis=0),
+                        0.875 * np.max(bin_precsnow[glac_idx_t0, t_start : t_stop + 1], axis=0),
                         (8, 1),
                     )
-                    uncorrected_values = bin_precsnow[glac_idx_upper25, t_start:t_stop]
+                    uncorrected_values = bin_precsnow[glac_idx_upper25, t_start : t_stop + 1]
                     corrected_values = np.max(np.stack([uncorrected_values, max_values], axis=0), axis=0)
-                    bin_precsnow[glac_idx_upper25, t_start:t_stop] = corrected_values
+                    bin_precsnow[glac_idx_upper25, t_start : t_stop + 1] = corrected_values
 
             # Separate total precipitation into liquid (bin_prec) and solid (bin_acc)
             if pygem_prms['mb']['option_accumulation'] == 1:
                 # if temperature above threshold, then rain
                 (
-                    self.bin_prec[:, t_start:t_stop][
-                        self.bin_temp[:, t_start:t_stop] > self.modelprms['tsnow_threshold']
+                    self.bin_prec[:, t_start : t_stop + 1][
+                        self.bin_temp[:, t_start : t_stop + 1] > self.modelprms['tsnow_threshold']
                     ]
-                ) = bin_precsnow[:, t_start:t_stop][
-                    self.bin_temp[:, t_start:t_stop] > self.modelprms['tsnow_threshold']
+                ) = bin_precsnow[:, t_start : t_stop + 1][
+                    self.bin_temp[:, t_start : t_stop + 1] > self.modelprms['tsnow_threshold']
                 ]
                 # if temperature below threshold, then snow
                 (
-                    self.bin_acc[:, t_start:t_stop][
-                        self.bin_temp[:, t_start:t_stop] <= self.modelprms['tsnow_threshold']
+                    self.bin_acc[:, t_start : t_stop + 1][
+                        self.bin_temp[:, t_start : t_stop + 1] <= self.modelprms['tsnow_threshold']
                     ]
-                ) = bin_precsnow[:, t_start:t_stop][
-                    self.bin_temp[:, t_start:t_stop] <= self.modelprms['tsnow_threshold']
+                ) = bin_precsnow[:, t_start : t_stop + 1][
+                    self.bin_temp[:, t_start : t_stop + 1] <= self.modelprms['tsnow_threshold']
                 ]
             elif pygem_prms['mb']['option_accumulation'] == 2:
                 # if temperature between min/max, then mix of snow/rain using linear relationship between min/max
-                self.bin_prec[:, t_start:t_stop] = (
-                    0.5 + (self.bin_temp[:, t_start:t_stop] - self.modelprms['tsnow_threshold']) / 2
-                ) * bin_precsnow[:, t_start:t_stop]
-                self.bin_acc[:, t_start:t_stop] = bin_precsnow[:, t_start:t_stop] - self.bin_prec[:, t_start:t_stop]
+                self.bin_prec[:, t_start : t_stop + 1] = (
+                    0.5 + (self.bin_temp[:, t_start : t_stop + 1] - self.modelprms['tsnow_threshold']) / 2
+                ) * bin_precsnow[:, t_start : t_stop + 1]
+                self.bin_acc[:, t_start : t_stop + 1] = (
+                    bin_precsnow[:, t_start : t_stop + 1] - self.bin_prec[:, t_start : t_stop + 1]
+                )
                 # if temperature above maximum threshold, then all rain
                 (
-                    self.bin_prec[:, t_start:t_stop][
-                        self.bin_temp[:, t_start:t_stop] > self.modelprms['tsnow_threshold'] + 1
+                    self.bin_prec[:, t_start : t_stop + 1][
+                        self.bin_temp[:, t_start : t_stop + 1] > self.modelprms['tsnow_threshold'] + 1
                     ]
-                ) = bin_precsnow[:, t_start:t_stop][
-                    self.bin_temp[:, t_start:t_stop] > self.modelprms['tsnow_threshold'] + 1
+                ) = bin_precsnow[:, t_start : t_stop + 1][
+                    self.bin_temp[:, t_start : t_stop + 1] > self.modelprms['tsnow_threshold'] + 1
                 ]
                 (
-                    self.bin_acc[:, t_start:t_stop][
-                        self.bin_temp[:, t_start:t_stop] > self.modelprms['tsnow_threshold'] + 1
+                    self.bin_acc[:, t_start : t_stop + 1][
+                        self.bin_temp[:, t_start : t_stop + 1] > self.modelprms['tsnow_threshold'] + 1
                     ]
                 ) = 0
                 # if temperature below minimum threshold, then all snow
                 (
-                    self.bin_acc[:, t_start:t_stop][
-                        self.bin_temp[:, t_start:t_stop] <= self.modelprms['tsnow_threshold'] - 1
+                    self.bin_acc[:, t_start : t_stop + 1][
+                        self.bin_temp[:, t_start : t_stop + 1] <= self.modelprms['tsnow_threshold'] - 1
                     ]
-                ) = bin_precsnow[:, t_start:t_stop][
-                    self.bin_temp[:, t_start:t_stop] <= self.modelprms['tsnow_threshold'] - 1
+                ) = bin_precsnow[:, t_start : t_stop + 1][
+                    self.bin_temp[:, t_start : t_stop + 1] <= self.modelprms['tsnow_threshold'] - 1
                 ]
                 (
-                    self.bin_prec[:, t_start:t_stop][
-                        self.bin_temp[:, t_start:t_stop] <= self.modelprms['tsnow_threshold'] - 1
+                    self.bin_prec[:, t_start : t_stop + 1][
+                        self.bin_temp[:, t_start : t_stop + 1] <= self.modelprms['tsnow_threshold'] - 1
                     ]
                 ) = 0
 
@@ -668,8 +678,8 @@ class PyGEMMassBalance(MassBalanceModel):
                     # calculate annually and place potential refreeze in user defined month
                     if step == t_start:
                         bin_temp_annual = annualweightedmean_array(
-                            self.bin_temp[:, t_start:t_stop],
-                            self.dates_table.iloc[t_start:t_stop, :],
+                            self.bin_temp[:, t_start : t_stop + 1],
+                            self.dates_table.iloc[t_start : t_stop + 1, :],
                         )
                         bin_refreezepotential_annual = (-0.69 * bin_temp_annual + 0.0096) / 100
                         # Remove negative refreezing values
@@ -751,7 +761,7 @@ class PyGEMMassBalance(MassBalanceModel):
             # ===== RETURN TO ANNUAL LOOP =====
             # SURFACE TYPE (-)
             # Annual climatic mass balance [m w.e.] used to determine the surface type
-            self.glac_bin_massbalclim_annual[:, year_idx] = self.glac_bin_massbalclim[:, t_start:t_stop].sum(1)
+            self.glac_bin_massbalclim_annual[:, year_idx] = self.glac_bin_massbalclim[:, t_start : t_stop + 1].sum(1)
             # Update surface type for each bin
             self.surfacetype, firnline_idx = self._surfacetypebinsannual(
                 self.surfacetype, self.glac_bin_massbalclim_annual, year_idx
@@ -770,10 +780,10 @@ class PyGEMMassBalance(MassBalanceModel):
                 option_areaconstant=option_areaconstant,
             )
 
-        # Mass balance for each bin [m ice per second]
-        seconds_in_year = self.days_in_step[t_start:t_stop].sum() * 24 * 3600
+        # Calculate mass balance rate for each bin (convert from [m w.e. yr^-1] to [m ice s^-1])
+        seconds_in_year = self.days_in_step[t_start : t_stop + 1].sum() * 24 * 3600
         mb = (
-            self.glac_bin_massbalclim[:, t_start:t_stop].sum(1)
+            self.glac_bin_massbalclim[:, t_start : t_stop + 1].sum(1)
             * pygem_prms['constants']['density_water']
             / pygem_prms['constants']['density_ice']
             / seconds_in_year
@@ -829,7 +839,8 @@ class PyGEMMassBalance(MassBalanceModel):
         """
         # Glacier area
         glac_idx = glacier_area.nonzero()[0]
-        glacier_area_steps = glacier_area[:, np.newaxis].repeat(t_stop - t_start, axis=1)
+        # repeat glacier area for all time steps in year
+        glacier_area_steps = glacier_area[:, np.newaxis].repeat((t_stop + 1) - t_start, axis=1)
 
         # Check if need to adjust for complete removal of the glacier
         #  - needed for accurate runoff calcs and accurate mass balance components
@@ -846,7 +857,7 @@ class PyGEMMassBalance(MassBalanceModel):
                 )
                 # Check annual climatic mass balance (mwea)
                 mb_mwea = (
-                    glacier_area * self.glac_bin_massbalclim[:, t_start:t_stop].sum(1)
+                    glacier_area * self.glac_bin_massbalclim[:, t_start : t_stop + 1].sum(1)
                 ).sum() / glacier_area.sum()
             else:
                 mb_max_loss = 0
@@ -867,65 +878,65 @@ class PyGEMMassBalance(MassBalanceModel):
                 # Glacier-wide area (m2)
                 self.glac_wide_area_annual[year_idx] = glacier_area.sum()
             # Glacier-wide temperature (degC)
-            self.glac_wide_temp[t_start:t_stop] = (
-                self.bin_temp[:, t_start:t_stop][glac_idx] * glacier_area_steps[glac_idx]
+            self.glac_wide_temp[t_start : t_stop + 1] = (
+                self.bin_temp[:, t_start : t_stop + 1][glac_idx] * glacier_area_steps[glac_idx]
             ).sum(0) / glacier_area.sum()
             # Glacier-wide precipitation (m3)
-            self.glac_wide_prec[t_start:t_stop] = (
-                self.bin_prec[:, t_start:t_stop][glac_idx] * glacier_area_steps[glac_idx]
+            self.glac_wide_prec[t_start : t_stop + 1] = (
+                self.bin_prec[:, t_start : t_stop + 1][glac_idx] * glacier_area_steps[glac_idx]
             ).sum(0)
             # Glacier-wide accumulation (m3 w.e.)
-            self.glac_wide_acc[t_start:t_stop] = (
-                self.bin_acc[:, t_start:t_stop][glac_idx] * glacier_area_steps[glac_idx]
+            self.glac_wide_acc[t_start : t_stop + 1] = (
+                self.bin_acc[:, t_start : t_stop + 1][glac_idx] * glacier_area_steps[glac_idx]
             ).sum(0)
             # Glacier-wide refreeze (m3 w.e.)
-            self.glac_wide_refreeze[t_start:t_stop] = (
-                self.glac_bin_refreeze[:, t_start:t_stop][glac_idx] * glacier_area_steps[glac_idx]
+            self.glac_wide_refreeze[t_start : t_stop + 1] = (
+                self.glac_bin_refreeze[:, t_start : t_stop + 1][glac_idx] * glacier_area_steps[glac_idx]
             ).sum(0)
             # Glacier-wide melt (m3 w.e.)
-            self.glac_wide_melt[t_start:t_stop] = (
-                self.glac_bin_melt[:, t_start:t_stop][glac_idx] * glacier_area_steps[glac_idx]
+            self.glac_wide_melt[t_start : t_stop + 1] = (
+                self.glac_bin_melt[:, t_start : t_stop + 1][glac_idx] * glacier_area_steps[glac_idx]
             ).sum(0)
             # Glacier-wide total mass balance (m3 w.e.)
-            self.glac_wide_massbaltotal[t_start:t_stop] = (
-                self.glac_wide_acc[t_start:t_stop]
-                + self.glac_wide_refreeze[t_start:t_stop]
-                - self.glac_wide_melt[t_start:t_stop]
-                - self.glac_wide_frontalablation[t_start:t_stop]
+            self.glac_wide_massbaltotal[t_start : t_stop + 1] = (
+                self.glac_wide_acc[t_start : t_stop + 1]
+                + self.glac_wide_refreeze[t_start : t_stop + 1]
+                - self.glac_wide_melt[t_start : t_stop + 1]
+                - self.glac_wide_frontalablation[t_start : t_stop + 1]
             )
 
             # If mass loss more negative than glacier mass, reduce melt so glacier completely melts (no excess)
             if icethickness_t0 is not None and mb_mwea < mb_max_loss:
-                melt_yr_raw = self.glac_wide_melt[t_start:t_stop].sum()
+                melt_yr_raw = self.glac_wide_melt[t_start : t_stop + 1].sum()
                 melt_yr_max = (
                     self.glac_wide_volume_annual[year_idx]
                     * pygem_prms['constants']['density_ice']
                     / pygem_prms['constants']['density_water']
-                    + self.glac_wide_acc[t_start:t_stop].sum()
-                    + self.glac_wide_refreeze[t_start:t_stop].sum()
+                    + self.glac_wide_acc[t_start : t_stop + 1].sum()
+                    + self.glac_wide_refreeze[t_start : t_stop + 1].sum()
                 )
                 melt_frac = melt_yr_max / melt_yr_raw
                 # Update glacier-wide melt (m3 w.e.)
-                self.glac_wide_melt[t_start:t_stop] = self.glac_wide_melt[t_start:t_stop] * melt_frac
+                self.glac_wide_melt[t_start : t_stop + 1] = self.glac_wide_melt[t_start : t_stop + 1] * melt_frac
 
             # Glacier-wide runoff (m3)
-            self.glac_wide_runoff[t_start:t_stop] = (
-                self.glac_wide_prec[t_start:t_stop]
-                + self.glac_wide_melt[t_start:t_stop]
-                - self.glac_wide_refreeze[t_start:t_stop]
+            self.glac_wide_runoff[t_start : t_stop + 1] = (
+                self.glac_wide_prec[t_start : t_stop + 1]
+                + self.glac_wide_melt[t_start : t_stop + 1]
+                - self.glac_wide_refreeze[t_start : t_stop + 1]
             )
 
             # Snow line altitude (m a.s.l.)
-            heights_steps = heights[:, np.newaxis].repeat(t_stop - t_start, axis=1)
+            heights_steps = heights[:, np.newaxis].repeat((t_stop + 1) - t_start, axis=1)
             snow_mask = np.zeros(heights_steps.shape)
-            snow_mask[self.glac_bin_snowpack[:, t_start:t_stop] > 0] = 1
+            snow_mask[self.glac_bin_snowpack[:, t_start : t_stop + 1] > 0] = 1
             heights_steps_wsnow = heights_steps * snow_mask
             heights_steps_wsnow[heights_steps_wsnow == 0] = np.nan
             heights_change = np.zeros(heights.shape)
             heights_change[0:-1] = heights[0:-1] - heights[1:]
             try:
                 snowline_idx = np.nanargmin(heights_steps_wsnow, axis=0)
-                self.glac_wide_snowline[t_start:t_stop] = heights[snowline_idx] - heights_change[snowline_idx] / 2
+                self.glac_wide_snowline[t_start : t_stop + 1] = heights[snowline_idx] - heights_change[snowline_idx] / 2
             except:
                 snowline_idx = np.zeros((heights_steps_wsnow.shape[1])).astype(int)
                 snowline_idx_nan = []
@@ -937,7 +948,7 @@ class PyGEMMassBalance(MassBalanceModel):
                 heights_manual = heights[snowline_idx] - heights_change[snowline_idx] / 2
                 heights_manual[snowline_idx_nan] = np.nan
                 # this line below causes a potential All-NaN slice encountered issue at some time steps
-                self.glac_wide_snowline[t_start:t_stop] = heights_manual
+                self.glac_wide_snowline[t_start : t_stop + 1] = heights_manual
 
             # Equilibrium line altitude (m a.s.l.)
             ela_mask = np.zeros(heights.shape)
@@ -954,33 +965,33 @@ class PyGEMMassBalance(MassBalanceModel):
         offglac_idx = np.where(self.offglac_bin_area_annual[:, year_idx] > 0)[0]
         if option_areaconstant == False and len(offglac_idx) > 0:
             offglacier_area_steps = self.offglac_bin_area_annual[:, year_idx][:, np.newaxis].repeat(
-                t_stop - t_start, axis=1
+                (t_stop + 1) - t_start, axis=1
             )
 
             # Off-glacier precipitation (m3)
-            self.offglac_wide_prec[t_start:t_stop] = (
-                self.bin_prec[:, t_start:t_stop][offglac_idx] * offglacier_area_steps[offglac_idx]
+            self.offglac_wide_prec[t_start : t_stop + 1] = (
+                self.bin_prec[:, t_start : t_stop + 1][offglac_idx] * offglacier_area_steps[offglac_idx]
             ).sum(0)
             # Off-glacier melt (m3 w.e.)
-            self.offglac_wide_melt[t_start:t_stop] = (
-                self.offglac_bin_melt[:, t_start:t_stop][offglac_idx] * offglacier_area_steps[offglac_idx]
+            self.offglac_wide_melt[t_start : t_stop + 1] = (
+                self.offglac_bin_melt[:, t_start : t_stop + 1][offglac_idx] * offglacier_area_steps[offglac_idx]
             ).sum(0)
             # Off-glacier refreeze (m3 w.e.)
-            self.offglac_wide_refreeze[t_start:t_stop] = (
-                self.offglac_bin_refreeze[:, t_start:t_stop][offglac_idx] * offglacier_area_steps[offglac_idx]
+            self.offglac_wide_refreeze[t_start : t_stop + 1] = (
+                self.offglac_bin_refreeze[:, t_start : t_stop + 1][offglac_idx] * offglacier_area_steps[offglac_idx]
             ).sum(0)
             # Off-glacier runoff (m3)
-            self.offglac_wide_runoff[t_start:t_stop] = (
-                self.offglac_wide_prec[t_start:t_stop]
-                + self.offglac_wide_melt[t_start:t_stop]
-                - self.offglac_wide_refreeze[t_start:t_stop]
+            self.offglac_wide_runoff[t_start : t_stop + 1] = (
+                self.offglac_wide_prec[t_start : t_stop + 1]
+                + self.offglac_wide_melt[t_start : t_stop + 1]
+                - self.offglac_wide_refreeze[t_start : t_stop + 1]
             )
             # Off-glacier snowpack (m3 w.e.)
-            self.offglac_wide_snowpack[t_start:t_stop] = (
-                self.offglac_bin_snowpack[:, t_start:t_stop][offglac_idx] * offglacier_area_steps[offglac_idx]
+            self.offglac_wide_snowpack[t_start : t_stop + 1] = (
+                self.offglac_bin_snowpack[:, t_start : t_stop + 1][offglac_idx] * offglacier_area_steps[offglac_idx]
             ).sum(0)
 
-    def ensure_mass_conservation(self, diag, dates_table):
+    def ensure_mass_conservation(self, diag):
         """
         Ensure mass conservation that may result from using OGGM's glacier dynamics model. This will be resolved on an
         annual basis, and since the glacier dynamics are updated annually, the melt and runoff will be adjusted on a
@@ -994,24 +1005,23 @@ class PyGEMMassBalance(MassBalanceModel):
         total volume change and therefore do not impose limitations like this because they do not estimate the flux
         divergence. As a result, they may systematically overestimate mass loss compared to OGGM's dynamical model.
         """
-        years = list(np.unique(dates_table['year']))
+        years = list(np.unique(self.dates_table['year']))
 
         # Compute annual volume change and melt values needed for adjustments
         vol_change_annual_mbmod = np.zeros(len(years))
         vol_change_annual_mbmod_melt = np.zeros(len(years))
         for nyear, year in enumerate(years):
-            step_idxs = np.where(self.dates_table.year == int(year))
-            t_start = step_idxs[0][0]
-            t_stop = step_idxs[0][-1] + 1
+            # get time step indices - note indexing should be [t_start:t_stop+1] to include final step in year
+            t_start, t_stop = self.get_step_inds(year)
 
             vol_change_annual_mbmod[nyear] = (
-                self.glac_wide_massbaltotal[t_start:t_stop].sum()
+                self.glac_wide_massbaltotal[t_start : t_stop + 1].sum()
                 * pygem_prms['constants']['density_water']
                 / pygem_prms['constants']['density_ice']
             )
 
             vol_change_annual_mbmod_melt[nyear] = (
-                self.glac_wide_melt[t_start:t_stop].sum()
+                self.glac_wide_melt[t_start : t_stop + 1].sum()
                 * pygem_prms['constants']['density_water']
                 / pygem_prms['constants']['density_ice']
             )
@@ -1033,13 +1043,11 @@ class PyGEMMassBalance(MassBalanceModel):
             1 - vol_change_annual_dif[chg_idx_melt] / vol_change_annual_mbmod_melt[chg_idx_melt]
         )
 
-        vol_change_annual_melt_reduction_monthly = np.zeros(dates_table.shape[0])
+        vol_change_annual_melt_reduction_monthly = np.zeros(self.dates_table.shape[0])
         for nyear, year in enumerate(years):
-            step_idxs = np.where(self.dates_table.year == int(year))
-            t_start = step_idxs[0][0]
-            t_stop = step_idxs[0][-1] + 1
-
-            vol_change_annual_melt_reduction_monthly[t_start:t_stop] = vol_change_annual_melt_reduction[nyear]
+            # get time step indices - note indexing should be [t_start:t_stop+1] to include final step in year
+            t_start, t_stop = self.get_step_inds(year)
+            vol_change_annual_melt_reduction_monthly[t_start : t_stop + 1] = vol_change_annual_melt_reduction[nyear]
 
         # Glacier-wide melt (m3 w.e.)
         self.glac_wide_melt = self.glac_wide_melt * vol_change_annual_melt_reduction_monthly

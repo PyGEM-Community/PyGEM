@@ -986,7 +986,9 @@ def run(list_packed_vars):
 
                         if debug:
                             fig, ax = plt.subplots(1)
-                            graphics.plot_modeloutput_section(ev_model, ax=ax)
+                            graphics.plot_modeloutput_section(
+                                ev_model, ax=ax, lnlabel=f'Glacier year {args.sim_startyear}'
+                            )
 
                         diag = ev_model.run_until_and_store(args.sim_endyear + 1)
                         ev_model.mb_model.glac_wide_volume_annual[-1] = diag.volume_m3[-1]
@@ -1056,9 +1058,10 @@ def run(list_packed_vars):
                         )
 
                         if debug:
-                            print('New glacier vol', ev_model.volume_m3)
-                            graphics.plot_modeloutput_section(ev_model)
-                            plt.show()
+                            fig, ax = plt.subplots(1)
+                            graphics.plot_modeloutput_section(
+                                ev_model, ax=ax, lnlabel=f'Glacier year {args.sim_startyear}'
+                            )
 
                         _, diag = ev_model.run_until_and_store(args.sim_endyear + 1)
                         #    print('shape of volume:', ev_model.mb_model.glac_wide_volume_annual.shape, diag.volume_m3.shape)
@@ -1113,25 +1116,20 @@ def run(list_packed_vars):
                         years = np.arange(args.sim_startyear, args.sim_endyear + 1)
                         mb_all = []
                         for year in years:
-                            mb_annual = mbmod.get_annual_mb(
+                            # Calculate annual mass balance
+                            mbmod.get_annual_mb(
                                 nfls[0].surface_h,
                                 fls=nfls,
                                 fl_id=0,
                                 year=year,
-                                debug=True,
+                                debug=debug,
                             )
-                            mb_mwea = (
-                                mb_annual
-                                * 365
-                                * 24
-                                * 3600
-                                * pygem_prms['constants']['density_ice']
-                                / pygem_prms['constants']['density_water']
+                            # Record glacierwide annual mass balance
+                            t_start, t_stop = mbmod.get_step_inds(year)
+                            mb_all.append(
+                                mbmod.glac_wide_massbaltotal[t_start : t_stop + 1].sum()
+                                / mbmod.glacier_area_initial.sum()
                             )
-                            glac_wide_mb_mwea = (
-                                mb_mwea * mbmod.glacier_area_initial
-                            ).sum() / mbmod.glacier_area_initial.sum()
-                            mb_all.append(glac_wide_mb_mwea)
                         mbmod.glac_wide_area_annual[-1] = mbmod.glac_wide_area_annual[0]
                         mbmod.glac_wide_volume_annual[-1] = mbmod.glac_wide_volume_annual[0]
                         diag['area_m2'] = mbmod.glac_wide_area_annual
@@ -1149,15 +1147,13 @@ def run(list_packed_vars):
                                 np.round(np.median(mb_all), 3),
                             )
 
-                    #                            mb_em_mwea = run_emulator_mb(modelprms)
-                    #                            print('  emulator mb:', np.round(mb_em_mwea,3))
-                    #                            mb_em_sims.append(mb_em_mwea)
-
                     # Record output for successful runs
                     if successful_run:
                         if args.option_dynamics is not None:
                             if debug:
-                                graphics.plot_modeloutput_section(ev_model, ax=ax, srfls='--')
+                                graphics.plot_modeloutput_section(
+                                    ev_model, ax=ax, srfls='--', lnlabel=f'Glacier year {args.sim_endyear + 1}'
+                                )
                                 plt.figure()
                                 diag.volume_m3.plot()
                                 plt.show()
@@ -1192,7 +1188,7 @@ def run(list_packed_vars):
                                 print('  mb_mbmod [mwea]:', np.round(mb_mwea_mbmod, 2))
 
                             if np.abs(mb_mwea_diag - mb_mwea_mbmod) > 1e-6:
-                                ev_model.mb_model.ensure_mass_conservation(diag, dates_table)
+                                ev_model.mb_model.ensure_mass_conservation(diag)
 
                         if debug:
                             print(
