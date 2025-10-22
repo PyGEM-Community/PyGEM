@@ -226,7 +226,6 @@ def run(
             PyGEMMassBalance_wrapper,
             fl_str='inversion_flowlines',
             option_areaconstant=True,
-            inversion_filter=pygem_prms['mb']['include_debris'],
         ),
     )
     # add debris data to flowlines
