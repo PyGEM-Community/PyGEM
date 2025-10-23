@@ -1964,6 +1964,27 @@ def run(list_packed_vars):
 
                 # if running full model (no emulator), or calibrating against binned elevation change, several arguments are needed
                 if args.option_calib_elev_change_1d:
+                    # load calibrated calving_k values for tidewater glaciers
+                    if gdir.is_tidewater and pygem_prms['setup']['include_frontalablation']:
+                        fp = f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["frontalablation"]["frontalablation_relpath"]}/analysis/{pygem_prms["calib"]["data"]["frontalablation"]["frontalablation_cal_fn"]}'
+                        assert os.path.exists(fp), 'Calibrated calving dataset does not exist'
+                        calving_df = pd.read_csv(fp)
+                        calving_rgiids = list(calving_df.RGIId)
+                        # Use calibrated value if individual data available
+                        if gdir.rgi_id in calving_rgiids:
+                            calving_idx = calving_rgiids.index(gdir.rgi_id)
+                            calving_k = calving_df.loc[calving_idx, 'calving_k']
+                        # Otherwise, use region's median value
+                        else:
+                            calving_df['O1Region'] = [
+                                int(x.split('-')[1].split('.')[0]) for x in calving_df.RGIId.values
+                            ]
+                            calving_df_reg = calving_df.loc[calving_df['O1Region'] == int(gdir.rgi_id[6:8]), :]
+                            calving_k = np.median(calving_df_reg.calving_k)
+                        # set calving_k in config
+                        cfg.PARAMS['use_kcalving_for_run'] = True
+                        cfg.PARAMS['calving_k'] = calving_k
+
                     # add density priors if calibrating against binned elevation change
                     priors['rhoabl'] = {
                         'type': pygem_prms['calib']['MCMC_params']['rhoabl_disttype'],
