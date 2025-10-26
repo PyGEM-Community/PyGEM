@@ -264,6 +264,8 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
                     end_dt = datetime.strptime(end, '%Y-%m-%d')
                     gd.elev_change_1d['nyrs'].append((end_dt - start_dt).days / 365.25)
                 gd.elev_change_1d['dhdt'] = np.column_stack(gd.elev_change_1d['dh']) / gd.elev_change_1d['nyrs']
+                # define minimum spinup start year
+                min_start_yr = min(2000, *(int(date[:4]) for pair in gd.elev_change_1d['dates'] for date in pair))
 
                 results = {}  # instantiate output dictionary
                 fig, ax = plt.subplots(1)  # instantiate figure
@@ -271,6 +273,8 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
                 # objective function to evaluate
                 def _objective(**kwargs):
                     fls = run_spinup(gd, **kwargs)
+                    if fls[0] is None:
+                        return kwargs['spinup_period'], float('inf'), None
 
                     # get true spinup period (note, if initial fails, oggm tries period/2)
                     spinup_period_ = gd.rgi_date + 1 - fls[0].y0
@@ -310,13 +314,23 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
                 best_value, best_model = results[best_period]
                 # update kwarg
                 kwargs['spinup_period'] = best_period
+                # ensure spinup start year <= min_start_yr
+                if gd.rgi_date + 1 - best_period > min_start_yr:
+                    kwargs['spinup_start_yr'] = min_start_yr
+                    kwargs.pop('spinup_period')
+                    p_, best_value, best_model = _objective(**kwargs)
+                    results[p_] = (mismatch, model)
+                    best_period = gd.rgi_date + 1 - min_start_yr
 
                 if debug:
                     print('All results:', {k: v[0] for k, v in results.items()})
                     print(f'Best spinup_period = {best_period}, mismatch = {best_value}')
 
-                # find worst
-                worst_period = max(results, key=lambda k: results[k][0])
+                # find worst - ignore failed runs
+                worst_period = max(
+                    (k for k in results if results[k][0] != float('inf')),
+                    key=lambda k: results[k][0]
+                )
                 worst_value, worst_model = results[worst_period]
 
                 ############################
