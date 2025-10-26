@@ -327,10 +327,7 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
                     print(f'Best spinup_period = {best_period}, mismatch = {best_value}')
 
                 # find worst - ignore failed runs
-                worst_period = max(
-                    (k for k in results if results[k][0] != float('inf')),
-                    key=lambda k: results[k][0]
-                )
+                worst_period = max((k for k in results if results[k][0] != float('inf')), key=lambda k: results[k][0])
                 worst_value, worst_model = results[worst_period]
 
                 ############################

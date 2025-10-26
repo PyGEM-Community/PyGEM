@@ -788,6 +788,31 @@ def run(list_packed_vars):
                         + ' +/- '
                         + str(np.round(mb_obs_mwea_err, 2))
                     )
+                # load elevation change data
+                if args.option_calib_elev_change_1d:
+                    # load binned elev change obs to glacier directory
+                    gdir.elev_change_1d = gdir.read_json('elev_change_1d')
+                    # stack dh and dh_sigma
+                    gdir.elev_change_1d['dh'] = np.column_stack(gdir.elev_change_1d['dh'])
+                    gdir.elev_change_1d['dh_sigma'] = (
+                        np.column_stack(gdir.elev_change_1d['dh_sigma'])
+                        if not isinstance(gdir.elev_change_1d['dh_sigma'], int)
+                        else gdir.elev_change_1d['dh_sigma']
+                    )
+                    # get observation period indices in model date_table
+                    # create lookup dict (timestamp → index)
+                    date_to_index = {d: i for i, d in enumerate(gdir.dates_table['date'])}
+                    gdir.elev_change_1d['model2obs_inds_map'] = [
+                        (
+                            date_to_index.get(pd.to_datetime(start)),
+                            date_to_index.get(pd.to_datetime(end)),
+                        )
+                        for start, end in gdir.elev_change_1d['dates']
+                    ]
+                    # adjust ref_startyear base don earliest available elevation calibration data (must be <= 2000)
+                    args.ref_startyear = min(
+                        2000, *(int(date[:4]) for pair in gdir.elev_change_1d['dates'] for date in pair)
+                    )
 
             except Exception as err:
                 gdir.mbdata = None
@@ -1996,25 +2021,7 @@ def run(list_packed_vars):
                         'mu': float(pygem_prms['calib']['MCMC_params']['rhoaccum_mu']),
                         'sigma': float(pygem_prms['calib']['MCMC_params']['rhoaccum_sigma']),
                     }
-                    # load binned elev change obs to glacier directory
-                    gdir.elev_change_1d = gdir.read_json('elev_change_1d')
-                    # stack dh and dh_sigma
-                    gdir.elev_change_1d['dh'] = np.column_stack(gdir.elev_change_1d['dh'])
-                    gdir.elev_change_1d['dh_sigma'] = (
-                        np.column_stack(gdir.elev_change_1d['dh_sigma'])
-                        if not isinstance(gdir.elev_change_1d['dh_sigma'], int)
-                        else gdir.elev_change_1d['dh_sigma']
-                    )
-                    # get observation period indices in model date_table
-                    # create lookup dict (timestamp → index)
-                    date_to_index = {d: i for i, d in enumerate(gdir.dates_table['date'])}
-                    gdir.elev_change_1d['model2obs_inds_map'] = [
-                        (
-                            date_to_index.get(pd.to_datetime(start)),
-                            date_to_index.get(pd.to_datetime(end)),
-                        )
-                        for start, end in gdir.elev_change_1d['dates']
-                    ]
+
                     # model equilibrium line elevation for breakpoint of accumulation and ablation area density scaling
                     gdir.ela = tasks.compute_ela(
                         gdir,
