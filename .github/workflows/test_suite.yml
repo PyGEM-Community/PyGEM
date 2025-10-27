@@ -58,7 +58,7 @@ jobs:
       - name: 'Clone the PyGEM-notebooks repo'
         run: |
           BRANCH=${GITHUB_REF#refs/heads/}
-          if [ "$BRANCH" = "master" ]; then
+          if [ "$BRANCH" = "main" ]; then
             NOTEBOOK_BRANCH="main"
           else
             NOTEBOOK_BRANCH="dev"
