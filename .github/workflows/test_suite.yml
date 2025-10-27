@@ -3,7 +3,7 @@ name: 'Install PyGEM and Run Test Suite'
 on:
   push:
     branches:
-      - master
+      - main
       - dev
     paths:
       - '**.py'
