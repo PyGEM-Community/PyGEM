@@ -26,11 +26,10 @@ config_manager = ConfigManager()
 # read the config
 pygem_prms = config_manager.read_config()
 
-
 # Module logger
 log = logging.getLogger(__name__)
 
-# Add the new name "snowline_1d" to the list of things that the GlacierDirectory understands
+# Add "meltextent_1d" and "snowline_1d" to the list of things that the GlacierDirectory understands
 if 'meltextent_1d' not in cfg.BASENAMES:
     cfg.BASENAMES['meltextent_1d'] = (
         'meltextent_1d.json',
@@ -43,7 +42,7 @@ if 'snowline_1d' not in cfg.BASENAMES:
     )
 
 
-@entity_task(log, writes=['snowline_1d'])
+@entity_task(log, writes=['meltextent_1d'])
 def meltextent_1d_to_gdir(
     gdir,
 ):

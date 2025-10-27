@@ -186,6 +186,12 @@ def getparser():
         help='Flag to calibrate against 1D elevation change data (default is false)',
     )
     parser.add_argument(
+        '-option_calib_snowline_1d',
+        action='store_true',
+        default=pygem_prms['calib']['MCMC_params']['option_calib_snowline_1d'],
+        help='Flag to calibrate against 1D snowline data (default is false)',
+    )
+    parser.add_argument(
         '-spinup',
         action='store_true',
         help='Flag to use spinup flowlines (default is false)',
