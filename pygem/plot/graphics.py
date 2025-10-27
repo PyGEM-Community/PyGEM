@@ -12,6 +12,7 @@ import warnings
 from datetime import datetime
 
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 import numpy as np
 from scipy.stats import binned_statistic
 
@@ -466,6 +467,116 @@ def plot_mcmc_elev_change_1d(
     # save
     if fpath:
         fig.savefig(fpath, dpi=400)
+    if show:
+        plt.show(block=True)  # wait until the figure is closed
+    plt.close(fig)
+
+
+def plot_mcmc_snowline_1d(
+    preds, fls, obs, title, fontsize=8, show=False, fpath=None
+):
+    snowline_z = np.array(obs['z'])
+    snowline_min = np.array(obs['z_min'])
+    snowline_max = np.array(obs['z_max'])
+    snowline_date = np.array(obs['date'])
+    
+    # xvals = snowline_date
+    xvals = [datetime.strptime(d, '%Y-%m-%d') for d in snowline_date]
+
+    # instantiate subplots
+    fig, ax = plt.subplots(
+        nrows=1,
+        ncols=1,
+        figsize=(8.5, 3.5),
+        gridspec_kw={'hspace': 0.075},
+        sharex=True,
+        sharey=False,
+    )
+
+    if not isinstance(ax, np.ndarray):
+        ax = [ax]
+
+    # set xlabels
+    ax[0].set_xlim([xvals[0], xvals[-1]])
+    ax[0].xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+
+    ax[0].axhline(y=0, c='grey', lw=0.5)
+    preds = np.stack(preds)
+
+    ax[0].fill_between(
+        xvals,
+        obs['z_min'],
+        obs['z_max'],
+        color='k',
+        alpha=0.125,
+    )
+
+    ax[0].plot(xvals, obs['z'], 'k-', marker='.', label='Obs.')
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore')
+        ax[0].fill_between(
+            xvals,
+            np.nanpercentile(preds, 5, axis=0),
+            np.nanpercentile(preds, 95, axis=0),
+            color='r',
+            alpha=0.25,
+        )
+        ax[0].plot(
+            xvals,
+            np.nanmedian(preds, axis=0),
+            'r-',
+            marker='.',
+            label='Pred.',
+        )
+
+    # for r in stack:
+    #     axb.plot(bin_z, r, 'r', alpha=.0125)
+
+    # dummy label for timespan
+    ax[0].text(
+        0.99175,
+        0.980,
+        '',
+        transform=ax[0].transAxes,
+        fontsize=8,
+        verticalalignment='top',
+        horizontalalignment='right',
+        bbox=dict(
+            facecolor='white',
+            edgecolor='black',
+            alpha=1,
+            boxstyle='square,pad=0.25',
+        ),
+        zorder=10,
+    )
+
+    leg = ax[0].legend(
+        handlelength=1,
+        borderaxespad=0,
+        fancybox=False,
+        loc='lower right',
+        edgecolor='k',
+        framealpha=1,
+    )
+    for legobj in leg.legend_handles:
+        legobj.set_linewidth(2.0)
+
+    ylbl = 'Elevation (m a.s.l.)'
+    ax[-1].text(
+        0.0125,
+        0.5,
+        ylbl,
+        horizontalalignment='left',
+        rotation=90,
+        verticalalignment='center',
+        transform=fig.transFigure,
+    )
+    ax[0].set_title(title, fontsize=fontsize)
+
+    # save
+    fig.tight_layout()
+    if fpath:
+        fig.savefig(fpath, dpi=250)
     if show:
         plt.show(block=True)  # wait until the figure is closed
     plt.close(fig)

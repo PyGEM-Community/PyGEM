@@ -11,6 +11,7 @@ import datetime
 import logging
 import os
 
+import numpy as np
 import pandas as pd
 
 # External libraries
@@ -139,15 +140,15 @@ def validate_meltextent_1d_structure(data):
 
     # Validate reference DEM
     ref_dem = data['ref_dem'].dropna().unique()
-    if not isinstance(ref_dem, (str)):
-        raise TypeError(f"'ref_dem' must be an string, but got {ref_dem} ({type(ref_dem).__name__}).")
+    for ref_dem_i in ref_dem:
+        if not isinstance(ref_dem_i, (str)):
+            raise TypeError(f"All 'ref_dem' values must be an string, but got {ref_dem_i} ({type(ref_dem_i).__name__}).")
 
     # Validate reference DEM year
     dem_year = data['ref_dem_year'].dropna().unique()
-    if len(dem_year) != 1:
-        raise ValueError(f"'ref_dem_year' must have exactly one unique value, but found {len(dem_year)}: {dem_year}")
-    if not isinstance(dem_year, (int)):
-        raise TypeError(f"'ref_dem_year' must be an integer, but got {dem_year} ({type(dem_year).__name__}).")
+    for dem_year_i in dem_year:
+        if not isinstance(dem_year_i, (int, np.integer)):
+            raise TypeError(f"All 'ref_dem_year' must be integers, but got {dem_year_i} ({type(dem_year_i).__name__}).")
 
     return True
 
@@ -271,15 +272,15 @@ def validate_snowline_1d_structure(data):
 
     # Validate reference DEM
     ref_dem = data['ref_dem'].dropna().unique()
-    if not isinstance(ref_dem, (str)):
-        raise TypeError(f"'ref_dem' must be an string, but got {ref_dem} ({type(ref_dem).__name__}).")
+    for ref_dem_i in ref_dem:
+        if not isinstance(ref_dem_i, (str)):
+            raise TypeError(f"All 'ref_dem' values must be an string, but got {ref_dem_i} ({type(ref_dem_i).__name__}).")
 
     # Validate reference DEM year
     dem_year = data['ref_dem_year'].dropna().unique()
-    if len(dem_year) != 1:
-        raise ValueError(f"'ref_dem_year' must have exactly one unique value, but found {len(dem_year)}: {dem_year}")
-    if not isinstance(dem_year, (int)):
-        raise TypeError(f"'ref_dem_year' must be an integer, but got {dem_year} ({type(dem_year).__name__}).")
+    for dem_year_i in dem_year:
+        if not isinstance(dem_year_i, (int, np.integer)):
+            raise TypeError(f"All 'ref_dem_year' must be integers, but got {dem_year_i} ({type(dem_year_i).__name__}).")
 
     return True
 

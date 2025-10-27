@@ -393,6 +393,35 @@ def calculate_elev_change_1d(
     return mod_glacierwide_mb_mwea, mod_elev_change_1d
 
 
+def calculate_snowline_1d(
+    gdir,
+    modelprms,
+    glacier_rgi_table,
+    fls=None,
+):
+    """
+    Run the mass balance and calculate the mass balance [mwea] and snowline [masl]
+    """
+    # RUN MASS BALANCE MODEL
+    mbmod = PyGEMMassBalance(gdir, modelprms, glacier_rgi_table, fls=fls, option_areaconstant=True)
+    for year in gdir.dates_table.year.unique():
+        mbmod.get_annual_mb(fls[0].surface_h, fls=fls, fl_id=0, year=year)
+
+    # Specific mass balance [mwea]
+    t1_idx = gdir.mbdata['t1_idx']
+    t2_idx = gdir.mbdata['t2_idx']
+    nyears = gdir.mbdata['nyears']
+    mb_mwea = mbmod.glac_wide_massbaltotal[t1_idx : t2_idx + 1].sum() / mbmod.glac_wide_area_annual[0] / nyears
+    
+    # Get snowline for dates aligning with observations
+    mod_snowline_1d_full = mbmod.glac_wide_snowline[t1_idx : t2_idx + 1]
+    mod_snowline_1d = np.array([
+        mod_snowline_1d_full[d] if d is not None else np.nan 
+        for d in gdir.snowline_1d['model2obs_inds_map']
+        ])
+
+    return mb_mwea, mod_snowline_1d
+
 # class for Gaussian Process model for mass balance emulator
 class ExactGPModel(gpytorch.models.ExactGP):
     """Use the simplest form of GP model, exact inference"""
@@ -794,7 +823,7 @@ def run(list_packed_vars):
                         + ' +/- '
                         + str(np.round(mb_obs_mwea_err, 2))
                     )
-                # load elevation change data
+                # load elevation change data 
                 if args.option_calib_elev_change_1d:
                     # load binned elev change obs to glacier directory
                     gdir.elev_change_1d = gdir.read_json('elev_change_1d')
@@ -820,6 +849,35 @@ def run(list_packed_vars):
                         args.ref_startyear = min(
                             2000, *(int(date[:4]) for pair in gdir.elev_change_1d['dates'] for date in pair)
                         )
+                # load snowline data
+                if args.option_calib_snowline_1d:
+                    if pygem_prms['time']['timestep'] != 'daily':
+                        print(f"Invalid timestep: {pygem_prms['time']['timestep']}. "
+                              "Transient snowline calibration requires 'daily' timesteps.")
+                        # raise RuntimeError("Incompatible timestep with snowline calibration data.")
+                    # load binned elev change obs to glacier directory
+                    gdir.snowline_1d = gdir.read_json('snowline_1d')
+                    gdir.snowline_1d['z'] = np.array(gdir.snowline_1d['z'])
+                    gdir.snowline_1d['z_min'] = np.array(gdir.snowline_1d['z_min'])
+                    gdir.snowline_1d['z_max'] = np.array(gdir.snowline_1d['z_max'])
+                    gdir.snowline_1d['direction'] = np.array(gdir.snowline_1d['direction'])
+
+                    # sort obervations by date and apply the sorting
+                    sort_idx = np.argsort(gdir.snowline_1d['date'])
+                    gdir.snowline_1d['date'] = [gdir.snowline_1d['date'][i] for i in sort_idx]
+                    gdir.snowline_1d['z'] = gdir.snowline_1d['z'][sort_idx]
+                    gdir.snowline_1d['z_min'] = gdir.snowline_1d['z_min'][sort_idx]
+                    gdir.snowline_1d['z_max'] = gdir.snowline_1d['z_max'][sort_idx]
+                    gdir.snowline_1d['direction'] = gdir.snowline_1d['direction'][sort_idx]
+
+                    # get z_sigma (assume it is the mean difference of min and max)
+                    gdir.snowline_1d['z_sigma'] = (gdir.snowline_1d['z_max'] - gdir.snowline_1d['z_min']) / 2
+                    # get observation period indices in model date_table
+                    # create lookup dict (timestamp → index)
+                    date_to_index = {d: i for i, d in enumerate(gdir.dates_table['date'])}
+                    gdir.snowline_1d['model2obs_inds_map'] = [
+                        date_to_index.get(pd.to_datetime(d)) for d in gdir.snowline_1d['date']
+                    ]
 
                     # load calibrated calving_k values for tidewater glaciers
                     if gdir.is_tidewater and pygem_prms['setup']['include_frontalablation']:
@@ -2057,6 +2115,34 @@ def run(list_packed_vars):
                             torch.tensor(gdir.elev_change_1d['dh_sigma']),
                         )
                     )
+
+                if args.option_calib_snowline_1d:
+                    # model equilibrium line elevation for breakpoint of accumulation and ablation area density scaling
+                    gdir_ela = tasks.compute_ela(
+                        gdir,
+                        years=np.arange(
+                            gdir.dates_table.year.min(),
+                            min(2019, gdir.dates_table.year.max() + 1),
+                        ),
+                    )
+                    if gdir_ela is not None:
+                        gdir.ela = gdir_ela
+
+                    # calculate inds of data v. model
+                    mbfxn = calculate_snowline_1d  # returns (mb_mwea, snowline obs)
+                    mbargs = (
+                        gdir,  # arguments for get_binned_dh()
+                        modelprms,
+                        glacier_rgi_table,
+                        fls,
+                    )
+                    # append z obs and and sigma obs list
+                    obs.append(
+                        (
+                            torch.tensor(gdir.snowline_1d['z']),
+                            torch.tensor(gdir.snowline_1d['z_sigma']),
+                        )
+                    )
                 # if there are more observations to calibrate against, simply append a tuple of (obs, variance) to obs list
                 # e.g. obs.append((torch.tensor(dmda_array),torch.tensor(dmda_err_array)))
                 elif pygem_prms['calib']['MCMC_params']['option_use_emulator']:
@@ -2210,6 +2296,8 @@ def run(list_packed_vars):
                             )
                             if args.option_calib_elev_change_1d:
                                 fp += 'dh/'
+                            elif args.option_calib_snowline_1d:
+                                fp += 'snowline/'
                             os.makedirs(fp, exist_ok=True)
                             if ncores > 1:
                                 show = False
@@ -2233,7 +2321,7 @@ def run(list_packed_vars):
                                         show=show,
                                         fpath=f'{fp}/{glacier_str}-chain{n_chain}-residuals-{i}.png',
                                     )
-                                    if i == 1:
+                                    if i == 1.1:
                                         graphics.plot_mcmc_elev_change_1d(
                                             pred_chain[1],
                                             fls,
@@ -2242,6 +2330,15 @@ def run(list_packed_vars):
                                             glacier_str,
                                             show=show,
                                             fpath=f'{fp}/{glacier_str}-chain{n_chain}-elev_change_1d.png',
+                                        )
+                                    if i == 1: # placeholder for snowline plotting
+                                        graphics.plot_mcmc_snowline_1d(
+                                            pred_chain[1],
+                                            fls,
+                                            gdir.snowline_1d,
+                                            glacier_str,
+                                            show=show,
+                                            fpath=f'{fp}/{glacier_str}-chain{n_chain}-snowline_1d.png',
                                         )
                             except Exception as e:
                                 if debug:
@@ -2276,6 +2373,8 @@ def run(list_packed_vars):
                     ]
                     if args.option_calib_elev_change_1d:
                         modelprms_fp[0] += 'dh/'
+                    elif args.option_calib_snowline_1d:
+                        modelprms_fp[0] += 'snowline/'
                     # if not using emulator (running full model), save output in ./calibration/ and ./calibration-fullsim/
                     if not pygem_prms['calib']['MCMC_params']['option_use_emulator']:
                         modelprms_fp.append(
