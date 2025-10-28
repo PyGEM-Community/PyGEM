@@ -20,7 +20,7 @@ config_manager = ConfigManager()
 pygem_prms = config_manager.read_config()
 
 
-def meltextent_1d_calib_tbias(gdir, z_step=20, mo_cutoff=3):
+def meltextent_1d_calib_tbias(gdir, z_step=20, doy_cutoff=60):
     """
     Add 1d melt extent observations to the given glacier directory
 
@@ -28,14 +28,14 @@ def meltextent_1d_calib_tbias(gdir, z_step=20, mo_cutoff=3):
     ----------
     gdir : :py:class:`oggm.GlacierDirectory`
         where to write the data
-    z_step : elevation bin step
-    mo_cutoff : month cutoff for melt onset (e.g., 3 indicated no melt onset before March)
+    z_step : elevation bin step (for deriving melt onset)
+    doy_cutoff : day of year cutoff for melt onset (e.g., 60 indicated no melt onset before March 1st)
     """
     # read meltextent json
     meltextent_1d_dict = gdir.read_json('meltextent_1d')
 
     # extract melt onset from melt extent
-    meltonset_df = meltextent_to_meltonset(meltextent_1d_dict, z_step=z_step, mo_cutoff=mo_cutoff)
+    meltonset_df = meltextent_to_meltonset(meltextent_1d_dict, z_step=z_step, doy_cutoff=doy_cutoff)
 
     # calibrate t_bias with melt onset data
 
@@ -55,7 +55,7 @@ def meltextent_1d_calib_tbias(gdir, z_step=20, mo_cutoff=3):
 
 
 
-def meltextent_to_meltonset(meltextent_1d_dict, z_step=20, mo_cutoff=3):
+def meltextent_to_meltonset(meltextent_1d_dict, z_step=20, doy_cutoff=60):
     """
     Convert melt extent to melt onset
 
@@ -63,7 +63,7 @@ def meltextent_to_meltonset(meltextent_1d_dict, z_step=20, mo_cutoff=3):
     ----------
     meltextent_1d_dict : loaded melt extent dictionary
     z_step : elevation bin step
-    mo_cutoff : month cutoff for melt onset (e.g., 3 indicated no melt onset before March)
+    doy_cutoff : day of year cutoff for melt onset (e.g., 60 indicated no melt onset before March 1st)
     """
     # Convert dictionary to DataFrame for easier handling
     df = pd.DataFrame(meltextent_1d_dict)
@@ -92,8 +92,9 @@ def meltextent_to_meltonset(meltextent_1d_dict, z_step=20, mo_cutoff=3):
                 # Earliest date that reached this elevation or higher
                 meltonset_df.loc[elev, yr] = subset.index.min()
 
-                # Restrict to remove dates before mo_cutoff of that year
-                subset_after_date = subset[subset.index >= pd.Timestamp(f'{yr}-{str(mo_cutoff).zfill(2)}-01')]
+                # Restrict to remove dates before doy_cutoff of that year
+                # subset_after_date = subset[subset.index >= pd.Timestamp(f'{yr}-{str(mo_cutoff).zfill(2)}-01')]
+                subset_after_date = subset[subset.index >= pd.Timestamp(f'{yr}-01-01') + pd.Timedelta(days=doy_cutoff - 1)]
                 if not subset_after_date.empty:
                     meltonset_df.loc[elev, yr] = subset_after_date.index.min()
 

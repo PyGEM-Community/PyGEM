@@ -2340,6 +2340,14 @@ def run(list_packed_vars):
                                             show=show,
                                             fpath=f'{fp}/{glacier_str}-chain{n_chain}-snowline_1d.png',
                                         )
+                                        graphics.plot_mcmc_snowline_1v1_1d(
+                                            pred_chain[1],
+                                            fls,
+                                            gdir.snowline_1d,
+                                            glacier_str,
+                                            show=show,
+                                            fpath=f'{fp}/{glacier_str}-chain{n_chain}-snowline_1v1_1d.png',
+                                        )
                             except Exception as e:
                                 if debug:
                                     print(f'Error plotting chain {n_chain}: {e}')

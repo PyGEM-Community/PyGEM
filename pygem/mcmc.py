@@ -68,8 +68,16 @@ def log_normal_density(x, method='mean', **kwargs):
         return torch.tensor([log_prob.nansum()])
     elif method == 'mean':
         return torch.tensor([log_prob.nanmean()])
+    elif method == 'weighted':
+        # weight each observation
+            # obs_weight=1: each observation has full, equal weight; equivalend to method='sum'
+            # obs_weight=0: observations have minimum weight; equivalent to method='mean'
+        obs_weight = kwargs.get('obs_weight', 0.0)
+        obs_n = torch.sum(~torch.isnan(log_prob))
+        obs_n_weighted = 1 + (obs_n - 1) * (1 - obs_weight)
+        return torch.tensor([log_prob.nansum() / obs_n_weighted])
     else:
-        raise ValueError("method must be one of ['sum', 'mean']")
+        raise ValueError("method must be one of ['sum', 'mean', 'weighted']")
 
 
 def log_gamma_density(x, **kwargs):
@@ -231,30 +239,37 @@ class mbPosterior:
                 # Invalid model output -> assign -inf likelihood
                 return torch.tensor([-float('inf')])
 
-            if i == 0:
-                # --- Base case: mass balance likelihood ---
-                log_likehood += log_normal_density(
-                    self.obs[i][0],  # observed values
-                    mu=pred,  # predicted values
-                    sigma=self.obs[i][1],  # observation uncertainty
-                )
+            # if i == 0:
+            # --- Base case: mass balance likelihood ---
+            log_likehood += log_normal_density(
+                self.obs[i][0],  # observed values
+                mu=pred,  # predicted values
+                sigma=self.obs[i][1],  # observation uncertainty
+            )
+            # log_likehood += log_normal_density(
+            #     self.obs[i][0],  # observed values
+            #     method='weighted', # use weighted observations
+            #     obs_weight=1, # observation weight
+            #     mu=pred,  # predicted values
+            #     sigma=self.obs[i][1],  # observation uncertainty
+            # )
 
-            elif i == 1 and len(m) > 3:
-                # --- Extended case: apply density scaling to get binned elevation change ---
-                # Create density field, separate values for ablation/accumulation zones
-                rho = np.ones_like(self.bin_z)
-                rho[self.abl_mask] = m[3]  # rhoabl
-                rho[~self.abl_mask] = m[4]  # rhoacc
-                rho = torch.tensor(rho)
-                self.preds[i] = pred = (
-                    self.preds[i] * (pygem_prms['constants']['density_ice'] / rho[:, np.newaxis])
-                )  # scale prediction by model density values (convert from m ice to m thickness change considering modeled density)
+            # elif i == 1 and len(m) > 3:
+            #     # --- Extended case: apply density scaling to get binned elevation change ---
+            #     # Create density field, separate values for ablation/accumulation zones
+            #     rho = np.ones_like(self.bin_z)
+            #     rho[self.abl_mask] = m[3]  # rhoabl
+            #     rho[~self.abl_mask] = m[4]  # rhoacc
+            #     rho = torch.tensor(rho)
+            #     self.preds[i] = pred = (
+            #         self.preds[i] * (pygem_prms['constants']['density_ice'] / rho[:, np.newaxis])
+            #     )  # scale prediction by model density values (convert from m ice to m thickness change considering modeled density)
 
-                log_likehood += log_normal_density(
-                    self.obs[i][0],  # observations
-                    mu=pred,  # scaled predictions
-                    sigma=self.obs[i][1],  # uncertainty
-                )
+            #     log_likehood += log_normal_density(
+            #         self.obs[i][0],  # observations
+            #         mu=pred,  # scaled predictions
+            #         sigma=self.obs[i][1],  # uncertainty
+            #     )
         return log_likehood
 
     # compute the log-potential, summing over all declared potential functions.

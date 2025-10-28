@@ -14,7 +14,7 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import numpy as np
-from scipy.stats import binned_statistic
+from scipy.stats import binned_statistic, linregress
 
 from pygem.utils.stats import effective_n
 
@@ -499,62 +499,43 @@ def plot_mcmc_snowline_1d(
     # set xlabels
     ax[0].set_xlim([xvals[0], xvals[-1]])
     ax[0].xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-
-    ax[0].axhline(y=0, c='grey', lw=0.5)
     preds = np.stack(preds)
 
-    ax[0].fill_between(
+    yerr_min = obs['z'] - obs['z_min']
+    yerr_max = obs['z_max'] - obs['z']
+    ax[0].scatter(xvals, obs['z'], s=6, c='k', alpha=0.8, zorder=10, label='Obs.')
+    ax[0].errorbar(
         xvals,
-        obs['z_min'],
-        obs['z_max'],
-        color='k',
-        alpha=0.125,
+        obs['z'],
+        yerr=np.array([yerr_min, yerr_max]),
+        fmt='none',
+        ecolor='k',
+        elinewidth=1,
+        capsize=1,
+        alpha=0.25,
     )
 
-    ax[0].plot(xvals, obs['z'], 'k-', marker='.', label='Obs.')
     with warnings.catch_warnings():
         warnings.filterwarnings('ignore')
-        ax[0].fill_between(
-            xvals,
-            np.nanpercentile(preds, 5, axis=0),
-            np.nanpercentile(preds, 95, axis=0),
-            color='r',
-            alpha=0.25,
-        )
-        ax[0].plot(
+        yerr_min = np.nanmedian(preds, axis=0) - np.nanpercentile(preds, 5, axis=0)
+        yerr_max = np.nanpercentile(preds, 95, axis=0) - np.nanmedian(preds, axis=0)
+        ax[0].scatter(xvals, np.nanmedian(preds, axis=0), s=6, c='r', alpha=0.8, zorder=10, label='Pred.')
+        ax[0].errorbar(
             xvals,
             np.nanmedian(preds, axis=0),
-            'r-',
-            marker='.',
-            label='Pred.',
+            yerr=np.array([yerr_min, yerr_max]),
+            fmt='none',
+            ecolor='r',
+            elinewidth=1,
+            capsize=1,
+            alpha=0.25,
         )
-
-    # for r in stack:
-    #     axb.plot(bin_z, r, 'r', alpha=.0125)
-
-    # dummy label for timespan
-    ax[0].text(
-        0.99175,
-        0.980,
-        '',
-        transform=ax[0].transAxes,
-        fontsize=8,
-        verticalalignment='top',
-        horizontalalignment='right',
-        bbox=dict(
-            facecolor='white',
-            edgecolor='black',
-            alpha=1,
-            boxstyle='square,pad=0.25',
-        ),
-        zorder=10,
-    )
 
     leg = ax[0].legend(
         handlelength=1,
         borderaxespad=0,
         fancybox=False,
-        loc='lower right',
+        loc='upper right',
         edgecolor='k',
         framealpha=1,
     )
@@ -572,6 +553,70 @@ def plot_mcmc_snowline_1d(
         transform=fig.transFigure,
     )
     ax[0].set_title(title, fontsize=fontsize)
+
+    # save
+    if fpath:
+        fig.savefig(fpath, dpi=250)
+    if show:
+        plt.show(block=True)  # wait until the figure is closed
+    plt.close(fig)
+
+
+def plot_mcmc_snowline_1v1_1d(
+    preds, fls, obs, title, fontsize=8, show=False, fpath=None
+):
+    snowline_z = np.array(obs['z'])
+    snowline_min = np.array(obs['z_min'])
+    snowline_max = np.array(obs['z_max'])
+    snowline_date = np.array(obs['date'])
+
+    # instantiate subplots
+    fig, ax = plt.subplots(
+        nrows=1,
+        ncols=1,
+        figsize=(6, 6),
+    )
+
+    if not isinstance(ax, np.ndarray):
+        ax = [ax]
+
+    preds = np.stack(preds)  
+
+    # add scatter plots
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore')
+        preds_sl = np.nanmedian(preds, axis=0)
+
+        # mask out nan
+        mask = ~np.isnan(obs['z']) & ~np.isnan(preds_sl)
+        obs_sl_nonan = obs['z'][mask]
+        preds_sl_nonan = preds_sl[mask]
+
+        ax[0].scatter(obs_sl_nonan, preds_sl_nonan, c='k', s=12, alpha=0.5)
+
+    lims = [max(0, min(np.nanmin(obs_sl_nonan)-50, np.nanmin(preds_sl_nonan)-50)), 
+            max(np.nanmax(obs_sl_nonan)+50, np.nanmax(preds_sl_nonan)+50)]
+    ax[0].plot(lims, lims, ls='--', c='k', lw=1) # add 1-to-1 line
+
+    # set plot limits
+    ax[0].set_title(title, fontsize=fontsize)
+    ax[0].set_ylabel('Modeled snowline [m a.s.l.]', labelpad=22, size=10, va='center', ha='center')
+    ax[0].set_xlabel('Observed snowline [m a.s.l.]', labelpad=22, size=10, va='center', ha='center')
+    ax[0].set_xlim(lims)
+    ax[0].set_ylim(lims)
+    ax[0].set_box_aspect(1)
+
+    # correlation info (pearson r)
+    slope, intercept, r_value, p_value, std_err = linregress(obs_sl_nonan, preds_sl_nonan)
+    obs_count = len(preds_sl_nonan)
+
+    fs = 10
+    ax[0].text(0.03, 0.99, f'$r^2 = {r_value**2:.2f}$ (n={obs_count})', 
+               transform=ax[0].transAxes, ha='left', va='top', fontsize=fs)
+    ax[0].text(0.03, 0.93, f'bias = {np.mean(obs_sl_nonan-preds_sl_nonan):.0f} m', 
+               transform=ax[0].transAxes, ha='left', va='top', fontsize=fs)
+    ax[0].text(0.03, 0.88, f'mae = {np.mean(np.abs(obs_sl_nonan-preds_sl_nonan)):.0f} m', 
+               transform=ax[0].transAxes, ha='left', va='top', fontsize=fs)
 
     # save
     fig.tight_layout()
