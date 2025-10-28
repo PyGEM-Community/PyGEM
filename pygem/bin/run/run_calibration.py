@@ -879,6 +879,7 @@ def run(list_packed_vars):
                         date_to_index.get(pd.to_datetime(d)) for d in gdir.snowline_1d['date']
                     ]
 
+                if args.option_calib_elev_change_1d or args.option_calib_snowline_1d:
                     # load calibrated calving_k values for tidewater glaciers
                     if gdir.is_tidewater and pygem_prms['setup']['include_frontalablation']:
                         fp = f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["frontalablation"]["frontalablation_relpath"]}/analysis/{pygem_prms["calib"]["data"]["frontalablation"]["frontalablation_cal_fn"]}'
@@ -916,7 +917,7 @@ def run(list_packed_vars):
             if args.spinup:
                 fls = oggm_compat.get_spinup_flowlines(gdir, y0=args.ref_startyear)
             # if not `args.spinup` and calibrating elevation change, grab model flowlines
-            elif args.option_calib_elev_change_1d:
+            elif args.option_calib_elev_change_1d:# or args.option_calib_snowline_1d:
                 if not os.path.exists(gdir.get_filepath('model_flowlines')):
                     raise FileNotFoundError('No model flowlines found - has inversion been run?')
                 # ref_startyear should not be < 2000 unless spinup was run
@@ -2339,6 +2340,14 @@ def run(list_packed_vars):
                                             glacier_str,
                                             show=show,
                                             fpath=f'{fp}/{glacier_str}-chain{n_chain}-snowline_1d.png',
+                                        )
+                                        graphics.plot_mcmc_snowline_1v1_1d(
+                                            pred_chain[1],
+                                            fls,
+                                            gdir.snowline_1d,
+                                            glacier_str,
+                                            show=show,
+                                            fpath=f'{fp}/{glacier_str}-chain{n_chain}-snowline_1v1_1d.png',
                                         )
                             except Exception as e:
                                 if debug:
