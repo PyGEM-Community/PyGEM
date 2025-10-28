@@ -52,6 +52,12 @@ def log_normal_density(x, method='mean', **kwargs):
     """
     mu, sigma = kwargs['mu'], kwargs['sigma']
 
+    # apply different uncertainty if prediction is above and below the observation
+    if sigma.ndim == 2 and sigma.shape[0] == 2:
+        # two-sided uncertainty: use the observation uncertainty that is on the same side as the prediction
+        sigma_min, sigma_max = sigma
+        sigma = torch.where(mu > x, sigma_max, sigma_min)
+
     # ensure tensors are flattened
     x, mu, sigma = map(torch.flatten, (x, mu, sigma))
 

@@ -872,6 +872,8 @@ def run(list_packed_vars):
 
                     # get z_sigma (assume it is the mean difference of min and max)
                     gdir.snowline_1d['z_sigma'] = (gdir.snowline_1d['z_max'] - gdir.snowline_1d['z_min']) / 2
+                    gdir.snowline_1d['z_sigma_min'] = gdir.snowline_1d['z_max'] - gdir.snowline_1d['z']
+                    gdir.snowline_1d['z_sigma_max'] = gdir.snowline_1d['z'] - gdir.snowline_1d['z_min']
                     # get observation period indices in model date_table
                     # create lookup dict (timestamp → index)
                     date_to_index = {d: i for i, d in enumerate(gdir.dates_table['date'])}
@@ -1829,7 +1831,7 @@ def run(list_packed_vars):
                     with open(modelprms_fullfn, 'w') as f:
                         json.dump(modelprms_dict, f)
 
-            # %% ===== MCMC CALIBRATION ======
+            # ===== MCMC CALIBRATION ======
             # use MCMC method to determine posterior probability distributions of the three parameters tbias,
             # ddfsnow and kp. Then create an ensemble of parameter sets evenly sampled from these
             # distributions, and output these sets of parameters and their corresponding mass balances to be
@@ -2137,13 +2139,17 @@ def run(list_packed_vars):
                         glacier_rgi_table,
                         fls,
                     )
-                    # append z obs and and sigma obs list
+                    # append z obs and and sigma obs list (use two-sided uncertainty)
                     obs.append(
                         (
                             torch.tensor(gdir.snowline_1d['z']),
-                            torch.tensor(gdir.snowline_1d['z_sigma']),
+                            torch.stack((
+                                torch.tensor(gdir.snowline_1d['z_sigma_min']), 
+                                torch.tensor(gdir.snowline_1d['z_sigma_max'])
+                            )),
                         )
                     )
+ 
                 # if there are more observations to calibrate against, simply append a tuple of (obs, variance) to obs list
                 # e.g. obs.append((torch.tensor(dmda_array),torch.tensor(dmda_err_array)))
                 elif pygem_prms['calib']['MCMC_params']['option_use_emulator']:
