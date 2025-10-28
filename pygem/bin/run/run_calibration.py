@@ -809,35 +809,58 @@ def run(list_packed_vars):
                         )
                         for start, end in gdir.elev_change_1d['dates']
                     ]
-                    # adjust ref_startyear base don earliest available elevation calibration data (must be <= 2000)
-                    args.ref_startyear = min(
-                        2000, *(int(date[:4]) for pair in gdir.elev_change_1d['dates'] for date in pair)
-                    )
+                    # optionally adjust ref_startyear based on earliest available elevation calibration data (must be <= 2000)
+                    if args.spinup:
+                        args.ref_startyear = min(
+                            2000, *(int(date[:4]) for pair in gdir.elev_change_1d['dates'] for date in pair)
+                        )
+
+                    # load calibrated calving_k values for tidewater glaciers
+                    if gdir.is_tidewater and pygem_prms['setup']['include_frontalablation']:
+                        fp = f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["frontalablation"]["frontalablation_relpath"]}/analysis/{pygem_prms["calib"]["data"]["frontalablation"]["frontalablation_cal_fn"]}'
+                        assert os.path.exists(fp), 'Calibrated calving dataset does not exist'
+                        calving_df = pd.read_csv(fp)
+                        calving_rgiids = list(calving_df.RGIId)
+                        # Use calibrated value if individual data available
+                        if gdir.rgi_id in calving_rgiids:
+                            calving_idx = calving_rgiids.index(gdir.rgi_id)
+                            calving_k = calving_df.loc[calving_idx, 'calving_k']
+                        # Otherwise, use region's median value
+                        else:
+                            calving_df['O1Region'] = [
+                                int(x.split('-')[1].split('.')[0]) for x in calving_df.RGIId.values
+                            ]
+                            calving_df_reg = calving_df.loc[calving_df['O1Region'] == int(gdir.rgi_id[6:8]), :]
+                            calving_k = np.median(calving_df_reg.calving_k)
+                        # set calving_k in config
+                        cfg.PARAMS['use_kcalving_for_run'] = True
+                        cfg.PARAMS['calving_k'] = calving_k
+                        # many tidewater glaciers need a timestep << OGGM default of 60 seconds
+                        cfg.PARAMS['cfl_min_dt'] = 0.0001
 
             except Exception as err:
                 gdir.mbdata = None
-
                 # LOG FAILURE
                 fail_fp = pygem_prms['root'] + '/Output/cal_fail/' + glacier_str.split('.')[0].zfill(2) + '/'
                 if not os.path.exists(fail_fp):
                     os.makedirs(fail_fp, exist_ok=True)
                 txt_fn_fail = glacier_str + '-cal_fail.txt'
                 with open(fail_fp + txt_fn_fail, 'w') as text_file:
-                    text_file.write(f'Error with mass balance data: {err}')
+                    text_file.write(f'Error loading calibration data: {err}')
 
-                print('\n' + glacier_str + ' mass balance data missing. Check dataset and column names.\n')
+            # if `args.spinup`, grab appropriate model flowlines
+            if args.spinup:
+                fls = oggm_compat.get_spinup_flowlines(gdir, y0=args.ref_startyear)
+            # if not `args.spinup` and calibrating elevation change, grab model flowlines
+            elif args.option_calib_elev_change_1d:
+                if not os.path.exists(gdir.get_filepath('model_flowlines')):
+                    raise FileNotFoundError('No model flowlines found - has inversion been run?')
+                # ref_startyear should not be < 2000 unless spinup was run
+                assert args.ref_startyear >= 2000, 'Must run spinup to allow for runs starting before year 2000'
+                fls = gdir.read_pickle('model_flowlines')
 
         except:
             fls = None
-
-        # if `args.spinup`, grab appropriate model flowlines
-        if args.spinup:
-            fls = oggm_compat.get_spinup_flowlines(gdir, y0=args.ref_startyear)
-        # if not `args.spinup` and calibrating elevation change, grab model flowlines
-        elif args.option_calib_elev_change_1d:
-            if not os.path.exists(gdir.get_filepath('model_flowlines')):
-                raise FileNotFoundError('No model flowlines found - has inversion been run?')
-            fls = gdir.read_pickle('model_flowlines')
 
         # ----- CALIBRATION OPTIONS ------
         if (fls is not None) and (gdir.mbdata is not None) and (glacier_area.sum() > 0):
@@ -1811,48 +1834,51 @@ def run(list_packed_vars):
 
                     return mb_total_minelev
 
-                def get_priors(priors):
-                    # define distribution based on priors
+                def get_priors(priors_dict):
+                    # return a list of scipy.stats distributions based on the priors_dict
                     dists = []
-                    for param in ['tbias', 'kp', 'ddfsnow']:
-                        if priors[param]['type'] == 'normal':
-                            dist = stats.norm(loc=priors[param]['mu'], scale=priors[param]['sigma'])
-                        elif priors[param]['type'] == 'uniform':
-                            dist = stats.uniform(
-                                loc=priors[param]['low'],
-                                scale=priors[param]['high'] - priors[param]['low'],
-                            )
-                        elif priors[param]['type'] == 'gamma':
-                            dist = stats.gamma(
-                                a=priors[param]['alpha'],
-                                scale=1 / priors[param]['beta'],
-                            )
-                        elif priors[param]['type'] == 'truncnormal':
-                            dist = stats.truncnorm(
-                                a=(priors[param]['low'] - priors[param]['mu']) / priors[param]['sigma'],
-                                b=(priors[param]['high'] - priors[param]['mu']) / priors[param]['sigma'],
-                                loc=priors[param]['mu'],
-                                scale=priors[param]['sigma'],
-                            )
+                    for param, info in priors_dict.items():
+                        dist_type = info['type'].lower()
+
+                        if dist_type == 'normal':
+                            dist = stats.norm(loc=info['mu'], scale=info['sigma'])
+                        elif dist_type == 'uniform':
+                            dist = stats.uniform(loc=info['low'], scale=info['high'] - info['low'])
+                        elif dist_type == 'gamma':
+                            dist = stats.gamma(a=info['alpha'], scale=1 / info['beta'])
+                        elif dist_type == 'truncnormal':
+                            a = (info['low'] - info['mu']) / info['sigma']
+                            b = (info['high'] - info['mu']) / info['sigma']
+                            dist = stats.truncnorm(a=a, b=b, loc=info['mu'], scale=info['sigma'])
+                        else:
+                            raise ValueError(f'Unsupported distribution type: {dist_type}')
                         dists.append(dist)
                     return dists
 
-                def get_initials(dists, threshold=0.01, pctl=None):
-                    if pctl:
-                        initials = [dist.ppf(pctl) for dist in dists]
-                    else:
-                        # sample priors - ensure that probability of each sample > .01
-                        initials = None
-                        while initials is None:
-                            # sample from each distribution
-                            xs = [dist.rvs() for dist in dists]
-                            # calculate densities for each sample
-                            ps = [dist.pdf(x) for dist, x in zip(dists, xs)]
+                def get_initials(dists, central_mass=0.95, max_tries=10000, verbose=False, pctl=None):
+                    """
+                    Randomly sample initial values from a list of distributions.
+                    """
+                    if pctl is not None:
+                        if not 0 <= pctl <= 1:
+                            raise ValueError('pctl must be between 0 and 1')
+                        return [dist.ppf(pctl) for dist in dists]
 
-                            # Check if all densities are greater than the threshold
-                            if all(p > threshold for p in ps):
-                                initials = xs
-                    return initials
+                    # default: random sampling within central probability interval
+                    lower = (1 - central_mass) / 2
+                    upper = 1 - lower
+
+                    for i in range(max_tries):
+                        xs = [dist.rvs() for dist in dists]
+                        probs = [dist.cdf(x) for dist, x in zip(dists, xs)]
+                        if all(lower < p < upper for p in probs):
+                            if verbose:
+                                print(f'Accepted on try {i + 1}: {xs}')
+                            return xs
+                        if verbose and i % 1000 == 0:
+                            print(f'Try {i}: {xs} (probs={probs})')
+
+                    raise RuntimeError(f'Failed to find acceptable initials after {max_tries} draws')
 
                 def mb_max(**kwargs):
                     """Psuedo-likelihood functionto ensure glacier is not completely melted."""
@@ -1989,27 +2015,6 @@ def run(list_packed_vars):
 
                 # if running full model (no emulator), or calibrating against binned elevation change, several arguments are needed
                 if args.option_calib_elev_change_1d:
-                    # load calibrated calving_k values for tidewater glaciers
-                    if gdir.is_tidewater and pygem_prms['setup']['include_frontalablation']:
-                        fp = f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["frontalablation"]["frontalablation_relpath"]}/analysis/{pygem_prms["calib"]["data"]["frontalablation"]["frontalablation_cal_fn"]}'
-                        assert os.path.exists(fp), 'Calibrated calving dataset does not exist'
-                        calving_df = pd.read_csv(fp)
-                        calving_rgiids = list(calving_df.RGIId)
-                        # Use calibrated value if individual data available
-                        if gdir.rgi_id in calving_rgiids:
-                            calving_idx = calving_rgiids.index(gdir.rgi_id)
-                            calving_k = calving_df.loc[calving_idx, 'calving_k']
-                        # Otherwise, use region's median value
-                        else:
-                            calving_df['O1Region'] = [
-                                int(x.split('-')[1].split('.')[0]) for x in calving_df.RGIId.values
-                            ]
-                            calving_df_reg = calving_df.loc[calving_df['O1Region'] == int(gdir.rgi_id[6:8]), :]
-                            calving_k = np.median(calving_df_reg.calving_k)
-                        # set calving_k in config
-                        cfg.PARAMS['use_kcalving_for_run'] = True
-                        cfg.PARAMS['calving_k'] = calving_k
-
                     # add density priors if calibrating against binned elevation change
                     priors['rhoabl'] = {
                         'type': pygem_prms['calib']['MCMC_params']['rhoabl_disttype'],
