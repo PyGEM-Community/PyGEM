@@ -150,6 +150,7 @@ calib:
   
   # MCMC params
   MCMC_params:
+    option_calib_glacierwide_mb_mwea: true        # option to calibrate against average glacierwide mass balance data (true or false)
     option_use_emulator: true                     # use emulator or full model (if true, calibration must have first been run with option_calibretion=='emulator')
     emulator_sims: 100
     tbias_step: 0.1

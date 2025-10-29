@@ -113,7 +113,7 @@ def plot_modeloutput_section(model=None, ax=None, title='', **kwargs):
     ax.set_title(title, loc='left')
 
 
-def plot_mcmc_chain(m_primes, m_chain, mb_obs, ar, title, ms=1, fontsize=8, show=False, fpath=None):
+def plot_mcmc_chain(m_primes, m_chain, obs, ar, title, ms=1, fontsize=8, show=False, fpath=None):
     # Plot the trace of the parameters
     n = m_primes.shape[1]
     fig, axes = plt.subplots(n + 1, 1, figsize=(6, n * 1.5), sharex=True)
@@ -188,30 +188,32 @@ def plot_mcmc_chain(m_primes, m_chain, mb_obs, ar, title, ms=1, fontsize=8, show
         legs.append(l4)
         axes[4].set_ylabel(r'$\rho_{acc}$', fontsize=fontsize)
 
-    axes[-2].fill_between(
-        np.arange(len(ar)),
-        mb_obs[0] - (2 * mb_obs[1]),
-        mb_obs[0] + (2 * mb_obs[1]),
-        color='grey',
-        alpha=0.3,
-    )
-    axes[-2].fill_between(
-        np.arange(len(ar)),
-        mb_obs[0] - mb_obs[1],
-        mb_obs[0] + mb_obs[1],
-        color='grey',
-        alpha=0.3,
-    )
-    axes[-2].plot(m_primes[:, -1], '.', ms=ms, c='tab:blue')
-    axes[-2].plot(m_chain[:, -1], '.', ms=ms, c='tab:orange')
-    axes[-2].plot(
-        [],
-        [],
-        label=f'median={np.median(m_chain[:, -1]):.3f}\niqr={np.subtract(*np.percentile(m_chain[:, -1], [75, 25])):.3f}',
-    )
-    ln2 = axes[-2].legend(loc='upper right', handlelength=0, borderaxespad=0, fontsize=fontsize)
-    legs.append(ln2)
-    axes[-2].set_ylabel(r'$\dot{{b}}$', fontsize=fontsize)
+    if 'glacierwide_mb_mwea' in obs.keys():
+        mb_obs = obs['glacierwide_mb_mwea']
+        axes[-2].fill_between(
+            np.arange(len(ar)),
+            mb_obs[0] - (2 * mb_obs[1]),
+            mb_obs[0] + (2 * mb_obs[1]),
+            color='grey',
+            alpha=0.3,
+        )
+        axes[-2].fill_between(
+            np.arange(len(ar)),
+            mb_obs[0] - mb_obs[1],
+            mb_obs[0] + mb_obs[1],
+            color='grey',
+            alpha=0.3,
+        )
+        axes[-2].plot(m_primes[:, -1], '.', ms=ms, c='tab:blue')
+        axes[-2].plot(m_chain[:, -1], '.', ms=ms, c='tab:orange')
+        axes[-2].plot(
+            [],
+            [],
+            label=f'median={np.median(m_chain[:, -1]):.3f}\niqr={np.subtract(*np.percentile(m_chain[:, -1], [75, 25])):.3f}',
+        )
+        ln2 = axes[-2].legend(loc='upper right', handlelength=0, borderaxespad=0, fontsize=fontsize)
+        legs.append(ln2)
+        axes[-2].set_ylabel(r'$\dot{{b}}$', fontsize=fontsize)
 
     axes[-1].plot(ar, 'tab:orange', lw=1)
     axes[-1].plot(
