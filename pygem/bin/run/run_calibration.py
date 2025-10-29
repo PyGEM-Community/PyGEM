@@ -114,13 +114,13 @@ def getparser():
         help='reference period ending year for calibration (typically 2019)',
     )
     (
-    parser.add_argument(
-        '-rgi_glac_number_fn',
-        action='store',
-        type=str,
-        default=None,
-        help='filepath containing list of rgi_glac_number, helpful for running batches on spc',
-    )
+        parser.add_argument(
+            '-rgi_glac_number_fn',
+            action='store',
+            type=str,
+            default=None,
+            help='filepath containing list of rgi_glac_number, helpful for running batches on spc',
+        )
     )
     parser.add_argument(
         '-rgi_glac_number',
@@ -260,7 +260,7 @@ def mb_mwea_calc(
 
 def run_oggm_dynamics(gdir, modelprms, glacier_rgi_table, fls):
     """run the dynamical evolution model with a given set of model parameters"""
-    
+
     y0 = gdir.dates_table.year.min()
     y1 = gdir.dates_table.year.max()
 
@@ -318,7 +318,7 @@ def run_oggm_dynamics(gdir, modelprms, glacier_rgi_table, fls):
                 )
     except RuntimeError:
         ds = None
-    
+
     return mbmod, ds
 
 
@@ -402,32 +402,24 @@ def evaluate_model_outputs(
 
     if calib_elev_change_1d:
         mbmod, ds = run_oggm_dynamics(gdir, modelprms, glacier_rgi_table, fls)
-        results["elev_change_1d"] = (
-            calc_elev_change_1d(gdir, mbmod, ds) if ds else float("-inf")
-        )
+        results['elev_change_1d'] = calc_elev_change_1d(gdir, mbmod, ds) if ds else float('-inf')
 
     if calib_glacierwide_mb_mwea:
         if mbfxn is not None:
             # grab current values from modelprms for the emulator
-            mb_args = [
-                modelprms['tbias'],
-                modelprms['kp'],
-                modelprms['ddfsnow']
-            ]
+            mb_args = [modelprms['tbias'], modelprms['kp'], modelprms['ddfsnow']]
             glacierwide_mb_mwea = mbfxn(*[mb_args])
         else:
             if mbmod is None:
                 glacierwide_mb_mwea = mb_mwea_calc(gdir, modelprms, glacier_rgi_table, fls)
             else:
                 glacierwide_mb_mwea = (
-                    mbmod.glac_wide_massbaltotal[
-                        gdir.mbdata["t1_idx"]: gdir.mbdata["t2_idx"] + 1
-                    ].sum()
+                    mbmod.glac_wide_massbaltotal[gdir.mbdata['t1_idx'] : gdir.mbdata['t2_idx'] + 1].sum()
                     / mbmod.glac_wide_area_annual[0]
-                    / gdir.mbdata["nyears"]
+                    / gdir.mbdata['nyears']
                 )
 
-        results["glacierwide_mb_mwea"] = glacierwide_mb_mwea
+        results['glacierwide_mb_mwea'] = glacierwide_mb_mwea
 
     # (add future calibration options here)
     if calib_snowlines_1d:
@@ -439,7 +431,7 @@ def evaluate_model_outputs(
         # results["meltextent_1d"] = calc_meltextent_1d(gdir, mbmod)
 
     if debug:
-        print("Returned keys:", list(results.keys()))
+        print('Returned keys:', list(results.keys()))
 
     return results
 
@@ -2070,7 +2062,7 @@ def run(list_packed_vars):
                 # the mcmc.mbPosterior class expects observations to be provided as a dictionary,
                 # where each key corresponds to a variable being calibrated.
                 # each value should be a tuple of the form (observation, variance).
-                obs = {'glacierwide_mb_mwea':(torch.tensor([mb_obs_mwea]), torch.tensor([mb_obs_mwea_err]))}
+                obs = {'glacierwide_mb_mwea': (torch.tensor([mb_obs_mwea]), torch.tensor([mb_obs_mwea_err]))}
                 mbfxn = None
 
                 if pygem_prms['calib']['MCMC_params']['option_use_emulator']:
@@ -2100,7 +2092,10 @@ def run(list_packed_vars):
                     )
 
                     # add elevation change data to observations dictionary
-                    obs['elev_change_1d'] = (torch.tensor(gdir.elev_change_1d['dh']), torch.tensor(gdir.elev_change_1d['dh_sigma']))
+                    obs['elev_change_1d'] = (
+                        torch.tensor(gdir.elev_change_1d['dh']),
+                        torch.tensor(gdir.elev_change_1d['dh_sigma']),
+                    )
                 # if there are more observations to calibrate against, simply add them as a tuple of (obs, variance) to the obs dictionary
 
                 # define args to pass to fxn2eval in mcmc sampler
@@ -2227,7 +2222,9 @@ def run(list_packed_vars):
                             )
 
                         # concatenate mass balance
-                        m_chain = torch.cat((m_chain, torch.tensor(pred_chain['glacierwide_mb_mwea']).reshape(-1, 1)), dim=1)
+                        m_chain = torch.cat(
+                            (m_chain, torch.tensor(pred_chain['glacierwide_mb_mwea']).reshape(-1, 1)), dim=1
+                        )
                         m_primes = torch.cat(
                             (m_primes, torch.tensor(pred_primes['glacierwide_mb_mwea']).reshape(-1, 1)),
                             dim=1,

@@ -202,7 +202,7 @@ class mbPosterior:
 
     # get model predictions
     def get_model_pred(self, m):
-        self.update_modelprms(m)           # update modelprms with current step
+        self.update_modelprms(m)  # update modelprms with current step
         self.preds = self.fxn2eval(*self.fxnargs)
         # convert all values to torch tensors
         self.preds = {k: torch.tensor(v, dtype=torch.float) for k, v in self.preds.items()}
@@ -235,7 +235,7 @@ class mbPosterior:
                 rho[~self.abl_mask] = m[4]  # rhoacc
                 rho = torch.tensor(rho)
                 # scale prediction by model density values (convert from m ice to m surface elevation change considering modeled density)
-                pred *= (pygem_prms['constants']['density_ice'] / rho[:, np.newaxis])
+                pred *= pygem_prms['constants']['density_ice'] / rho[:, np.newaxis]
                 # update values in preds dict
                 self.preds[k] = pred
 
