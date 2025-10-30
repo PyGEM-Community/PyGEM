@@ -248,8 +248,8 @@ def plot_mcmc_chain(
         obs_vals_flat = np.ravel(np.array(obs[key][0]))
 
         # compute mean residual per step
-        mean_resid_primes = np.mean(pred_primes_flat - obs_vals_flat, axis=1)
-        mean_resid_chain = np.mean(pred_chain_flat - obs_vals_flat, axis=1)
+        mean_resid_primes = np.nanmean(pred_primes_flat - obs_vals_flat, axis=1)
+        mean_resid_chain = np.nanmean(pred_chain_flat - obs_vals_flat, axis=1)
 
         axes[nparams].plot(mean_resid_primes, '.', ms=ms, c='tab:blue')
         axes[nparams].plot(mean_resid_chain, '.', ms=ms, c='tab:orange')

@@ -314,7 +314,8 @@ def run_oggm_dynamics(gdir, modelprms, glacier_rgi_table, fls):
                 ev_model.mb_model.glac_wide_massbaltotal = (
                     ev_model.mb_model.glac_wide_massbaltotal + ev_model.mb_model.glac_wide_frontalablation
                 )
-    except RuntimeError:
+    # safely catch any errors with dynamical run
+    except Exception:
         ds = None
 
     return mbmod, ds
