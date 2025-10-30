@@ -242,19 +242,24 @@ def plot_mcmc_chain(
     for key in pred_primes.keys():
         if key == 'glacierwide_mb_mwea':
             continue
+
+        # stack predictions first (shape: n_steps x ... x ...) - may end up being 2d or 3d
         pred_primes = torch.stack(pred_primes[key]).numpy()
         pred_chain = torch.stack(pred_chain[key]).numpy()
-        obs_vals = np.array(obs[key][0])
 
-        try: # FIX THIS
-            mae_primes = np.mean(pred_primes - obs_vals, axis=(1, 2))
-            mae_chain = np.mean(pred_chain - obs_vals, axis=(1, 2))
-        except:
-            mae_primes = np.mean(pred_primes - obs_vals, axis=1)
-            mae_chain = np.mean(pred_chain - obs_vals, axis=1)
+        # flatten all axes except the first (n_steps) -> 2D array (n_steps, M)
+        pred_primes_flat = pred_primes.reshape(pred_primes.shape[0], -1)
+        pred_chain_flat = pred_chain.reshape(pred_chain.shape[0], -1)
 
-        axes[nparams].plot(mae_primes, '.', ms=ms, c='tab:blue')
-        axes[nparams].plot(mae_chain, '.', ms=ms, c='tab:orange')
+        # make obs array broadcastable (flatten if needed)
+        obs_vals_flat = np.ravel(np.array(obs[key][0]))
+
+        # compute mean residual per step
+        mean_resid_primes = np.mean(pred_primes_flat - obs_vals_flat, axis=1)
+        mean_resid_chain = np.mean(pred_chain_flat - obs_vals_flat, axis=1)
+
+        axes[nparams].plot(mean_resid_primes, '.', ms=ms, c='tab:blue')
+        axes[nparams].plot(mean_resid_chain, '.', ms=ms, c='tab:orange')
 
         if key == 'elev_change_1d':
             axes[nparams].set_ylabel(r'$\overline{\hat{dh} - dh}$', fontsize=fontsize)
