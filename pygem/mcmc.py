@@ -252,37 +252,19 @@ class mbPosterior:
                 pred *= pygem_prms['constants']['density_ice'] / rho[:, np.newaxis]
                 # update values in preds dict
                 self.preds[k] = pred
-            # if i == 0:
-            # --- Base case: mass balance likelihood ---
-            log_likehood += log_normal_density(
-                self.obs[i][0],  # observed values
-                mu=pred,  # predicted values
-                sigma=self.obs[i][1],  # observation uncertainty
-            )
-            # log_likehood += log_normal_density(
-            #     self.obs[i][0],  # observed values
-            #     method='weighted', # use weighted observations
-            #     obs_weight=1, # observation weight
-            #     mu=pred,  # predicted values
-            #     sigma=self.obs[i][1],  # observation uncertainty
-            # )
-
-            # elif i == 1 and len(m) > 3:
-            #     # --- Extended case: apply density scaling to get binned elevation change ---
-            #     # Create density field, separate values for ablation/accumulation zones
-            #     rho = np.ones_like(self.bin_z)
-            #     rho[self.abl_mask] = m[3]  # rhoabl
-            #     rho[~self.abl_mask] = m[4]  # rhoacc
-            #     rho = torch.tensor(rho)
-            #     self.preds[i] = pred = (
-            #         self.preds[i] * (pygem_prms['constants']['density_ice'] / rho[:, np.newaxis])
-            #     )  # scale prediction by model density values (convert from m ice to m thickness change considering modeled density)
 
             log_likehood += log_normal_density(
                 self.obs[k][0],  # observations
                 mu=pred,  # scaled predictions
                 sigma=self.obs[k][1],  # uncertainty
             )
+            # log_likehood += log_normal_density(
+            #     self.obs[k][0],  # observed values
+            #     method='weighted', # use weighted observations
+            #     obs_weight=1, # observation weight
+            #     mu=pred,  # predicted values
+            #     sigma=self.obs[k][1],  # observation uncertainty
+            # )
 
         return log_likehood
 

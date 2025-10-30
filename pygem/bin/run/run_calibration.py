@@ -382,6 +382,19 @@ def calc_elev_change_1d(gdir, mbmod, ds):
     )
     return elev_change_1d
 
+def calc_snowline_1d(gdir, mbmod):
+    t1_idx = gdir.mbdata['t1_idx']
+    t2_idx = gdir.mbdata['t2_idx']
+
+    # Get snowline for dates aligning with observations
+    snowline_1d_full = mbmod.glac_wide_snowline[t1_idx : t2_idx + 1]
+    snowline_1d = np.array([
+        snowline_1d_full[d] if d is not None else np.nan 
+        for d in gdir.snowline_1d['model2obs_inds_map']
+        ])
+
+    return snowline_1d
+
 
 def mcmc_model_eval(
     gdir,
@@ -424,11 +437,17 @@ def mcmc_model_eval(
 
         results['glacierwide_mb_mwea'] = glacierwide_mb_mwea
 
-    # (add future calibration options here)
     if calib_snowlines_1d:
-        pass
-        # results["snowlines_1d"] = calc_snowlines_1d(gdir, mbmod)
+        if mbmod is None:
+            mbmod = PyGEMMassBalance(gdir, modelprms, glacier_rgi_table, fls=fls, option_areaconstant=True)
+        
+        # compute snowlines
+        for year in gdir.dates_table.year.unique():
+            mbmod.get_annual_mb(fls[0].surface_h, fls=fls, fl_id=0, year=year)
 
+        results['snowline_1d'] = calc_snowline_1d(gdir, mbmod)
+
+    # (add future calibration options here)
     if calib_meltextent_1d:
         pass
         # results["meltextent_1d"] = calc_meltextent_1d(gdir, mbmod)
@@ -437,39 +456,6 @@ def mcmc_model_eval(
         print('Returned keys:', list(results.keys()))
 
     return results
-
-
-    return glacierwide_mb_mwea, elev_change_1d
-
-
-def calculate_snowline_1d(
-    gdir,
-    modelprms,
-    glacier_rgi_table,
-    fls=None,
-):
-    """
-    Run the mass balance and calculate the mass balance [mwea] and snowline [masl]
-    """
-    # RUN MASS BALANCE MODEL
-    mbmod = PyGEMMassBalance(gdir, modelprms, glacier_rgi_table, fls=fls, option_areaconstant=True)
-    for year in gdir.dates_table.year.unique():
-        mbmod.get_annual_mb(fls[0].surface_h, fls=fls, fl_id=0, year=year)
-
-    # Specific mass balance [mwea]
-    t1_idx = gdir.mbdata['t1_idx']
-    t2_idx = gdir.mbdata['t2_idx']
-    nyears = gdir.mbdata['nyears']
-    mb_mwea = mbmod.glac_wide_massbaltotal[t1_idx : t2_idx + 1].sum() / mbmod.glac_wide_area_annual[0] / nyears
-    
-    # Get snowline for dates aligning with observations
-    mod_snowline_1d_full = mbmod.glac_wide_snowline[t1_idx : t2_idx + 1]
-    mod_snowline_1d = np.array([
-        mod_snowline_1d_full[d] if d is not None else np.nan 
-        for d in gdir.snowline_1d['model2obs_inds_map']
-        ])
-
-    return mb_mwea, mod_snowline_1d
 
 # class for Gaussian Process model for mass balance emulator
 class ExactGPModel(gpytorch.models.ExactGP):
@@ -2177,23 +2163,14 @@ def run(list_packed_vars):
                     if gdir_ela is not None:
                         gdir.ela = gdir_ela
 
-                    # calculate inds of data v. model
-                    mbfxn = calculate_snowline_1d  # returns (mb_mwea, snowline obs)
-                    mbargs = (
-                        gdir,  # arguments for get_binned_dh()
-                        modelprms,
-                        glacier_rgi_table,
-                        fls,
-                    )
                     # append z obs and and sigma obs list (use two-sided uncertainty)
-                    obs.append(
-                        (
-                            torch.tensor(gdir.snowline_1d['z']),
-                            torch.stack((
-                                torch.tensor(gdir.snowline_1d['z_sigma_min']), 
-                                torch.tensor(gdir.snowline_1d['z_sigma_max'])
-                            )),
-                        )
+                    obs['snowline_1d'] = (
+                        torch.tensor(gdir.snowline_1d['z']),
+                        torch.stack((
+                            torch.tensor(gdir.snowline_1d['z_sigma_min']), 
+                            torch.tensor(gdir.snowline_1d['z_sigma_max'])
+                        )),
+                        
                     )
  
                 # if there are more observations to calibrate against, simply add them as a tuple of (obs, variance) to the obs dictionary
@@ -2207,6 +2184,7 @@ def run(list_packed_vars):
                     mbfxn,
                     args.option_calib_glacierwide_mb_mwea,
                     args.option_calib_elev_change_1d,
+                    args.option_calib_snowline_1d,
                 )
 
                 # instantiate mbPosterior given priors, and observed values
@@ -2368,7 +2346,7 @@ def run(list_packed_vars):
                                         show=show,
                                         fpath=f'{fp}/{glacier_str}-chain{n_chain}-residuals-{k}.png',
                                     )
-                                    if k == 1.'elev_change_1d':
+                                    if k == 'elev_change_1d':
                                         graphics.plot_mcmc_elev_change_1d(
                                             pred_chain[k],
                                             fls,
@@ -2378,9 +2356,9 @@ def run(list_packed_vars):
                                             show=show,
                                             fpath=f'{fp}/{glacier_str}-chain{n_chain}-elev_change_1d.png',
                                         )
-                                    if i == 1: # placeholder for snowline plotting
+                                    if k == 'snowline_1d':
                                         graphics.plot_mcmc_snowline_1d(
-                                            pred_chain[1],
+                                            pred_chain[k],
                                             fls,
                                             gdir.snowline_1d,
                                             glacier_str,
@@ -2388,7 +2366,7 @@ def run(list_packed_vars):
                                             fpath=f'{fp}/{glacier_str}-chain{n_chain}-snowline_1d.png',
                                         )
                                         graphics.plot_mcmc_snowline_1v1_1d(
-                                            pred_chain[1],
+                                            pred_chain[k],
                                             fls,
                                             gdir.snowline_1d,
                                             glacier_str,

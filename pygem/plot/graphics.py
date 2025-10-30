@@ -246,8 +246,12 @@ def plot_mcmc_chain(
         pred_chain = torch.stack(pred_chain[key]).numpy()
         obs_vals = np.array(obs[key][0])
 
-        mae_primes = np.mean(pred_primes - obs_vals, axis=(1, 2))
-        mae_chain = np.mean(pred_chain - obs_vals, axis=(1, 2))
+        try: # FIX THIS
+            mae_primes = np.mean(pred_primes - obs_vals, axis=(1, 2))
+            mae_chain = np.mean(pred_chain - obs_vals, axis=(1, 2))
+        except:
+            mae_primes = np.mean(pred_primes - obs_vals, axis=1)
+            mae_chain = np.mean(pred_chain - obs_vals, axis=1)
 
         axes[nparams].plot(mae_primes, '.', ms=ms, c='tab:blue')
         axes[nparams].plot(mae_chain, '.', ms=ms, c='tab:orange')
