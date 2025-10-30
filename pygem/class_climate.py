@@ -424,7 +424,7 @@ class GCM:
                 data = xr.open_dataset(self.var_fp + filename)
                 data = data.sel(latitude=slice(max_lat, min_lat), longitude=slice(min_lon, max_lon))
 
-            # mask out leap days
+            # mask out leap days 
             if pygem_prms['time']['option_leapyear'] == 0 and not upscale_var_timestep:
                 time_index = pd.to_datetime(data[self.time_vn].values)
                 mask = ~((time_index.month == 2) & (time_index.day == 29))
@@ -437,7 +437,7 @@ class GCM:
                 var_monthly = data[vn]  # xarray DataArray with dims (time, lat, lon)
 
                 # create empty DataArray for daily data
-                daily_times = dates_table['date'].values
+                daily_times = dates_table['date'].values.astype('datetime64[ns]')
                 daily_data = xr.DataArray(
                     np.zeros((len(daily_times), len(data.latitude), len(data.longitude))),
                     dims=(self.time_vn, 'latitude', 'longitude'),
