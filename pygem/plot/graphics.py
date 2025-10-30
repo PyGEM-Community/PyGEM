@@ -231,7 +231,7 @@ def plot_mcmc_chain(
         axes[nparams].set_ylabel(r'$\dot{{b}}$', fontsize=fontsize)
         nparams += 1
 
-    # plot MAE for all other prediction keys
+    # plot along-chain mean residual for all other prediction keys
     for key in pred_primes.keys():
         if key == 'glacierwide_mb_mwea':
             continue
