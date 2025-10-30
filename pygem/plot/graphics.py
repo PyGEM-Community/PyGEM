@@ -19,7 +19,15 @@ from scipy.stats import binned_statistic, linregress
 from pygem.utils.stats import effective_n
 
 
-def plot_modeloutput_section(model=None, ax=None, title='', **kwargs):
+def plot_modeloutput_section(
+    model=None,
+    ax=None,
+    title='',
+    lnlabel=None,
+    legendon=True,
+    lgdkwargs={'loc': 'upper right', 'fancybox': False, 'borderaxespad': 0, 'handlelength': 1},
+    **kwargs,
+):
     """Plots the result of the model output along the flowline.
     A paired down version of OGGMs graphics.plot_modeloutput_section()
 
@@ -41,15 +49,12 @@ def plot_modeloutput_section(model=None, ax=None, title='', **kwargs):
         ax = fig.add_axes([0.07, 0.08, 0.7, 0.84])
     else:
         fig = plt.gcf()
+    # get n lines plotted on figure
+    nlines = len(plt.gca().get_lines())
 
-    # Compute area histo
-    area = np.array([])
     height = np.array([])
     bed = np.array([])
     for cls in fls:
-        a = cls.widths_m * cls.dx_meter * 1e-6
-        a = np.where(cls.thick > 0, a, 0)
-        area = np.concatenate((area, a))
         height = np.concatenate((height, cls.surface_h))
         bed = np.concatenate((bed, cls.bed_h))
     ylim = [bed.min(), height.max()]
@@ -58,8 +63,11 @@ def plot_modeloutput_section(model=None, ax=None, title='', **kwargs):
     cls = fls[-1]
     x = np.arange(cls.nx) * cls.dx * cls.map_dx
 
-    # Plot the bed
-    ax.plot(x, cls.bed_h, color='k', linewidth=2.5, label='Bed (Parab.)')
+    if nlines == 0:
+        if getattr(model, 'do_calving', False):
+            ax.hlines(model.water_level, x[0], x[-1], linestyles=':', label='Water level', color='C0')
+        # Plot the bed
+        ax.plot(x, cls.bed_h, color='k', linewidth=2.5, label='Bed (Parab.)')
 
     # Plot glacier
     t1 = cls.thick[:-2]
@@ -78,7 +86,7 @@ def plot_modeloutput_section(model=None, ax=None, title='', **kwargs):
     else:
         srfls = '-'
 
-    ax.plot(x, cls.surface_h, color=srfcolor, linewidth=2, ls=srfls, label='Glacier')
+    ax.plot(x, cls.surface_h, color=srfcolor, linewidth=2, ls=srfls, label=lnlabel)
 
     # Plot tributaries
     for i, inflow in zip(cls.inflow_indices, cls.inflows):
@@ -100,16 +108,14 @@ def plot_modeloutput_section(model=None, ax=None, title='', **kwargs):
                 markeredgecolor='k',
                 label='Tributary (inactive)',
             )
-    if getattr(model, 'do_calving', False):
-        ax.hlines(model.water_level, x[0], x[-1], linestyles=':', color='C0')
 
     ax.set_ylim(ylim)
-
     ax.spines['top'].set_color('none')
     ax.xaxis.set_ticks_position('bottom')
     ax.set_xlabel('Distance along flowline (m)')
     ax.set_ylabel('Altitude (m)')
-
+    if legendon:
+        ax.legend(**lgdkwargs)
     # Title
     ax.set_title(title, loc='left')
 

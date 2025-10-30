@@ -66,7 +66,6 @@ def mb_df_to_gdir(
         mbdata_fp = mbdata_fp + pygem_prms['calib']['data']['massbalance']['hugonnet2021_fn']
 
     assert os.path.exists(mbdata_fp), 'Error, mass balance dataset does not exist: {mbdata_fp}'
-    assert 'hugonnet2021' in mbdata_fp.lower(), 'Error, mass balance dataset not yet supported: {mbdata_fp}'
     rgiid_cn = 'rgiid'
     mb_cn = 'mb_mwea'
     mberr_cn = 'mb_mwea_err'
