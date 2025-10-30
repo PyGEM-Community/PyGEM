@@ -657,16 +657,17 @@ def plot_mcmc_snowline_1v1_1d(
     ax[0].set_box_aspect(1)
 
     # correlation info (pearson r)
-    slope, intercept, r_value, p_value, std_err = linregress(obs_sl_nonan, preds_sl_nonan)
-    obs_count = len(preds_sl_nonan)
+    if len(preds_sl_nonan) > 1 and len(obs_sl_nonan) > 1:
+        slope, intercept, r_value, p_value, std_err = linregress(obs_sl_nonan, preds_sl_nonan)
+        obs_count = len(preds_sl_nonan)
 
-    fs = 10
-    ax[0].text(0.03, 0.99, f'$r^2 = {r_value**2:.2f}$ (n={obs_count})', 
-               transform=ax[0].transAxes, ha='left', va='top', fontsize=fs)
-    ax[0].text(0.03, 0.93, f'bias = {np.mean(obs_sl_nonan-preds_sl_nonan):.0f} m', 
-               transform=ax[0].transAxes, ha='left', va='top', fontsize=fs)
-    ax[0].text(0.03, 0.88, f'mae = {np.mean(np.abs(obs_sl_nonan-preds_sl_nonan)):.0f} m', 
-               transform=ax[0].transAxes, ha='left', va='top', fontsize=fs)
+        fs = 10
+        ax[0].text(0.03, 0.99, f'$r^2 = {r_value**2:.2f}$ (n={obs_count})', 
+                transform=ax[0].transAxes, ha='left', va='top', fontsize=fs)
+        ax[0].text(0.03, 0.93, f'bias = {np.mean(obs_sl_nonan-preds_sl_nonan):.0f} m', 
+                transform=ax[0].transAxes, ha='left', va='top', fontsize=fs)
+        ax[0].text(0.03, 0.88, f'mae = {np.mean(np.abs(obs_sl_nonan-preds_sl_nonan)):.0f} m', 
+                transform=ax[0].transAxes, ha='left', va='top', fontsize=fs)
 
     # save
     fig.tight_layout()
