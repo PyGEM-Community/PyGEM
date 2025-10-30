@@ -6,6 +6,7 @@ copyright © 2018 David Rounce <drounce@cmu.edu>
 Distributed under the MIT license
 """
 
+import fnmatch
 import os
 import shutil
 
@@ -97,6 +98,18 @@ class ConfigManager:
         Parameters:
         config (dict): The configuration dictionary to be validated.
         """
+        skip_patterns = [
+            '*cesm2*',
+            '*cmip5*',
+            '*gfdl*',
+            '*h_ref*',
+            '*frontalablation*',
+            '*snowline*',
+            '*meltextent*',
+            '*elev_change_1d*',
+        ]
+
+        # --- Type validation (existing code) ---
         for key, expected_type in self.EXPECTED_TYPES.items():
             keys = key.split('.')
             sub_data = config
@@ -109,7 +122,6 @@ class ConfigManager:
             if not isinstance(sub_data, expected_type):
                 raise TypeError(f"Invalid type for '{key}': expected {expected_type}, not {type(sub_data)}")
 
-            # Check elements inside lists (if defined)
             if key in self.LIST_ELEMENT_TYPES and isinstance(sub_data, list):
                 elem_type = self.LIST_ELEMENT_TYPES[key]
                 if not all(isinstance(item, elem_type) for item in sub_data):
@@ -117,7 +129,42 @@ class ConfigManager:
                         f"Invalid type for elements in '{key}': expected all elements to be {elem_type}, but got {sub_data}"
                     )
 
-        # check that all defined paths exist, raise error for any critical ones
+        # --- Flatten the dict ---
+        def flatten_dict(d, parent_key=''):
+            items = {}
+            for k, v in d.items():
+                new_key = f'{parent_key}.{k}' if parent_key else k
+                if isinstance(v, dict):
+                    items.update(flatten_dict(v, new_key))
+                else:
+                    items[new_key] = v
+            return items
+
+        flat = flatten_dict(config)
+
+        # --- _relpath path validation ---
+        root = config.get('root')
+        if not root:
+            raise KeyError("Missing required 'root' key for path validation.")
+        root = os.path.abspath(root)
+
+        for key, value in flat.items():
+            if not key.endswith('_relpath') or not isinstance(value, str):
+                continue
+
+            # Skip patterns
+            if any(fnmatch.fnmatch(key, pat) for pat in skip_patterns):
+                continue
+
+            path = os.path.join(root, value.strip(os.sep))
+
+            # Determine whether to check as file or directory
+            if os.path.splitext(path)[1]:  # has an extension → treat as file
+                if not os.path.isfile(path):
+                    raise FileNotFoundError(f"Missing file for '{key}': {path}")
+            else:  # no extension → treat as directory
+                if not os.path.isdir(path):
+                    raise FileNotFoundError(f"Missing directory for '{key}': {path}")
 
     # expected config types
     EXPECTED_TYPES = {
