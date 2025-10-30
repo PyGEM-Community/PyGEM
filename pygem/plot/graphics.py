@@ -121,7 +121,7 @@ def plot_mcmc_chain(
     nparams = m_primes.shape[1]
     npreds = len(pred_chain.keys())
     N = nparams + npreds + 1
-    fig, axes = plt.subplots(N, 1, figsize=(6, N * 1.5), sharex=True)
+    fig, axes = plt.subplots(N, 1, figsize=(6, N * 1), sharex=True)
     # convert torch objects to numpy
     m_chain = m_chain.detach().numpy()
     m_primes = m_primes.detach().numpy()
@@ -246,10 +246,9 @@ def plot_mcmc_chain(
         axes[nparams].plot(mae_chain, '.', ms=ms, c='tab:orange')
 
         if key == 'elev_change_1d':
-            axes[nparams].set_ylabel(r'$\bar{r}$(dh)', fontsize=fontsize)
-
+            axes[nparams].set_ylabel(r'$\overline{\hat{dh} - dh}$', fontsize=fontsize)
         else:
-            axes[nparams].set_ylabel(r'$\bar{r}$(-)', fontsize=fontsize)
+            axes[nparams].set_ylabel(r'$\overline{\mathrm{pred} - \mathrm{obs}}$', fontsize=fontsize)
         legs.append(None)
         nparams += 1
 
@@ -269,6 +268,7 @@ def plot_mcmc_chain(
         ax.xaxis.set_ticks_position('both')
         ax.yaxis.set_ticks_position('both')
         ax.tick_params(axis='both', direction='inout')
+        ax.yaxis.set_label_coords(-0.1, 0.5)
         if i > m_primes.shape[1] - 1:
             continue
         ax.plot([], [], label=f'n_eff={neff[i]}')
