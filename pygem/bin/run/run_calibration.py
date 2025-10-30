@@ -113,14 +113,12 @@ def getparser():
         default=pygem_prms['climate']['ref_endyear'],
         help='reference period ending year for calibration (typically 2019)',
     )
-    (
-        parser.add_argument(
-            '-rgi_glac_number_fn',
-            action='store',
-            type=str,
-            default=None,
-            help='filepath containing list of rgi_glac_number, helpful for running batches on spc',
-        )
+    parser.add_argument(
+        '-rgi_glac_number_fn',
+        action='store',
+        type=str,
+        default=None,
+        help='filepath containing list of rgi_glac_number, helpful for running batches on spc',
     )
     parser.add_argument(
         '-rgi_glac_number',
@@ -178,6 +176,12 @@ def getparser():
         '-option_ordered',
         action='store_true',
         help='Flag to keep glacier lists ordered (default is false)',
+    )
+    parser.add_argument(
+        '-option_calib_glacierwide_mb_mwea',
+        action='store_true',
+        default=pygem_prms['calib']['MCMC_params']['option_calib_glacierwide_mb_mwea'],
+        help='Flag to calibrate against average glacierwide mass balance',
     )
     parser.add_argument(
         '-option_calib_elev_change_1d',
@@ -258,27 +262,20 @@ def mb_mwea_calc(
         return mb_mwea
 
 
-def calculate_elev_change_1d(
-    gdir,
-    modelprms,
-    glacier_rgi_table,
-    fls,
-    debug=False,
-):
-    """
-    For a given set of model parameters, run the ice thickness inversion and mass balance model to get binned annual ice thickness change
-    Convert to monthly thickness by assuming that the flux divergence is constant throughout the year
-    """
+def run_oggm_dynamics(gdir, modelprms, glacier_rgi_table, fls):
+    """run the dynamical evolution model with a given set of model parameters"""
+
     y0 = gdir.dates_table.year.min()
     y1 = gdir.dates_table.year.max()
+
+    # mass balance model with evolving area
+    mbmod = PyGEMMassBalance(gdir, modelprms, glacier_rgi_table, fls=fls)
 
     # Check that water level is within given bounds
     cls = gdir.read_pickle('inversion_input')[-1]
     th = cls['hgt'][-1]
     vmin, vmax = cfg.PARAMS['free_board_marine_terminating']
     water_level = utils.clip_scalar(0, th - vmax, th - vmin)
-    # mass balance model with evolving area
-    mbmod = PyGEMMassBalance(gdir, modelprms, glacier_rgi_table, fls=fls)
     # glacier dynamics model
     if gdir.is_tidewater and pygem_prms['setup']['include_frontalablation']:
         ev_model = flowline.FluxBasedModel(
@@ -319,47 +316,40 @@ def calculate_elev_change_1d(
                 for n in np.arange(calving_m3we_annual.shape[0]):
                     ev_model.mb_model.glac_wide_frontalablation[12 * n + 11] = calving_m3we_annual[n]
 
-                # Add mass lost from frontal ablation to Glacier-wide total mass balance (m3 w.e.)
+                # add mass lost from frontal ablation to Glacier-wide total mass balance (m3 w.e.)
                 ev_model.mb_model.glac_wide_massbaltotal = (
                     ev_model.mb_model.glac_wide_massbaltotal + ev_model.mb_model.glac_wide_frontalablation
                 )
-
-            glacierwide_mb_mwea = (
-                mbmod.glac_wide_massbaltotal[gdir.mbdata['t1_idx'] : gdir.mbdata['t2_idx'] + 1].sum()
-                / mbmod.glac_wide_area_annual[0]
-                / gdir.mbdata['nyears']
-            )
-
-    # if there is an issue evaluating the dynamics model for a given parameter set in MCMC calibration,
-    # return -inf for mb_mwea and binned_dh, so MCMC calibration won't accept given parameters
     except RuntimeError:
-        return float('-inf'), float('-inf')
+        ds = None
 
-    ### get subannual elevation change
+    return mbmod, ds
 
-    #  --- Step 1: convert mass balance from m w.e. to m ice ---
-    rho_w = pygem_prms['constants']['density_water']
-    rho_i = pygem_prms['constants']['density_ice']
-    bin_massbalclim_ice = mbmod.glac_bin_massbalclim * (rho_w / rho_i)  # binned climatic mass balance (nbins, nsteps)
 
-    # --- Step 2: expand flux divergence to subannual steps ---
-    # assume the flux divergence is constant througohut the year
-    # ie. take annual values and divide spread uniformly throughout model year
-    bin_flux_divergence_subannual = np.zeros_like(bin_massbalclim_ice)
-    for i, year in enumerate(gdir.dates_table.year.unique()):
-        idx = np.where(gdir.dates_table.year.values == year)[0]
-        bin_flux_divergence_subannual[:, idx] = -ds[0].flux_divergence_myr.values.T[:, i + 1][:, np.newaxis] / len(
-            idx
-        )  # note, oggm flux_divergence_myr is opposite sign of convention, hence negative
+def calc_elev_change_1d(gdir, mbmod, ds):
+    ### get monthly ice thickness
+    # grab components of interest
+    thickness_m = ds[0].thickness_m.values.T  # glacier thickness [m ice], (nbins, nyears)
 
-    # --- Step 3: compute subannual thickness change ---
-    bin_delta_thick_subannual = bin_massbalclim_ice - bin_flux_divergence_subannual  # [m ice]
+    # set any < 0 thickness to nan
+    thickness_m[thickness_m <= 0] = np.nan
 
-    # --- Step 4: calculate subannual thickness ---
-    # calculate binned subannual thickness = running thickness change + initial thickness
-    bin_thick_initial = ds[0].thickness_m.isel(time=0).values  # initial glacier thickness [m ice], (nbins)
-    running_bin_delta_thick_subannual = np.cumsum(bin_delta_thick_subannual, axis=-1)
-    bin_thick_subannual = running_bin_delta_thick_subannual + bin_thick_initial[:, np.newaxis]
+    # climatic mass balance
+    dotb_monthly = mbmod.glac_bin_massbalclim  # climatic mass balance [m w.e.] per month
+    # convert to m ice
+    dotb_monthly = dotb_monthly * (pygem_prms['constants']['density_water'] / pygem_prms['constants']['density_ice'])
+
+    ### to get monthly thickness and mass we require monthly flux divergence ###
+    # we'll assume the flux divergence is constant througohut the year
+    # ie. take annual values and divide by 12 - use numpy repeat to repeat values across 12 months
+    flux_div_monthly_mmo = np.repeat(-ds[0].flux_divergence_myr.values.T[:, 1:] / 12, 12, axis=-1)
+
+    # get monthly binned change in thickness
+    delta_h_monthly = dotb_monthly - flux_div_monthly_mmo  # [m ice per month]
+
+    # get binned monthly thickness = running thickness change + initial thickness
+    running_delta_h_monthly = np.cumsum(delta_h_monthly, axis=-1)
+    h_monthly = running_delta_h_monthly + thickness_m[:, 0][:, np.newaxis]
 
     # --- Step 5: rebin subannual thickness ---
     # get surface height at the specified reference year
@@ -381,7 +371,7 @@ def calculate_elev_change_1d(
     # interpolate over any empty bins
     bin_thick_subannual = np.column_stack([interp1d_fill_gaps(x.copy()) for x in bin_thick_subannual.T])
 
-    # --- Step 6: calculate elevation change ---
+    # difference each set of inds in diff_inds_map
     elev_change_1d = np.column_stack(
         [
             bin_thick_subannual[:, tup[1]] - bin_thick_subannual[:, tup[0]]
@@ -390,6 +380,64 @@ def calculate_elev_change_1d(
             for tup in gdir.elev_change_1d['model2obs_inds_map']
         ]
     )
+    return elev_change_1d
+
+
+def mcmc_model_eval(
+    gdir,
+    modelprms,
+    glacier_rgi_table,
+    fls,
+    mbfxn=None,
+    calib_glacierwide_mb_mwea=True,
+    calib_elev_change_1d=False,
+    calib_snowlines_1d=False,
+    calib_meltextent_1d=False,
+    debug=False,
+):
+    """
+    For a given set of model parameters, evaluate the desired model outputs.
+    Optionally use an emulator function to compute mass balance.
+    Returns a dictionary with only the requested results.
+    """
+    results = {}
+    mbmod = None
+
+    if calib_elev_change_1d:
+        mbmod, ds = run_oggm_dynamics(gdir, modelprms, glacier_rgi_table, fls)
+        results['elev_change_1d'] = calc_elev_change_1d(gdir, mbmod, ds) if ds else float('-inf')
+
+    if calib_glacierwide_mb_mwea:
+        if mbfxn is not None:
+            # grab current values from modelprms for the emulator
+            mb_args = [modelprms['tbias'], modelprms['kp'], modelprms['ddfsnow']]
+            glacierwide_mb_mwea = mbfxn(*[mb_args])
+        else:
+            if mbmod is None:
+                glacierwide_mb_mwea = mb_mwea_calc(gdir, modelprms, glacier_rgi_table, fls)
+            else:
+                glacierwide_mb_mwea = (
+                    mbmod.glac_wide_massbaltotal[gdir.mbdata['t1_idx'] : gdir.mbdata['t2_idx'] + 1].sum()
+                    / mbmod.glac_wide_area_annual[0]
+                    / gdir.mbdata['nyears']
+                )
+
+        results['glacierwide_mb_mwea'] = glacierwide_mb_mwea
+
+    # (add future calibration options here)
+    if calib_snowlines_1d:
+        pass
+        # results["snowlines_1d"] = calc_snowlines_1d(gdir, mbmod)
+
+    if calib_meltextent_1d:
+        pass
+        # results["meltextent_1d"] = calc_meltextent_1d(gdir, mbmod)
+
+    if debug:
+        print('Returned keys:', list(results.keys()))
+
+    return results
+
 
     return glacierwide_mb_mwea, elev_change_1d
 
@@ -2079,8 +2127,14 @@ def run(list_packed_vars):
                 # -------------------
                 # --- set up MCMC ---
                 # -------------------
-                # mass balance observation and standard deviation
-                obs = [(torch.tensor([mb_obs_mwea]), torch.tensor([mb_obs_mwea_err]))]
+                # the mcmc.mbPosterior class expects observations to be provided as a dictionary,
+                # where each key corresponds to a variable being calibrated.
+                # each value should be a tuple of the form (observation, variance).
+                obs = {'glacierwide_mb_mwea': (torch.tensor([mb_obs_mwea]), torch.tensor([mb_obs_mwea_err]))}
+                mbfxn = None
+
+                if pygem_prms['calib']['MCMC_params']['option_use_emulator']:
+                    mbfxn = mbEmulator.eval  # returns (mb_mwea)
 
                 # if running full model (no emulator), or calibrating against binned elevation change, several arguments are needed
                 if args.option_calib_elev_change_1d:
@@ -2105,20 +2159,10 @@ def run(list_packed_vars):
                         ),
                     )
 
-                    # calculate inds of data v. model
-                    mbfxn = calculate_elev_change_1d  # returns (mb_mwea, binned_dm)
-                    mbargs = (
-                        gdir,  # arguments for get_binned_dh()
-                        modelprms,
-                        glacier_rgi_table,
-                        fls,
-                    )
-                    # append deltah obs and and sigma obs list
-                    obs.append(
-                        (
-                            torch.tensor(gdir.elev_change_1d['dh']),
-                            torch.tensor(gdir.elev_change_1d['dh_sigma']),
-                        )
+                    # add elevation change data to observations dictionary
+                    obs['elev_change_1d'] = (
+                        torch.tensor(gdir.elev_change_1d['dh']),
+                        torch.tensor(gdir.elev_change_1d['dh_sigma']),
                     )
 
                 if args.option_calib_snowline_1d:
@@ -2152,19 +2196,18 @@ def run(list_packed_vars):
                         )
                     )
  
-                # if there are more observations to calibrate against, simply append a tuple of (obs, variance) to obs list
-                # e.g. obs.append((torch.tensor(dmda_array),torch.tensor(dmda_err_array)))
-                elif pygem_prms['calib']['MCMC_params']['option_use_emulator']:
-                    mbfxn = mbEmulator.eval  # returns (mb_mwea)
-                    mbargs = None  # no additional arguments for mbEmulator.eval()
-                else:
-                    mbfxn = mb_mwea_calc  # returns (mb_mwea)
-                    mbargs = (
-                        gdir,
-                        modelprms,
-                        glacier_rgi_table,
-                        fls,
-                    )  # arguments for mb_mwea_calc()
+                # if there are more observations to calibrate against, simply add them as a tuple of (obs, variance) to the obs dictionary
+
+                # define args to pass to fxn2eval in mcmc sampler
+                fxnargs = (
+                    gdir,
+                    modelprms,
+                    glacier_rgi_table,
+                    fls,
+                    mbfxn,
+                    args.option_calib_glacierwide_mb_mwea,
+                    args.option_calib_elev_change_1d,
+                )
 
                 # instantiate mbPosterior given priors, and observed values
                 # note, mbEmulator.eval expects the modelprms to be ordered like so: [tbias, kp, ddfsnow], so priors and initial guesses must also be ordered as such)
@@ -2172,8 +2215,8 @@ def run(list_packed_vars):
                 mb = mcmc.mbPosterior(
                     obs,
                     priors,
-                    mb_func=mbfxn,
-                    mb_args=mbargs,
+                    fxn2eval=mcmc_model_eval,
+                    fxnargs=fxnargs,
                     potential_fxns=[mb_max, must_melt, rho_constraints],
                     ela=gdir.ela.min() if hasattr(gdir, 'ela') else None,
                     bin_z=gdir.elev_change_1d['bin_centers'] if hasattr(gdir, 'elev_change_1d') else None,
@@ -2190,7 +2233,7 @@ def run(list_packed_vars):
                 if args.option_calib_elev_change_1d:
                     modelprms_export['elev_change_1d'] = {}
                     modelprms_export['elev_change_1d']['bin_edges'] = gdir.elev_change_1d['bin_edges']
-                    modelprms_export['elev_change_1d']['obs'] = [ob.flatten().tolist() for ob in obs[1]]
+                    modelprms_export['elev_change_1d']['obs'] = [ob.flatten().tolist() for ob in obs['elev_change_1d']]
                     modelprms_export['elev_change_1d']['dates'] = [
                         (dt1, dt2) for dt1, dt2 in gdir.elev_change_1d['dates']
                     ]
@@ -2278,19 +2321,12 @@ def run(list_packed_vars):
                                 f'Chain {n_chain}: failed to produce an unstuck result after {attempts_per_chain} initial guesses.'
                             )
 
-                        # concatenate mass balance
-                        m_chain = torch.cat((m_chain, torch.tensor(pred_chain[0]).reshape(-1, 1)), dim=1)
-                        m_primes = torch.cat(
-                            (m_primes, torch.tensor(pred_primes[0]).reshape(-1, 1)),
-                            dim=1,
-                        )
-
                         if debug:
                             print(
                                 'mb_mwea_mean:',
-                                np.round(torch.mean(m_chain[:, -1]).item(), 3),
+                                np.round(torch.mean(torch.stack(pred_chain['glacierwide_mb_mwea'])).item(), 3),
                                 'mb_mwea_std:',
-                                np.round(torch.std(m_chain[:, -1]).item(), 3),
+                                np.round(torch.std(torch.stack(pred_chain['glacierwide_mb_mwea'])).item(), 3),
                                 '\nmb_obs_mean:',
                                 np.round(mb_obs_mwea, 3),
                                 'mb_obs_std:',
@@ -2316,23 +2352,25 @@ def run(list_packed_vars):
                                 graphics.plot_mcmc_chain(
                                     m_primes,
                                     m_chain,
-                                    obs[0],
+                                    pred_primes,
+                                    pred_chain,
+                                    obs,
                                     ar,
                                     glacier_str,
                                     show=show,
                                     fpath=f'{fp}/{glacier_str}-chain{n_chain}.png',
                                 )
-                                for i in pred_chain.keys():
+                                for k in pred_chain.keys():
                                     graphics.plot_resid_histogram(
-                                        obs[i],
-                                        pred_chain[i],
+                                        obs[k],
+                                        pred_chain[k],
                                         glacier_str,
                                         show=show,
-                                        fpath=f'{fp}/{glacier_str}-chain{n_chain}-residuals-{i}.png',
+                                        fpath=f'{fp}/{glacier_str}-chain{n_chain}-residuals-{k}.png',
                                     )
-                                    if i == 1.1:
+                                    if k == 1.'elev_change_1d':
                                         graphics.plot_mcmc_elev_change_1d(
-                                            pred_chain[1],
+                                            pred_chain[k],
                                             fls,
                                             gdir.elev_change_1d,
                                             gdir.ela.min(),
@@ -2373,7 +2411,7 @@ def run(list_packed_vars):
                         modelprms_export['ar'][chain_str] = ar
                         if args.option_calib_elev_change_1d:
                             modelprms_export['elev_change_1d'][chain_str] = [
-                                preds.flatten().tolist() for preds in pred_chain[1]
+                                preds.flatten().tolist() for preds in pred_chain['elev_change_1d']
                             ]
                             modelprms_export['rhoabl'][chain_str] = m_chain[:, 3].tolist()
                             modelprms_export['rhoacc'][chain_str] = m_chain[:, 4].tolist()
