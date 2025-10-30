@@ -16,7 +16,7 @@ Broadly speaking, the script follows:
 * Export the calibrated parameters
 
 ## Special Considerations
-The regional Glen A value is calibrated by inverting for the ice thickness of all glaciers in a given region without considering calving (all glaciers are considered land-terminating). After the "best" Glen A value is determined, a final round of ice thickness inversion is performed for tidewater glaciers with calving turned **on**. Running this script will by default export the regionally calibrated Glen A values to the path specfied by `sim.oggm_dynamics.glen_a_regional_relpath` in *~/PyGEM/config.yam'*. The calibrated inversion parameters also get stored within a given glacier directories *diagnostics.json* file, e.g.:
+The regional Glen A value is calibrated by inverting for the ice thickness of all glaciers in a given region without considering calving (all glaciers are considered land-terminating). After the "best" Glen A value is determined, a final round of ice thickness inversion is performed for tidewater glaciers with calving turned **on**. Running this script will by default export the regionally calibrated Glen A values to the path specfied by `sim.oggm_dynamics.glen_a_regional_relpath` in *~/PyGEM/config.yaml'*. The calibrated inversion parameters also get stored within a given glacier directories *diagnostics.json* file, e.g.:
 ```
 {"dem_source": "COPDEM90", "flowline_type": "elevation_band", "apparent_mb_from_any_mb_residual": 2893.2237556771674, "inversion_glen_a": 3.784593106855888e-24, "inversion_fs": 0}
 ```
