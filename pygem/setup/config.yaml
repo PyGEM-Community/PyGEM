@@ -221,10 +221,6 @@ calib:
     snowline_1d:
       snowline_1d_relpath: /SAR_data/merged/                                                        # relative to main data path. per-glacier files within will be expected as <RGI60_id>_snowline_elev.csv (e.g., 01.00570_snowline_elev.csv)
 
-  icethickness_cal_frac_byarea: 0.9               # Regional glacier area fraction that is used to calibrate the ice thickness
-                                                  #  e.g., 0.9 means only the largest 90% of glaciers by area will be used to calibrate
-                                                  #  glen's a for that region.
-
 # ===== SIMULATION =====
 sim:
   option_dynamics: null                           # Glacier dynamics scheme (options: 'OGGM', 'MassRedistributionCurves', 'null')
