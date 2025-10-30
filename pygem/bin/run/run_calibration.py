@@ -2219,21 +2219,12 @@ def run(list_packed_vars):
                                 f'Chain {n_chain}: failed to produce an unstuck result after {attempts_per_chain} initial guesses.'
                             )
 
-                        # concatenate mass balance
-                        m_chain = torch.cat(
-                            (m_chain, torch.tensor(pred_chain['glacierwide_mb_mwea']).reshape(-1, 1)), dim=1
-                        )
-                        m_primes = torch.cat(
-                            (m_primes, torch.tensor(pred_primes['glacierwide_mb_mwea']).reshape(-1, 1)),
-                            dim=1,
-                        )
-
                         if debug:
                             print(
                                 'mb_mwea_mean:',
-                                np.round(torch.mean(m_chain[:, -1]).item(), 3),
+                                np.round(torch.mean(torch.stack(pred_chain['glacierwide_mb_mwea'])).item(), 3),
                                 'mb_mwea_std:',
-                                np.round(torch.std(m_chain[:, -1]).item(), 3),
+                                np.round(torch.std(torch.stack(pred_chain['glacierwide_mb_mwea'])).item(), 3),
                                 '\nmb_obs_mean:',
                                 np.round(mb_obs_mwea, 3),
                                 'mb_obs_std:',
@@ -2257,6 +2248,8 @@ def run(list_packed_vars):
                                 graphics.plot_mcmc_chain(
                                     m_primes,
                                     m_chain,
+                                    pred_primes,
+                                    pred_chain,
                                     obs,
                                     ar,
                                     glacier_str,
