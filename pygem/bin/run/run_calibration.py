@@ -113,14 +113,12 @@ def getparser():
         default=pygem_prms['climate']['ref_endyear'],
         help='reference period ending year for calibration (typically 2019)',
     )
-    (
-        parser.add_argument(
-            '-rgi_glac_number_fn',
-            action='store',
-            type=str,
-            default=None,
-            help='filepath containing list of rgi_glac_number, helpful for running batches on spc',
-        )
+    parser.add_argument(
+        '-rgi_glac_number_fn',
+        action='store',
+        type=str,
+        default=None,
+        help='filepath containing list of rgi_glac_number, helpful for running batches on spc',
     )
     parser.add_argument(
         '-rgi_glac_number',
@@ -380,7 +378,7 @@ def calc_elev_change_1d(gdir, mbmod, ds):
     return elev_change_1d
 
 
-def evaluate_model_outputs(
+def mcmc_model_eval(
     gdir,
     modelprms,
     glacier_rgi_table,
@@ -2115,7 +2113,7 @@ def run(list_packed_vars):
                 mb = mcmc.mbPosterior(
                     obs,
                     priors,
-                    fxn2eval=evaluate_model_outputs,
+                    fxn2eval=mcmc_model_eval,
                     fxnargs=fxnargs,
                     potential_fxns=[mb_max, must_melt, rho_constraints],
                     ela=gdir.ela.min() if hasattr(gdir, 'ela') else None,
