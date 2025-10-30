@@ -90,7 +90,7 @@ def datesmodelrun(
             dates_table.loc[mask1, 'days_in_step'] = 28
     elif pygem_prms['time']['timestep'] == 'daily':
         # Automatically generate daily (freq = 'D') dates
-        dates_table = pd.DataFrame({'date': pd.date_range(startdate, enddate, freq='D')})
+        dates_table = pd.DataFrame({'date': pd.date_range(startdate, enddate, freq='D', unit='s')})
         # Extract attributes for dates_table
         dates_table['year'] = dates_table['date'].dt.year
         dates_table['month'] = dates_table['date'].dt.month

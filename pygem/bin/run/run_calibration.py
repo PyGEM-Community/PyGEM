@@ -727,6 +727,7 @@ def run(list_packed_vars):
 
         # ===== Load glacier data: area (km2), ice thickness (m), width (km) =====
         try:
+            # Note this is where pre-processing of datasets (e.g., mass balance, debris) occurs
             if glacier_rgi_table['TermType'] not in [1, 5] or not pygem_prms['setup']['include_frontalablation']:
                 gdir = oggm_compat.single_flowline_glacier_directory(glacier_str)
                 gdir.is_tidewater = False

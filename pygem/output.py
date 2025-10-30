@@ -181,7 +181,8 @@ class single_glacier:
         elif pygem_prms['climate']['sim_wateryear'] == 'custom':
             self.year_type = 'custom year'
         self.time_values = self.dates_table['date'].values.tolist()
-        self.time_values = [cftime.DatetimeNoLeap(x.year, x.month, x.day) for x in self.time_values]
+        self.time_values = [cftime.DatetimeGregorian(x.year, x.month, x.day) for x in self.time_values]
+        # self.time_values = pd.to_datetime(self.dates_table['date'].values)
         # append additional year to self.year_values to account for mass and area at end of period
         self.year_values = self.annual_columns
         self.year_values = np.concatenate((self.year_values, np.array([self.annual_columns[-1] + 1])))

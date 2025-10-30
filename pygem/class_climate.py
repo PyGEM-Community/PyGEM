@@ -166,6 +166,11 @@ class GCM:
 
             # Set parameters for ERA5, ERA-Interim, and CMIP5 netcdf files
             if self.name == 'ERA5':
+
+                # Ensure if using daily data, then including leap years
+                if pygem_prms['time']['timestep'] == 'daily':
+                    assert pygem_prms['time']['option_leapyear'] == 1, 'option_leapyear must be set to 1 if using daily ERA5 data'
+
                 # Variable names
                 self.temp_vn = 't2m'
                 self.tempstd_vn = 't2m_std'
@@ -281,6 +286,11 @@ class GCM:
         # Import netcdf file
         data = xr.open_dataset(self.fx_fp + filename)
         glac_variable = np.zeros(main_glac_rgi.shape[0])
+
+        # convert longitude from -180—180 to 0—360
+        if data.longitude.min() < 0:
+            data = data.assign_coords(longitude=(data.longitude % 360))
+
         # If time dimension included, then set the time index (required for ERA Interim, but not for CMIP5 or COAWST)
         if 'time' in data[vn].coords:
             time_idx = 0

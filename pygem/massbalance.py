@@ -199,9 +199,6 @@ class PyGEMMassBalance(MassBalanceModel):
             # layer temp of each elev bin for previous time step
             self.tl_rf = np.zeros((pygem_prms['mb']['HH2015_rf_opts']['rf_layers'], nbins, self.nsteps))
 
-        # Sea level for marine-terminating glaciers
-        self.sea_level = 0
-
     def get_year_index(self, year):
         """
         Get the index of a specified year in the list of years available.
@@ -296,7 +293,6 @@ class PyGEMMassBalance(MassBalanceModel):
             refreeze_potential = np.zeros(nbins)
 
         if self.glacier_area_initial.sum() > 0:
-            #        if len(glac_idx_t0) > 0:
 
             # Surface type [0=off-glacier, 1=ice, 2=snow, 3=firn, 4=debris]
             if year_idx == 0:
