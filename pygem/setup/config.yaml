@@ -198,11 +198,20 @@ calib:
 
   # calibration datasets
   data:
-    # mass balance data
+    # mass balance data - assumed to be in units of m w.e. yr-1
     massbalance:
-      hugonnet2021_relpath: /DEMs/Hugonnet2021/   # relative to main data path
-      hugonnet2021_fn: df_pergla_global_20yr-filled.csv                                             # this file is 'raw', filled geodetic mass balance from Hugonnet et al. (2021) - pulled by prerproc_fetch_mbdata.py
-      hugonnet2021_facorrected_fn: df_pergla_global_20yr-filled-frontalablation-corrected.csv       # frontal ablation corrected geodetic mass balance (produced by run_calibration_frontalablation.py)
+      massbalance_relpath: massbalance_data/Hugonnet2021/                                           # relative to main data path
+      massbalance_fn: df_pergla_global_20yr-filled.csv                                              # this file is 'raw', filled geodetic mass balance from Hugonnet et al. (2021) - pulled by prerproc_fetch_mbdata.py
+      massbalance_fn_facorrected_fn: df_pergla_global_20yr-filled-frontalablation-corrected.csv     # frontal ablation corrected geodetic mass balance (produced by run_calibration_frontalablation.py)
+      # mass balance dataset fields names and formats
+      massbalance_rgiid_colname: rgiid                                                              # RGI glacier ID column name
+      massbalance_mb_colname: mb_mwea                                                               # mass balance column name
+      massbalance_mb_error_colname: mb_mwea_err                                                     # mass balance error column name
+      massbalance_mb_clim_colname: mb_clim_mwea                                                     # climatic mass balance column name
+      massbalance_mb_clim_error_colname: mb_clim_mwea_err                                           # climatic mass balance error column name
+      massbalance_period_colname: period                                                            # mass balance period column name
+      massbalance_period_date_format: YYYY-MM-DD                                                    # mass balance period date format
+      massbalance_period_delimiter: _                                                               # mass balance period deimiter (separating start and end dates)
     # frontal ablation
     frontalablation:
       frontalablation_relpath: /frontalablation_data/                                               # relative to main data path
@@ -210,9 +219,10 @@ calib:
     # ice thickness
     icethickness:
       h_ref_relpath: /IceThickness_Farinotti/composite_thickness_RGI60-all_regions/
-    # 1d elevation change
-    elev_change_1d:
-      elev_change_1d_relpath: /elev_change_1d/                                                      # relative to main data path. per-glacier files within will be expected as <rgi_id>_elev_change_1d_.json (e.g., 1.00570_elev_change_1d_.json)
+    # elevation change - 2d dhdt or 1d elev change profiles
+    elev_change:
+      dhdt_2d_relpath: elev_change_data/dhdt_2d/                                                    # relative to main data path. per-glacier files within will be expected (<rgi_id>_YYYY-MM-DD_YYYY-MM-DD_dhdt_2d.tif) or may be processed to each glacier directory with shop.dhdt2d.dhdt2d_to_gdir()
+      dh_1d_relpath: elev_change_data/dh_1d/                                                        # relative to main data path. per-glacier files within will be expected as <rgi_id>_elev_change_1d_.json (e.g., 1.00570_dh_1d_.json)
     # 1d melt extents
     meltextent_1d:
       meltextent_1d_relpath: /SAR_data/merged/                                                      # relative to main data path. per-glacier files within will be expected as <rgi_id>_melt_extent_elev.csv (e.g., 01.00570_melt_extent_elev.csv)

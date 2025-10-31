@@ -116,7 +116,7 @@ def elev_change_1d_to_gdir(
     # get dataset file path
     elev_change_1d_fp = (
         f'{pygem_prms["root"]}/'
-        f'{pygem_prms["calib"]["data"]["elev_change_1d"]["elev_change_1d_relpath"]}/'
+        f'{pygem_prms["calib"]["data"]["elev_change"]["dh_1d_relpath"]}/'
         f'{gdir.rgi_id.split("-")[1]}_elev_change_1d'
     )
 
