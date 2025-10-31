@@ -41,7 +41,7 @@ if 'elev_change_1d' not in cfg.BASENAMES:
 
 
 @entity_task(log, writes=['elev_change_1d'])
-def elev_change_1d_to_gdir(
+def dh_1d_to_gdir(
     gdir,
 ):
     """

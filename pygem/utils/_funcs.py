@@ -12,6 +12,7 @@ import argparse
 import json
 
 import numpy as np
+import pandas as pd
 from scipy.interpolate import interp1d
 
 from pygem.setup.config import ConfigManager
@@ -39,6 +40,52 @@ def str2bool(v):
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
+
+
+def parse_period(period_str, date_format=None, delimiter=None):
+    """
+    parse a period string (e.g. '2000-01-01_2001-01-01') into two datetimes.
+    requires a user-specified date_format (e.g. 'YYYY-MM-DD').
+
+    Parameters
+    ----------
+    period_str : str
+        period string to parse
+    date_format : str, optional
+        the date format to use for parsing (default: None, i.e., try to infer automatically)
+    delimiter : str, optional
+        the delimiter to use for splitting the period string (default: None, i.e., try common delimiters)
+    Returns
+    -------
+    t1, t2 : pd.Timestamp
+        the two parsed datetimes
+    """
+
+    if not date_format:
+        raise ValueError("Period date_format must be provided (e.g. 'YYYY-MM-DD').")
+    if not delimiter:
+        raise ValueError("Period delimiter must be provided (e.g. '_').")
+
+    # notmalize user-input formats like YYYY-MM-DD -> %Y-%m-%d
+    date_format = date_format.replace('YYYY', '%Y').replace('YY', '%y').replace('MM', '%m').replace('DD', '%d')
+
+    # split and validate
+    parts = [p.strip() for p in period_str.split(delimiter)]
+    if len(parts) != 2:
+        raise ValueError(f"Could not split '{period_str}' into two valid dates using '{delimiter}'.")
+
+    # parse both parts
+    try:
+        t1 = pd.to_datetime(parts[0], format=date_format)
+        t2 = pd.to_datetime(parts[1], format=date_format)
+    except Exception as e:
+        raise ValueError(f"Failed to parse '{period_str}' with format '{date_format}'") from e
+
+    # ensure t2 > t1
+    if t2 <= t1:
+        raise ValueError(f"Invalid period '{period_str}': t2 ({t2.date()}) must be later than t1 ({t1.date()}).")
+
+    return t1, t2
 
 
 def annualweightedmean_array(var, dates_table):
