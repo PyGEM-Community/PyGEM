@@ -685,11 +685,11 @@ def plot_mcmc_snowline_1v1_1d(
 
         fs = 10
         ax[0].text(0.03, 0.99, f'$r^2 = {r_value**2:.2f}$ (n={obs_count})', 
-                transform=ax[0].transAxes, ha='left', va='top', fontsize=fs)
-        ax[0].text(0.03, 0.93, f'bias = {np.mean(obs_sl_nonan-preds_sl_nonan):.0f} m', 
-                transform=ax[0].transAxes, ha='left', va='top', fontsize=fs)
-        ax[0].text(0.03, 0.88, f'mae = {np.mean(np.abs(obs_sl_nonan-preds_sl_nonan)):.0f} m', 
-                transform=ax[0].transAxes, ha='left', va='top', fontsize=fs)
+                   transform=ax[0].transAxes, ha='left', va='top', fontsize=fs)
+        ax[0].text(0.03, 0.93, f'bias = {fmt_val(np.mean(obs_sl_nonan-preds_sl_nonan))}', 
+                   transform=ax[0].transAxes, ha='left', va='top', fontsize=fs)
+        ax[0].text(0.03, 0.88, f'mae = {fmt_val(np.mean(np.abs(obs_sl_nonan-preds_sl_nonan)))}', 
+                   transform=ax[0].transAxes, ha='left', va='top', fontsize=fs)
 
     # save
     fig.tight_layout()
@@ -698,3 +698,12 @@ def plot_mcmc_snowline_1v1_1d(
     if show:
         plt.show(block=True)  # wait until the figure is closed
     plt.close(fig)
+
+def fmt_val(val):
+    abs_val = abs(val)
+    if abs_val < 1:
+        return f"{val:.2f}"
+    elif abs_val < 10:
+        return f"{val:.1f}"
+    else:
+        return f"{val:.0f}"

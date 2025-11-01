@@ -224,7 +224,7 @@ calib:
       snowline_1d_relpath: /SAR_data/merged/                                                        # relative to main data path. per-glacier files within will be expected as <RGI60_id>_snowline_elev.csv (e.g., 01.00570_snowline_elev.csv)
     # 1d snow cover area fraction (SCAF)
     scaf_1d:
-      scaf_1d_relpath: /SAR_data/for_pygem_scaf/                                                    # relative to main data path. per-glacier files within will be expected as <rgi_id>_scaf.csv (e.g., 01.00570_scaf.csv)
+      scaf_1d_relpath: /SAR_data/for_pygem_scaf/                                                    # relative to main data path. per-glacier files within will be expected as <rgi_id>_snowline_scaf.csv (e.g., 01.00570_snowline_scaf.csv)
 
 
 # ===== SIMULATION =====
