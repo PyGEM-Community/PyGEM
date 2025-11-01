@@ -139,13 +139,13 @@ def dh_1d_to_gdir(
 
     validate_elev_change_1d_structure(data)
 
-    # optionally rebin
-    if bin_spacing:
-        data = rebin_elev_change_1d_data(data, float(bin_spacing))
-
     # optionally cut bins
     if bin_lowcut is not None or bin_highcut is not None:
         data = filter_elev_change_1d_data(data, bin_lowcut, bin_highcut, bin_cut_percentile)
+
+    # optionally rebin
+    if bin_spacing:
+        data = rebin_elev_change_1d_data(data, float(bin_spacing))
 
     # can't hurt to validate again after rebinning
     validate_elev_change_1d_structure(data)
