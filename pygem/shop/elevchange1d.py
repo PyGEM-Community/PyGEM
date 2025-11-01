@@ -137,7 +137,11 @@ def dh_1d_to_gdir(
     validate_elev_change_1d_structure(data)
 
     # optionally rebin
-    data = rebin_elev_change_1d_data(data, bin_spacing)
+    if bin_spacing:
+        data = rebin_elev_change_1d_data(data, float(bin_spacing))
+
+    # can't hurt to validate again after rebinning
+    validate_elev_change_1d_structure(data)
 
     gdir.write_json(data, 'elev_change_1d')
 
@@ -323,7 +327,7 @@ def rebin_elev_change_1d_data(data, bin_spacing):
     dz = np.abs(np.diff(bin_centers).mean())
 
     # optionally rebin
-    if bin_spacing and bin_spacing != dz:
+    if bin_spacing != dz:
         # define new bin edges
         new_edges = np.arange(min(data['bin_edges']), max(data['bin_edges']) + bin_spacing, bin_spacing)
 
@@ -337,6 +341,7 @@ def rebin_elev_change_1d_data(data, bin_spacing):
         bin_area_rebinned, _, _ = binned_statistic(bin_centers, data['bin_area'], statistic='sum', bins=new_edges)
 
         # replace bin definitions
+        del data['bin_centers']
         data['bin_edges'] = new_edges.tolist()
         data['bin_area'] = bin_area_rebinned.tolist()
         data['dh'] = dh_rebinned.tolist()
