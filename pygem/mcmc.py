@@ -57,6 +57,11 @@ def log_normal_density(x, method='mean', **kwargs):
         # two-sided uncertainty: use the observation uncertainty that is on the same side as the prediction
         sigma_min, sigma_max = sigma
         sigma = torch.where(mu > x, sigma_max, sigma_min)
+        sigma = torch.clamp(sigma, min=((sigma_max + sigma_min)/2))
+    
+    # minimum_sigma_val = kwargs.get('minimum_sigma_val', None)
+    # if minimum_sigma_val:
+    #     sigma = torch.clamp(sigma, min=minimum_sigma_val)
 
     # ensure tensors are flattened
     x, mu, sigma = map(torch.flatten, (x, mu, sigma))
@@ -257,14 +262,9 @@ class mbPosterior:
                 self.obs[k][0],  # observations
                 mu=pred,  # scaled predictions
                 sigma=self.obs[k][1],  # uncertainty
+                method='weighted', # use weighted observations
+                obs_weight=0, # observation weight (0 is mean, 1 is sum)
             )
-            # log_likehood += log_normal_density(
-            #     self.obs[k][0],  # observed values
-            #     method='weighted', # use weighted observations
-            #     obs_weight=1, # observation weight
-            #     mu=pred,  # predicted values
-            #     sigma=self.obs[k][1],  # observation uncertainty
-            # )
 
         return log_likehood
 

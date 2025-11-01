@@ -831,6 +831,7 @@ def run(list_packed_vars):
                 output_glac_massbaltotal_steps = np.zeros((dates_table.shape[0], nsims)) * np.nan
                 output_glac_runoff_steps = np.zeros((dates_table.shape[0], nsims)) * np.nan
                 output_glac_snowline_steps = np.zeros((dates_table.shape[0], nsims)) * np.nan
+                output_glac_snowline_scaf_steps = np.zeros((dates_table.shape[0], nsims)) * np.nan
                 output_glac_area_annual = np.zeros((year_values.shape[0], nsims)) * np.nan
                 output_glac_mass_annual = np.zeros((year_values.shape[0], nsims)) * np.nan
                 output_glac_mass_bsl_annual = np.zeros((year_values.shape[0], nsims)) * np.nan
@@ -1213,6 +1214,7 @@ def run(list_packed_vars):
                         output_glac_massbaltotal_steps[:, n_iter] = mbmod.glac_wide_massbaltotal
                         output_glac_runoff_steps[:, n_iter] = mbmod.glac_wide_runoff
                         output_glac_snowline_steps[:, n_iter] = mbmod.glac_wide_snowline
+                        output_glac_snowline_scaf_steps[:, n_iter] = mbmod.glac_wide_snowline_scaf
                         output_glac_area_annual[:, n_iter] = diag.area_m2.values
                         output_glac_mass_annual[:, n_iter] = (
                             diag.volume_m3.values * pygem_prms['constants']['density_ice']
@@ -1432,6 +1434,9 @@ def run(list_packed_vars):
                                 output_ds_all_stats['glac_snowline'].values[0, :] = output_glac_snowline_steps[
                                     :, n_iter
                                 ]
+                                output_ds_all_stats['glac_scaf'].values[0, :] = output_glac_snowline_scaf_steps[
+                                    :, n_iter
+                                ]
                                 output_ds_all_stats['glac_mass_change_ignored_annual'].values[0, :] = (
                                     output_glac_mass_change_ignored_annual[:, n_iter]
                                 )
@@ -1487,6 +1492,7 @@ def run(list_packed_vars):
                         output_glac_frontalablation_steps_stats = calc_stats_array(output_glac_frontalablation_steps)
                         output_glac_massbaltotal_steps_stats = calc_stats_array(output_glac_massbaltotal_steps)
                         output_glac_snowline_steps_stats = calc_stats_array(output_glac_snowline_steps)
+                        output_glac_snowline_scaf_steps_stats = calc_stats_array(output_glac_snowline_scaf_steps)
                         output_glac_mass_change_ignored_annual_stats = calc_stats_array(
                             output_glac_mass_change_ignored_annual
                         )
@@ -1515,6 +1521,7 @@ def run(list_packed_vars):
                             :, 0
                         ]
                         output_ds_all_stats['glac_snowline'].values[0, :] = output_glac_snowline_steps_stats[:, 0]
+                        output_ds_all_stats['glac_scaf'].values[0, :] = output_glac_snowline_scaf_steps_stats[:, 0]
                         output_ds_all_stats['glac_mass_change_ignored_annual'].values[0, :] = (
                             output_glac_mass_change_ignored_annual_stats[:, 0]
                         )
@@ -1549,6 +1556,9 @@ def run(list_packed_vars):
                                 output_glac_massbaltotal_steps_stats[:, 1]
                             )
                             output_ds_all_stats['glac_snowline_mad'].values[0, :] = output_glac_snowline_steps_stats[
+                                :, 1
+                            ]
+                            output_ds_all_stats['glac_scaf_mad'].values[0, :] = output_glac_snowline_scaf_steps_stats[
                                 :, 1
                             ]
                             output_ds_all_stats['glac_mass_change_ignored_annual_mad'].values[0, :] = (

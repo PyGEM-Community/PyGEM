@@ -196,6 +196,8 @@ calib:
     option_calib_meltextent_1d: false             # option to calibrate against 1d melt extent data (true or false)
     # options for calibrating against 1d snowline data
     option_calib_snowline_1d: false               # option to calibrate against 1d snowline data (true or false)
+    # options for calibrating against 1d snow cover area fraction (SCAF) data
+    option_calib_scaf_1d: false                   # option to calibrate against 1d snow cover area fraction (SCAF) data (true or false)
 
   # calibration datasets
   data:
@@ -220,6 +222,10 @@ calib:
     # 1d snowlines
     snowline_1d:
       snowline_1d_relpath: /SAR_data/merged/                                                        # relative to main data path. per-glacier files within will be expected as <RGI60_id>_snowline_elev.csv (e.g., 01.00570_snowline_elev.csv)
+    # 1d snow cover area fraction (SCAF)
+    scaf_1d:
+      scaf_1d_relpath: /SAR_data/for_pygem_scaf/                                                    # relative to main data path. per-glacier files within will be expected as <rgi_id>_scaf.csv (e.g., 01.00570_scaf.csv)
+
 
 # ===== SIMULATION =====
 sim:

@@ -155,6 +155,7 @@ class PyGEMMassBalance(MassBalanceModel):
         self.glac_wide_massbaltotal = np.zeros(self.nsteps)
         self.glac_wide_runoff = np.zeros(self.nsteps)
         self.glac_wide_snowline = np.zeros(self.nsteps)
+        self.glac_wide_snowline_scaf = np.zeros(self.nsteps)
         self.glac_wide_area_annual = np.zeros(self.nyears + 1)
         self.glac_wide_volume_annual = np.zeros(self.nyears + 1)
         self.glac_wide_volume_change_ignored_annual = np.zeros(self.nyears)
@@ -827,7 +828,7 @@ class PyGEMMassBalance(MassBalanceModel):
         glacier_area : np.array
             glacier area for each elevation bin (m2)
         heights : np.array
-            surface elevation of each elevatio nin
+            surface elevation of each elevation bin
         fls : object
             flowline object
         fl_id : int
@@ -945,6 +946,20 @@ class PyGEMMassBalance(MassBalanceModel):
                 heights_manual[snowline_idx_nan] = np.nan
                 # this line below causes a potential All-NaN slice encountered issue at some time steps
                 self.glac_wide_snowline[t_start : t_stop + 1] = heights_manual
+
+            # Snow line as snow cover area fraction (-)
+            snowline_z = self.glac_wide_snowline[t_start : t_stop + 1]
+            scaf_out = np.zeros(snowline_z.shape)
+            for i, snowline_z_t in enumerate(snowline_z):
+                if np.isnan(snowline_z_t):
+                    scaf_out[i] = np.nan
+                    continue
+
+                # get area above snowline
+                scaf_bins = heights >= snowline_z_t
+                scaf_area = np.nansum(self.glac_bin_area_annual[:, year_idx][scaf_bins])
+                scaf_out[i] = scaf_area / self.glac_wide_area_annual[year_idx]
+            self.glac_wide_snowline_scaf[t_start : t_stop + 1] = scaf_out
 
             # Equilibrium line altitude (m a.s.l.)
             ela_mask = np.zeros(heights.shape)

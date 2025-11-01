@@ -528,11 +528,18 @@ def plot_mcmc_elev_change_1d(
 
 
 def plot_mcmc_snowline_1d(
-    preds, fls, obs, title, fontsize=8, show=False, fpath=None
+    preds, fls, obs, title, fontsize=8, show=False, fpath=None, **kwargs
 ):
-    snowline_z = np.array(obs['z'])
-    snowline_min = np.array(obs['z_min'])
-    snowline_max = np.array(obs['z_max'])
+    # get variables, if not default
+    vn = kwargs.get('vn', 'z')
+    vn_min = kwargs.get('vn_min', 'z_min')
+    vn_max = kwargs.get('vn_max', 'z_max')
+    units = kwargs.get('units', '[m a.s.l]')
+    inverty = kwargs.get('inverty', False)
+
+    snowline_z = np.array(obs[vn])
+    snowline_min = np.array(obs[vn_min])
+    snowline_max = np.array(obs[vn_max])
     snowline_date = np.array(obs['date'])
     
     # xvals = snowline_date
@@ -556,12 +563,12 @@ def plot_mcmc_snowline_1d(
     ax[0].xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
     preds = np.stack(preds)
 
-    yerr_min = obs['z'] - obs['z_min']
-    yerr_max = obs['z_max'] - obs['z']
-    ax[0].scatter(xvals, obs['z'], s=6, c='k', alpha=0.8, zorder=10, label='Obs.')
+    yerr_min = obs[vn] - obs[vn_min]
+    yerr_max = obs[vn_max] - obs[vn]
+    ax[0].scatter(xvals, obs[vn], s=6, c='k', alpha=0.8, zorder=10, label='Obs.')
     ax[0].errorbar(
         xvals,
-        obs['z'],
+        obs[vn],
         yerr=np.array([yerr_min, yerr_max]),
         fmt='none',
         ecolor='k',
@@ -597,7 +604,7 @@ def plot_mcmc_snowline_1d(
     for legobj in leg.legend_handles:
         legobj.set_linewidth(2.0)
 
-    ylbl = 'Elevation (m a.s.l.)'
+    ylbl = f'Snowline {units}'
     ax[-1].text(
         0.0125,
         0.5,
@@ -608,6 +615,8 @@ def plot_mcmc_snowline_1d(
         transform=fig.transFigure,
     )
     ax[0].set_title(title, fontsize=fontsize)
+    if inverty:
+        ax[0].invert_yaxis()
 
     # save
     if fpath:
@@ -618,11 +627,18 @@ def plot_mcmc_snowline_1d(
 
 
 def plot_mcmc_snowline_1v1_1d(
-    preds, fls, obs, title, fontsize=8, show=False, fpath=None
+    preds, fls, obs, title, fontsize=8, show=False, fpath=None, **kwargs,
 ):
-    snowline_z = np.array(obs['z'])
-    snowline_min = np.array(obs['z_min'])
-    snowline_max = np.array(obs['z_max'])
+    # get variables, if not default
+    vn = kwargs.get('vn', 'z')
+    vn_min = kwargs.get('vn_min', 'z_min')
+    vn_max = kwargs.get('vn_max', 'z_max')
+    units = kwargs.get('units', '[m a.s.l]')
+    limit_buff = kwargs.get('limit_buff', 50)
+
+    snowline_z = np.array(obs[vn])
+    snowline_min = np.array(obs[vn_min])
+    snowline_max = np.array(obs[vn_max])
     snowline_date = np.array(obs['date'])
 
     # instantiate subplots
@@ -643,20 +659,21 @@ def plot_mcmc_snowline_1v1_1d(
         preds_sl = np.nanmedian(preds, axis=0)
 
         # mask out nan
-        mask = ~np.isnan(obs['z']) & ~np.isnan(preds_sl)
-        obs_sl_nonan = obs['z'][mask]
+        mask = ~np.isnan(obs[vn]) & ~np.isnan(preds_sl)
+        obs_sl_nonan = obs[vn][mask]
         preds_sl_nonan = preds_sl[mask]
 
         ax[0].scatter(obs_sl_nonan, preds_sl_nonan, c='k', s=12, alpha=0.5)
 
-    lims = [max(0, min(np.nanmin(obs_sl_nonan)-50, np.nanmin(preds_sl_nonan)-50)), 
-            max(np.nanmax(obs_sl_nonan)+50, np.nanmax(preds_sl_nonan)+50)]
+    lims = [max(0, min(np.nanmin(obs_sl_nonan)-limit_buff, np.nanmin(preds_sl_nonan)-limit_buff)), 
+            max(np.nanmax(obs_sl_nonan)+limit_buff, np.nanmax(preds_sl_nonan)+limit_buff)]
+
     ax[0].plot(lims, lims, ls='--', c='k', lw=1) # add 1-to-1 line
 
     # set plot limits
     ax[0].set_title(title, fontsize=fontsize)
-    ax[0].set_ylabel('Modeled snowline [m a.s.l.]', labelpad=22, size=10, va='center', ha='center')
-    ax[0].set_xlabel('Observed snowline [m a.s.l.]', labelpad=22, size=10, va='center', ha='center')
+    ax[0].set_ylabel(f'Modeled snowline {units}', labelpad=22, size=10, va='center', ha='center')
+    ax[0].set_xlabel(f'Observed snowline {units}', labelpad=22, size=10, va='center', ha='center')
     ax[0].set_xlim(lims)
     ax[0].set_ylim(lims)
     ax[0].set_box_aspect(1)

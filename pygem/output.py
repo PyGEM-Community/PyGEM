@@ -547,6 +547,15 @@ class glacierwide_stats(single_glacier):
                 'temporal_resolution': self.timestep,
                 'comment': 'transient snowline is altitude separating snow from ice/firn',
             }
+            self.output_coords_dict['glac_scaf'] = collections.OrderedDict(
+                [('glac', self.glac_values), ('time', self.time_values)]
+            )
+            self.output_attrs_dict['glac_scaf'] = {
+                'long_name': 'transient snow cover area fraction (SCAF)',
+                'units': '-',
+                'temporal_resolution': self.timestep,
+                'comment': 'transient snow cover area fraction (SCAF) is fractional area of snow compared to total area',
+            }
             self.output_coords_dict['glac_mass_change_ignored_annual'] = collections.OrderedDict(
                 [('glac', self.glac_values), ('year', self.year_values)]
             )
@@ -670,6 +679,15 @@ class glacierwide_stats(single_glacier):
                     'units': 'm',
                     'temporal_resolution': self.timestep,
                     'comment': 'transient snowline is altitude separating snow from ice/firn',
+                }
+                self.output_coords_dict['glac_scaf_mad'] = collections.OrderedDict(
+                    [('glac', self.glac_values), ('time', self.time_values)]
+                )
+                self.output_attrs_dict['glac_scaf_mad'] = {
+                    'long_name': 'transient snow cover area fraction (SCAF) median absolute deviation',
+                    'units': '-',
+                    'temporal_resolution': self.timestep,
+                    'comment': 'transient snow cover area fraction is fractional area of snow compared to total area',
                 }
                 self.output_coords_dict['glac_mass_change_ignored_annual_mad'] = collections.OrderedDict(
                     [('glac', self.glac_values), ('year', self.year_values)]

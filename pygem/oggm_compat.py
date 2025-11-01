@@ -138,6 +138,9 @@ def single_flowline_glacier_directory(
     # 1d snowline calibration data
     if not os.path.isfile(gdir.get_filepath('snowline_1d')):
         workflow.execute_entity_task(meltextent_and_snowline_1d.snowline_1d_to_gdir, gdir)
+    # 1d snow cover area fraction (SCAF) calibration data
+    if not os.path.isfile(gdir.get_filepath('scaf_1d')):
+        workflow.execute_entity_task(meltextent_and_snowline_1d.scaf_1d_to_gdir, gdir)
 
     return gdir
 
@@ -241,6 +244,9 @@ def single_flowline_glacier_directory_with_calving(
     # 1d snowline calibration data
     if not os.path.isfile(gdir.get_filepath('snowline_1d')):
         workflow.execute_entity_task(meltextent_and_snowline_1d.snowline_1d_to_gdir, gdir)
+    # 1d snow cover area fraction (SCAF) calibration data
+    if not os.path.isfile(gdir.get_filepath('scaf_1d')):
+        workflow.execute_entity_task(meltextent_and_snowline_1d.scaf_1d_to_gdir, gdir)
 
     return gdir
 
