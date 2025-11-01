@@ -19,6 +19,44 @@ from scipy.stats import binned_statistic
 from pygem.utils.stats import effective_n
 
 
+def plot_elev_change_1d(data_dict, figsize=(5, 3), title=None):
+    """
+    Plot 1D elevation change profiles with error bars.
+
+    Parameters
+    ----------
+    data_dict : dict
+        Dictionary containing keys:
+        - 'bin_edges': array-like, used to derive bin centers
+        - 'dh': list of arrays, one per date pair
+        - 'dh_sigma': list of arrays, same shape as dh
+        - 'dates': list of [t1, t2] pairs
+    figsize : tuple
+        Figure size.
+    title : str or None
+        Optional title.
+    """
+    bin_edges = np.array(data_dict['bin_edges'])
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2  # midpoint of each bin
+    dh_list = data_dict['dh']
+    sigma_list = data_dict['dh_sigma']
+    dates = data_dict['dates']
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+
+    for dh, sigma, date_pair in zip(dh_list, sigma_list, dates):
+        label = f'{date_pair[0]}_{date_pair[1]}'
+        ax.errorbar(bin_centers, dh, yerr=sigma, label=label, marker='o', linestyle='-', capsize=3)
+
+    ax.set_xlabel('Elevation (m)')
+    ax.set_ylabel('Elevation change (m)')
+    ax.legend()
+    if title:
+        ax.set_title(title)
+    plt.tight_layout()
+    plt.show()
+
+
 def plot_modeloutput_section(
     model=None,
     ax=None,
@@ -30,13 +68,6 @@ def plot_modeloutput_section(
 ):
     """Plots the result of the model output along the flowline.
     A paired down version of OGGMs graphics.plot_modeloutput_section()
-
-    Parameters
-    ----------
-    model: obj
-        either a FlowlineModel or a list of model flowlines.
-    fig
-    title
     """
 
     try:
