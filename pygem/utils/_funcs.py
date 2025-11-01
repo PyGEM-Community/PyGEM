@@ -66,9 +66,6 @@ def parse_period(period_str, date_format=None, delimiter=None):
     if not delimiter:
         raise ValueError("Period delimiter must be provided (e.g. '_').")
 
-    # notmalize user-input formats like YYYY-MM-DD -> %Y-%m-%d
-    date_format = date_format.replace('YYYY', '%Y').replace('YY', '%y').replace('MM', '%m').replace('DD', '%d')
-
     # split and validate
     parts = [p.strip() for p in period_str.split(delimiter)]
     if len(parts) != 2:

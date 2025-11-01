@@ -41,9 +41,7 @@ if 'elev_change_1d' not in cfg.BASENAMES:
 
 
 @entity_task(log, writes=['elev_change_1d'])
-def dh_1d_to_gdir(
-    gdir,
-):
+def dh_1d_to_gdir(gdir, filesuffix=''):
     """
     Add 1D elevation change observations to the given glacier directory.
 
@@ -117,7 +115,7 @@ def dh_1d_to_gdir(
     elev_change_1d_fp = (
         f'{pygem_prms["root"]}/'
         f'{pygem_prms["calib"]["data"]["elev_change"]["dh_1d_relpath"]}/'
-        f'{gdir.rgi_id.split("-")[1]}_elev_change_1d'
+        f'{gdir.rgi_id.split("-")[1]}_elev_change_1d{filesuffix}'
     )
 
     # Check for both .json and .csv extensions
@@ -136,7 +134,7 @@ def dh_1d_to_gdir(
 
     validate_elev_change_1d_structure(data)
 
-    gdir.write_json(data, 'elev_change_1d')
+    gdir.write_json(data, 'elev_change_1d', filesuffix=filesuffix)
 
 
 def validate_elev_change_1d_structure(data):
@@ -254,11 +252,15 @@ def csv_to_elev_change_1d_dict(csv_path):
     # Ensure sorted bins
     df = df.sort_values(['bin_start', 'date_start', 'date_end']).reset_index(drop=True)
 
-    # Get all unique bin edges
-    bin_edges = sorted(set(df['bin_start']).union(df['bin_stop']))
+    # Drop duplicate (bin_start, bin_stop) pairs
+    df_unique_bins = df.drop_duplicates(subset=['bin_start', 'bin_stop']).sort_values('bin_start')
 
-    if 'bin_area' in df.keys():
-        bin_area = df['bin_area'].tolist()
+    # Define bin edges from unique bins
+    bin_edges = np.concatenate(([df_unique_bins['bin_start'].iloc[0]], df_unique_bins['bin_stop'].values)).tolist()
+
+    # Handle bin_area if present
+    if 'bin_area' in df.columns:
+        bin_area = df_unique_bins['bin_area'].tolist()
     else:
         bin_area = False
 

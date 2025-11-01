@@ -63,8 +63,11 @@ def dhdt_to_gdir(
     gdir,
     raster_path=None,
     period='',
-    period_format=pygem_prms['calib']['data']['massbalance']['massbalance_period_date_format'],
+    t1='',
+    t2='',
+    date_format=pygem_prms['calib']['data']['massbalance']['massbalance_period_date_format'],
     period_delimiter=pygem_prms['calib']['data']['massbalance']['massbalance_period_delimiter'],
+    gridded_data_suffix='',
     verbose=False,
 ):
     """Add 2d dhdt data to this glacier directory.
@@ -76,6 +79,14 @@ def dhdt_to_gdir(
     raster_path : str, optional
         A path to a single raster file or a directory containing raster files.
         If None, defaults to the standard data_basedir.
+    t1 : str, optional
+        A string indicating the start date of the dhdt data (e.g. '2000-01-01').
+    t2 : str, optional
+        A string indicating the end date of the dhdt data (e.g. '2020-01-01').
+    date_format : str, optional
+        A string indicating the date format used in t1, t2, and period (e.g. 'YYYY-MM-DD').
+    period_delimiter : str, optional
+        A string indicating the delimiter used in the period string (e.g. '_').
     period: str, optional
         A string indicating the time period of the dhdt data (e.g. '2000-01-01_2020-01-01').
     verbose : bool, optional
@@ -142,8 +153,18 @@ def dhdt_to_gdir(
                 f'It seems the dhdt files for glacier {gdir.rgi_id} may cover different date ranges: {set(matches)}'
             )
         period = matches[0]
-    if period:
-        t1, t2 = parse_period(period, date_format=period_format, delimiter=period_delimiter)
+
+    # notmalize user-input formats like YYYY-MM-DD -> %Y-%m-%d
+    date_format = date_format.replace('YYYY', '%Y').replace('YY', '%y').replace('MM', '%m').replace('DD', '%d')
+
+    if t1 and t2:
+        t1 = pd.to_datetime(t1, format=date_format)
+        t2 = pd.to_datetime(t2, format=date_format)
+    elif period:
+        t1, t2 = parse_period(period, date_format=date_format, delimiter=period_delimiter)
+
+    if verbose:
+        print('Dataset time period:\t{t1} to {t2}'.format(t1=t1.strftime('%Y-%m-%d'), t2=t2.strftime('%Y-%m-%d')))
 
     # A glacier area can cover more than one tile:
     if len(flist) == 1:
@@ -220,8 +241,6 @@ def dhdt_to_gdir(
         profile = dem_ds.profile
         transform = dem_ds.transform
         dst_crs = dem_ds.crs
-
-    # Set up profile for writing output
     profile.update(
         {
             'nodata': np.nan,
@@ -252,7 +271,7 @@ def dhdt_to_gdir(
 
     # Write
     with utils.ncDataset(gdir.get_filepath('gridded_data'), 'a') as nc:
-        vn = 'dhdt'
+        vn = 'dhdt' + gridded_data_suffix
         if vn in nc.variables:
             v = nc.variables[vn]
         else:
@@ -272,13 +291,13 @@ def dhdt_to_gdir(
         data_str = ' '.join(flist) if len(flist) > 1 else flist[0]
         v.data_source = data_str
         v.period = period
-        v.t1 = t1.strftime('%Y-%m-%d') if period else ''
-        v.t2 = t2.strftime('%Y-%m-%d') if period else ''
+        v.t1 = t1.strftime('%Y-%m-%d') if t1 else ''
+        v.t2 = t2.strftime('%Y-%m-%d') if t2 else ''
         v[:] = np.squeeze(dst_array).astype(np.float32)
 
 
 @utils.entity_task(log)
-def dhdt_statistics(gdir, compute_massbalance=True):
+def dhdt_statistics(gdir, compute_massbalance=True, gridded_data_suffix=''):
     """Gather statistics about the dhdt data."""
 
     d = dict()
@@ -294,7 +313,7 @@ def dhdt_statistics(gdir, compute_massbalance=True):
 
     try:
         with xr.open_dataset(gdir.get_filepath('gridded_data')) as ds:
-            dhdt = ds['dhdt'].where(ds['glacier_mask'], np.nan).load()
+            dhdt = ds['dhdt' + gridded_data_suffix].where(ds['glacier_mask'], np.nan).load()
             gridded_area = ds['glacier_mask'].sum() * gdir.grid.dx**2 * 1e-6
             d['area_km2'] = float((~dhdt.isnull()).sum() * gdir.grid.dx**2 * 1e-6)
             d['perc_cov'] = float(d['area_km2'] / gridded_area)
@@ -307,6 +326,9 @@ def dhdt_statistics(gdir, compute_massbalance=True):
             d['dmdtda'] = (
                 d['avg_dhdt'] * pygem_prms['constants']['density_ice'] / pygem_prms['constants']['density_water']
             )
+        d['period'] = ds['dhdt' + gridded_data_suffix].attrs['period']
+        d['t1'] = ds['dhdt' + gridded_data_suffix].attrs['t1']
+        d['t2'] = ds['dhdt' + gridded_data_suffix].attrs['t2']
     except (FileNotFoundError, AttributeError, KeyError):
         pass
 
@@ -349,7 +371,8 @@ def dh_1d(
     dhdt_error=None,
     ref_dem_year=None,
     outdir=(f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["elev_change"]["dh_1d_relpath"]}/'),
-    verbose=False,
+    gridded_data_suffix='',
+    outfile_suffix='',
 ):
     """Convert the 2d dhdt data to a 1d elevation change profile and save to gdir.
 
@@ -360,16 +383,16 @@ def dh_1d(
     """
     tasks.elevation_band_flowline(
         gdir,
-        bin_variables=['dhdt'],
+        bin_variables=['dhdt' + gridded_data_suffix],
     )
     df = pd.read_csv(gdir.get_filepath('elevation_band_flowline'), index_col=0)
 
     # get dhdt time period
-
     with xr.open_dataset(gdir.get_filepath('gridded_data')) as ds:
         ds = ds.load()
-    t2 = pd.to_datetime(ds.dhdt.attrs['t2'])
-    t1 = pd.to_datetime(ds.dhdt.attrs['t1'])
+    t2 = pd.to_datetime(ds['dhdt' + gridded_data_suffix].attrs['t2'])
+    t1 = pd.to_datetime(ds['dhdt' + gridded_data_suffix].attrs['t1'])
+    nyrs = (t2 - t1).days / 365.25
 
     # compute bin edges
     bin_centers = df['bin_elevation'].values
@@ -387,7 +410,7 @@ def dh_1d(
     # get bin area
     bin_area = df['area']
     # compute dh - dhdt * nyears
-    dh = df['dhdt'] * (t2 - t1).days / 365.25
+    dh = df['dhdt' + gridded_data_suffix] * nyrs
     # get gdir ref dem
     ref_dem = gdir.dem_info.split('\n')[0]
     # need a reference dem year that the data was binned to for proper dynamic model calibration.
@@ -401,10 +424,11 @@ def dh_1d(
 
     if not dhdt_error:
         raise ValueError('dhdt_error must be provided to compute elevation change uncertainty.')
-    dh_error = dhdt_error * (t2 - t1).days / 365.25
+    dh_error = dhdt_error * nyrs
     # save as csv
     out_df = pd.DataFrame(
         {
+            'bin_centers': bin_centers,
             'bin_start': bin_start,
             'bin_stop': bin_end,
             'bin_area': bin_area,
@@ -417,7 +441,6 @@ def dh_1d(
         }
     )
 
-    outfpath = os.path.join(os.path.normpath(outdir), f'{gdir.rgi_id.split("-")[1]}_elev_change_1d.csv')
+    outfpath = os.path.join(os.path.normpath(outdir), f'{gdir.rgi_id.split("-")[1]}_elev_change_1d{outfile_suffix}.csv')
     out_df.to_csv(outfpath, index=False)
-    if verbose:
-        print(f'Saved dh_1d to {outfpath}')
+    return out_df
