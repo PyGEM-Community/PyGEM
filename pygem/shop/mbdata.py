@@ -94,6 +94,14 @@ def mb_df_to_gdir(
             mb_clim_mwea = None
             mb_clim_mwea_err = None
 
+        # notmalize user-input formats like YYYY-MM-DD -> %Y-%m-%d
+        massbalance_period_date_format = (
+            massbalance_period_date_format.replace('YYYY', '%Y')
+            .replace('YY', '%y')
+            .replace('MM', '%m')
+            .replace('DD', '%d')
+        )
+
         t1_datetime, t2_datetime = parse_period(
             mb_df.loc[rgiid_idx, massbalance_period_colname],
             date_format=massbalance_period_date_format,
