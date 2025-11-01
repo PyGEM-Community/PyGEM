@@ -19,6 +19,7 @@ import pandas as pd
 # Local libraries
 from oggm import cfg
 from oggm.utils import entity_task
+from scipy.stats import binned_statistic
 
 # pygem imports
 from pygem.setup.config import ConfigManager
@@ -41,7 +42,12 @@ if 'elev_change_1d' not in cfg.BASENAMES:
 
 
 @entity_task(log, writes=['elev_change_1d'])
-def dh_1d_to_gdir(gdir, filesuffix=''):
+def dh_1d_to_gdir(
+    gdir,
+    dh_datadir=f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["elev_change"]["dh_1d_relpath"]}/',
+    filesuffix='',
+    bin_spacing=None,
+):
     """
     Add 1D elevation change observations to the given glacier directory.
 
@@ -112,11 +118,7 @@ def dh_1d_to_gdir(gdir, filesuffix=''):
 
     """
     # get dataset file path
-    elev_change_1d_fp = (
-        f'{pygem_prms["root"]}/'
-        f'{pygem_prms["calib"]["data"]["elev_change"]["dh_1d_relpath"]}/'
-        f'{gdir.rgi_id.split("-")[1]}_elev_change_1d{filesuffix}'
-    )
+    elev_change_1d_fp = f'{dh_datadir}/{gdir.rgi_id.split("-")[1]}_elev_change_1d{filesuffix}'
 
     # Check for both .json and .csv extensions
     if os.path.exists(elev_change_1d_fp + '.json'):
@@ -134,7 +136,10 @@ def dh_1d_to_gdir(gdir, filesuffix=''):
 
     validate_elev_change_1d_structure(data)
 
-    gdir.write_json(data, 'elev_change_1d', filesuffix=filesuffix)
+    # optionally rebin
+    data = rebin_elev_change_1d_data(data, bin_spacing)
+
+    gdir.write_json(data, 'elev_change_1d')
 
 
 def validate_elev_change_1d_structure(data):
@@ -307,3 +312,33 @@ def csv_to_elev_change_1d_dict(csv_path):
         del data['bin_area']
 
     return data
+
+
+def rebin_elev_change_1d_data(data, bin_spacing):
+    """
+    Rebin elevation change data to new bin spacing.
+    """
+    bin_centers = data['bin_centers']
+    # estimate bin width (assuming uniform)
+    dz = np.abs(np.diff(bin_centers).mean())
+
+    # optionally rebin
+    if bin_spacing and bin_spacing != dz:
+        # define new bin edges
+        new_edges = np.arange(min(data['bin_edges']), max(data['bin_edges']) + bin_spacing, bin_spacing)
+
+        # simple mean of dh per new bin
+        dh_rebinned, _, _ = binned_statistic(bin_centers, data['dh'], statistic='mean', bins=new_edges)
+
+        # simple mean of dh_sigma per new bin
+        dh_sigma_rebinned, _, _ = binned_statistic(bin_centers, data['dh_sigma'], statistic='mean', bins=new_edges)
+
+        # sum of bin_area per new bin
+        bin_area_rebinned, _, _ = binned_statistic(bin_centers, data['bin_area'], statistic='sum', bins=new_edges)
+
+        # replace bin definitions
+        data['bin_edges'] = new_edges.tolist()
+        data['bin_area'] = bin_area_rebinned.tolist()
+        data['dh'] = dh_rebinned.tolist()
+        data['dh_sigma'] = dh_sigma_rebinned.tolist()
+        return data
