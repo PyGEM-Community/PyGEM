@@ -118,7 +118,19 @@ def dh_1d_to_gdir(
     ----------
     gdir : :py:class:`oggm.GlacierDirectory`
         where to write the data
-
+    dh_datadir : str
+        Directory where binned elevation change data files are stored
+    infile_suffix : str
+        Optional suffix at following "elev_change_1d" in input file name
+    bin_spacing : float or None
+        If provided, rebin the elevation change data to this bin spacing (in meters)
+    bin_lowcut : float or None
+        If provided, cut elevation bins below this elevation (meters or percentile)
+    bin_highcut : float or None
+        If provided, cut elevation bins above this elevation (meters or percentile)
+    bin_cut_percentile : bool
+        If True (default), interpret bin_lowcut and bin_highcut as percentiles of the elevation range.
+        If False, interpret as absolute elevation values (in meters).
     """
     # get dataset file path
     elev_change_1d_fp = f'{dh_datadir}/{gdir.rgi_id.split("-")[1]}_elev_change_1d{infile_suffix}'
