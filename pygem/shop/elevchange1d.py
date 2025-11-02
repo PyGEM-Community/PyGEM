@@ -45,7 +45,7 @@ if 'elev_change_1d' not in cfg.BASENAMES:
 def dh_1d_to_gdir(
     gdir,
     dh_datadir=f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["elev_change"]["dh_1d_relpath"]}/',
-    filesuffix='',
+    infile_suffix='',
     bin_spacing=None,
     bin_lowcut=None,
     bin_highcut=None,
@@ -121,7 +121,7 @@ def dh_1d_to_gdir(
 
     """
     # get dataset file path
-    elev_change_1d_fp = f'{dh_datadir}/{gdir.rgi_id.split("-")[1]}_elev_change_1d{filesuffix}'
+    elev_change_1d_fp = f'{dh_datadir}/{gdir.rgi_id.split("-")[1]}_elev_change_1d{infile_suffix}'
 
     # Check for both .json and .csv extensions
     if os.path.exists(elev_change_1d_fp + '.json'):
