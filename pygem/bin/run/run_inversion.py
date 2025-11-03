@@ -55,15 +55,15 @@ def export_regional_results(regions, outpath):
     # sort by the region number
     merged_df = merged_df.sort_values('rnum').drop(columns='rnum')
 
-    # if the file already exists, replace rows with same '01Region'
+    # if the file already exists, replace rows with same 'O1Region'
     if os.path.exists(outpath):
         existing_df = pd.read_csv(outpath)
-        # remove rows with the same '01Region' values as in the new merge
+        # remove rows with the same 'O1Region' values as in the new merge
         merged_df = pd.concat(
-            [existing_df[~existing_df['01Region'].isin(merged_df['01Region'])], merged_df], ignore_index=True
+            [existing_df[~existing_df['O1Region'].isin(merged_df['O1Region'])], merged_df], ignore_index=True
         )
         # re-sort
-        merged_df = merged_df.sort_values('01Region')
+        merged_df = merged_df.sort_values('O1Region')
 
     # export final merged csv
     merged_df.to_csv(outpath, index=False)
@@ -350,7 +350,7 @@ def run(
     # prepare ouptut dataset
     df = pd.Series(
         {
-            '01Region': reg,
+            'O1Region': reg,
             'count': len(glac_no),
             'inversion_glen_a': gdirs[0].get_diagnostics()['inversion_glen_a'],
             'inversion_fs': gdirs[0].get_diagnostics()['inversion_fs'],

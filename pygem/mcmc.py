@@ -169,12 +169,15 @@ log_prob_fxn_map = {
 
 # mass balance posterior class
 class mbPosterior:
-    def __init__(self, obs, priors, fxn2eval, fxnargs=None, potential_fxns=None, **kwargs):
+    def __init__(
+        self, obs, priors, fxn2eval, fxnargs=None, calib_glacierwide_mb_mwea=True, potential_fxns=None, **kwargs
+    ):
         # obs will be passed as a list, where each item is a tuple with the first element being the mean observation, and the second being the variance
         self.obs = obs
         self.priors = copy.deepcopy(priors)
         self.fxn2eval = fxn2eval
         self.fxnargs = fxnargs
+        self.calib_glacierwide_mb_mwea = calib_glacierwide_mb_mwea
         self.potential_functions = potential_fxns if potential_fxns is not None else []
         self.preds = None
         self.check_priors()
@@ -257,6 +260,9 @@ class mbPosterior:
                 pred *= pygem_prms['constants']['density_ice'] / rho[:, np.newaxis]
                 # update values in preds dict
                 self.preds[k] = pred
+
+            if k == 'glacierwide_mb_mwea' and not self.calib_glacierwide_mb_mwea:
+                continue  # skip this model output if not calibrating glacierwide mass balance
 
             log_likehood += log_normal_density(
                 self.obs[k][0],  # observations
