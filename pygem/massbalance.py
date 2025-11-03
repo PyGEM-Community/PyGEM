@@ -293,7 +293,6 @@ class PyGEMMassBalance(MassBalanceModel):
             refreeze_potential = np.zeros(nbins)
 
         if self.glacier_area_initial.sum() > 0:
-
             # Surface type [0=off-glacier, 1=ice, 2=snow, 3=firn, 4=debris]
             if year_idx == 0:
                 self.surfacetype, self.firnline_idx = self._surfacetypebinsinitial(self.heights)
