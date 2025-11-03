@@ -20,6 +20,7 @@ nb_dir = os.environ.get('PYGEM_NOTEBOOKS_DIRPATH') or os.path.join(os.path.expan
 notebooks = [
     'simple_test.ipynb',
     'advanced_test.ipynb',
+    'dhdt_processing.ipynb',
     'advanced_test_spinup_elev_change_calib.ipynb',
     'advanced_test_tw.ipynb',
 ]
