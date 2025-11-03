@@ -385,7 +385,6 @@ def mcmc_model_eval(
     glacier_rgi_table,
     fls,
     mbfxn=None,
-    calib_glacierwide_mb_mwea=True,
     calib_elev_change_1d=False,
     calib_snowlines_1d=False,
     calib_meltextent_1d=False,
@@ -403,22 +402,21 @@ def mcmc_model_eval(
         mbmod, ds = run_oggm_dynamics(gdir, modelprms, glacier_rgi_table, fls)
         results['elev_change_1d'] = calc_elev_change_1d(gdir, mbmod, ds) if ds else float('-inf')
 
-    if calib_glacierwide_mb_mwea:
-        if mbfxn is not None:
-            # grab current values from modelprms for the emulator
-            mb_args = [modelprms['tbias'], modelprms['kp'], modelprms['ddfsnow']]
-            glacierwide_mb_mwea = mbfxn(*[mb_args])
+    if mbfxn is not None:
+        # grab current values from modelprms for the emulator
+        mb_args = [modelprms['tbias'], modelprms['kp'], modelprms['ddfsnow']]
+        glacierwide_mb_mwea = mbfxn(*[mb_args])
+    else:
+        if mbmod is None:
+            glacierwide_mb_mwea = mb_mwea_calc(gdir, modelprms, glacier_rgi_table, fls)
         else:
-            if mbmod is None:
-                glacierwide_mb_mwea = mb_mwea_calc(gdir, modelprms, glacier_rgi_table, fls)
-            else:
-                glacierwide_mb_mwea = (
-                    mbmod.glac_wide_massbaltotal[gdir.mbdata['t1_idx'] : gdir.mbdata['t2_idx'] + 1].sum()
-                    / mbmod.glac_wide_area_annual[0]
-                    / gdir.mbdata['nyears']
-                )
+            glacierwide_mb_mwea = (
+                mbmod.glac_wide_massbaltotal[gdir.mbdata['t1_idx'] : gdir.mbdata['t2_idx'] + 1].sum()
+                / mbmod.glac_wide_area_annual[0]
+                / gdir.mbdata['nyears']
+            )
 
-        results['glacierwide_mb_mwea'] = glacierwide_mb_mwea
+    results['glacierwide_mb_mwea'] = glacierwide_mb_mwea
 
     # (add future calibration options here)
     if calib_snowlines_1d:
@@ -2104,7 +2102,6 @@ def run(list_packed_vars):
                     glacier_rgi_table,
                     fls,
                     mbfxn,
-                    args.option_calib_glacierwide_mb_mwea,
                     args.option_calib_elev_change_1d,
                 )
 
@@ -2116,6 +2113,7 @@ def run(list_packed_vars):
                     priors,
                     fxn2eval=mcmc_model_eval,
                     fxnargs=fxnargs,
+                    calib_glacierwide_mb_mwea=args.option_calib_glacierwide_mb_mwea,
                     potential_fxns=[mb_max, must_melt, rho_constraints],
                     ela=gdir.ela.min() if hasattr(gdir, 'ela') else None,
                     bin_z=gdir.elev_change_1d['bin_centers'] if hasattr(gdir, 'elev_change_1d') else None,
