@@ -104,11 +104,13 @@ class ConfigManager:
             '*cesm2*',
             '*cmip5*',
             '*gfdl*',
+            '*debris*',
             '*h_ref*',
             '*frontalablation*',
             '*snowline*',
             '*meltextent*',
-            '*elev_change_1d*',
+            '*dh_1d*',
+            '*dhdt_2d*',
         ]
 
         # --- Type validation (existing code) ---
