@@ -485,7 +485,7 @@ def run(list_packed_vars):
                 args.sim_startyear,
                 args.ref_startyear,
             )
-            print('gcm_elev_adj:', gcm_elev_adj)
+
         # OPTION 2: Adjust temp and prec using Huss and Hock (2015)
         elif args.option_bias_adjustment == 2:
             # Temperature bias correction
