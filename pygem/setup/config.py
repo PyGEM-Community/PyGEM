@@ -307,6 +307,8 @@ class ConfigManager:
         'calib.MCMC_params.option_calib_meltextent_1d': bool,
         'calib.MCMC_params.option_calib_snowline_1d': bool,
         'calib.MCMC_params.option_calib_scaf_1d': bool,
+        'calib.MCMC_params.sar_data_filt': dict,
+        # 'calib.MCMC_params.calib_weights': dict, # TO DO
         'calib.data': dict,
         'calib.data.massbalance': dict,
         'calib.data.massbalance.hugonnet2021_relpath': str,

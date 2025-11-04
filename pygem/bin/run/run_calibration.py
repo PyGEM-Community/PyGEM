@@ -914,6 +914,8 @@ def run(list_packed_vars):
                         args.ref_startyear = min(
                             2000, *(int(date[:4]) for pair in gdir.elev_change_1d['dates'] for date in pair)
                         )
+                # get SAR data filters, if prescribed
+                sar_data_filt = pygem_prms['calib']['MCMC_params']['sar_data_filt']
                 # load snowline data
                 if args.option_calib_snowline_1d:
                     if pygem_prms['time']['timestep'] != 'daily':
@@ -922,18 +924,28 @@ def run(list_packed_vars):
                         raise RuntimeError("Incompatible timestep with snowline calibration data.")
                     # load snowline obs to glacier directory
                     gdir.snowline_1d = gdir.read_json('snowline_1d')
-                    gdir.snowline_1d['z'] = np.array(gdir.snowline_1d['z'])
-                    gdir.snowline_1d['z_min'] = np.array(gdir.snowline_1d['z_min'])
-                    gdir.snowline_1d['z_max'] = np.array(gdir.snowline_1d['z_max'])
-                    gdir.snowline_1d['direction'] = np.array(gdir.snowline_1d['direction'])
+
+                    # --- apply filters if specified ---
+                    dates = np.array(gdir.snowline_1d['date'], dtype='datetime64[D]')
+                    mask = np.ones(len(dates), dtype=bool)  # start with all True
+                    if sar_data_filt and any(sar_data_filt[k] for k in ['direction', 'date']):
+                        # apply direction filter, if specified
+                        if sar_data_filt['direction']:
+                            mask &= (gdir.snowline_1d['direction'] == sar_data_filt['direction'])
+                        # apply date range filter, if specified
+                        if sar_data_filt['date']:
+                            date_min = np.datetime64(sar_data_filt['date'][0])
+                            date_max = np.datetime64(sar_data_filt['date'][1])
+                            mask &= (dates >= date_min) & (dates <= date_max)
+
+                    # apply mask
+                    for key in ['z', 'z_min', 'z_max', 'direction', 'date']:
+                        gdir.scaf_1d[key] = np.array(gdir.scaf_1d[key])[mask]   
 
                     # sort obervations by date and apply the sorting
                     sort_idx = np.argsort(gdir.snowline_1d['date'])
-                    gdir.snowline_1d['date'] = [gdir.snowline_1d['date'][i] for i in sort_idx]
-                    gdir.snowline_1d['z'] = gdir.snowline_1d['z'][sort_idx]
-                    gdir.snowline_1d['z_min'] = gdir.snowline_1d['z_min'][sort_idx]
-                    gdir.snowline_1d['z_max'] = gdir.snowline_1d['z_max'][sort_idx]
-                    gdir.snowline_1d['direction'] = gdir.snowline_1d['direction'][sort_idx]
+                    for key in ['z', 'z_min', 'z_max', 'direction', 'date']:
+                        gdir.snowline_1d[key] = gdir.snowline_1d[key][sort_idx]
 
                     # get z_sigma (assume it is the mean difference of min and max)
                     gdir.snowline_1d['z_sigma'] = (gdir.snowline_1d['z_max'] - gdir.snowline_1d['z_min']) / 2
@@ -959,13 +971,27 @@ def run(list_packed_vars):
                     gdir.scaf_1d['scaf_max'] = np.array(gdir.scaf_1d['scaf_max'])
                     gdir.scaf_1d['direction'] = np.array(gdir.scaf_1d['direction'])
 
+                    # --- apply filters if specified ---
+                    dates = np.array(gdir.scaf_1d['date'], dtype='datetime64[D]')
+                    mask = np.ones(len(dates), dtype=bool)  # start with all True
+                    if sar_data_filt and any(sar_data_filt[k] for k in ['direction', 'date']):
+                        # apply direction filter, if specified
+                        if sar_data_filt['direction']:
+                            mask &= (gdir.scaf_1d['direction'] == sar_data_filt['direction'])
+                        # apply date range filter, if specified
+                        if sar_data_filt['date']:
+                            date_min = np.datetime64(sar_data_filt['date'][0])
+                            date_max = np.datetime64(sar_data_filt['date'][1])
+                            mask &= (dates >= date_min) & (dates <= date_max)
+
+                    # apply mask
+                    for key in ['scaf', 'scaf_min', 'scaf_max', 'direction', 'date']:
+                        gdir.scaf_1d[key] = np.array(gdir.scaf_1d[key])[mask]   
+
                     # sort obervations by date and apply the sorting
                     sort_idx = np.argsort(gdir.scaf_1d['date'])
-                    gdir.scaf_1d['date'] = [gdir.scaf_1d['date'][i] for i in sort_idx]
-                    gdir.scaf_1d['scaf'] = gdir.scaf_1d['scaf'][sort_idx]
-                    gdir.scaf_1d['scaf_min'] = gdir.scaf_1d['scaf_min'][sort_idx]
-                    gdir.scaf_1d['scaf_max'] = gdir.scaf_1d['scaf_max'][sort_idx]
-                    gdir.scaf_1d['direction'] = gdir.scaf_1d['direction'][sort_idx]
+                    for key in ['scaf', 'scaf_min', 'scaf_max', 'direction', 'date']:
+                        gdir.scaf_1d[key] = gdir.scaf_1d[key][sort_idx]
 
                     # get z_sigma (assume it is the mean difference of min and max)
                     gdir.scaf_1d['scaf_sigma'] = (gdir.scaf_1d['scaf_max'] - gdir.scaf_1d['scaf_min']) / 2
@@ -2230,8 +2256,7 @@ def run(list_packed_vars):
                         torch.stack((
                             torch.tensor(gdir.scaf_1d['scaf_sigma_min']), 
                             torch.tensor(gdir.scaf_1d['scaf_sigma_max'])
-                        )),
-                        
+                        )),  
                     )
  
                 # if there are more observations to calibrate against, simply add them as a tuple of (obs, variance) to the obs dictionary

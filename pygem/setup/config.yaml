@@ -198,6 +198,12 @@ calib:
     option_calib_snowline_1d: false               # option to calibrate against 1d snowline data (true or false)
     # options for calibrating against 1d snow cover area fraction (SCAF) data
     option_calib_scaf_1d: false                   # option to calibrate against 1d snow cover area fraction (SCAF) data (true or false)
+    # apply filter for melt extent and snowline data (leave empty to ignore filters)
+    sar_data_filt:
+      direction:                                  # filter by satellite pass direction (e.g., ascending or descending)
+      date:                                       # filter by date (list start date first, then end date)
+        # - 2017-01-01
+        # - 2025-01-01
 
   # calibration datasets
   data:
