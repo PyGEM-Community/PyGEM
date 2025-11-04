@@ -56,16 +56,17 @@ def plot_elev_change_1d(data_dict, figsize=(5, 3), title=None):
     plt.show()
 
 
-def plot_modeloutput_section(model=None, ax=None, title='', **kwargs):
+def plot_modeloutput_section(
+    model=None,
+    ax=None,
+    title='',
+    lnlabel=None,
+    legendon=True,
+    lgdkwargs={'loc': 'upper right', 'fancybox': False, 'borderaxespad': 0, 'handlelength': 1},
+    **kwargs,
+):
     """Plots the result of the model output along the flowline.
     A paired down version of OGGMs graphics.plot_modeloutput_section()
-
-    Parameters
-    ----------
-    model: obj
-        either a FlowlineModel or a list of model flowlines.
-    fig
-    title
     """
 
     try:
