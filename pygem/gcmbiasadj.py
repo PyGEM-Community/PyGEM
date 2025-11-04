@@ -43,28 +43,14 @@ def monthly_avg_2darray(x):
     """
     Monthly average for a given 2d dataset where columns are monthly timeseries
     """
-    return (
-        x.reshape(-1, 12)
-        .transpose()
-        .reshape(-1, int(x.shape[1] / 12))
-        .mean(1)
-        .reshape(12, -1)
-        .transpose()
-    )
+    return x.reshape(-1, 12).transpose().reshape(-1, int(x.shape[1] / 12)).mean(1).reshape(12, -1).transpose()
 
 
 def monthly_std_2darray(x):
     """
     Monthly standard deviation for a given 2d dataset where columns are monthly timeseries
     """
-    return (
-        x.reshape(-1, 12)
-        .transpose()
-        .reshape(-1, int(x.shape[1] / 12))
-        .std(1)
-        .reshape(12, -1)
-        .transpose()
-    )
+    return x.reshape(-1, 12).transpose().reshape(-1, int(x.shape[1] / 12)).std(1).reshape(12, -1).transpose()
 
 
 def temp_biasadj_HH2015(
@@ -103,12 +89,8 @@ def temp_biasadj_HH2015(
         new gcm elevation is the elevation of the reference climate dataset
     """
     # GCM subset to agree with reference time period to calculate bias corrections
-    gcm_subset_idx_start = np.where(
-        dates_table.date.values == dates_table_ref.date.values[0]
-    )[0][0]
-    gcm_subset_idx_end = np.where(
-        dates_table.date.values == dates_table_ref.date.values[-1]
-    )[0][0]
+    gcm_subset_idx_start = np.where(dates_table.date.values == dates_table_ref.date.values[0])[0][0]
+    gcm_subset_idx_end = np.where(dates_table.date.values == dates_table_ref.date.values[-1])[0][0]
     gcm_temp_subset = gcm_temp[:, gcm_subset_idx_start : gcm_subset_idx_end + 1]
 
     # Roll months so they are aligned with simulation months
@@ -118,14 +100,10 @@ def temp_biasadj_HH2015(
 
     # Mean monthly temperature
     ref_temp_monthly_avg = np.roll(monthly_avg_2darray(ref_temp), roll_amt, axis=1)
-    gcm_temp_monthly_avg = np.roll(
-        monthly_avg_2darray(gcm_temp_subset), roll_amt, axis=1
-    )
+    gcm_temp_monthly_avg = np.roll(monthly_avg_2darray(gcm_temp_subset), roll_amt, axis=1)
     # Standard deviation monthly temperature
     ref_temp_monthly_std = np.roll(monthly_std_2darray(ref_temp), roll_amt, axis=1)
-    gcm_temp_monthly_std = np.roll(
-        monthly_std_2darray(gcm_temp_subset), roll_amt, axis=1
-    )
+    gcm_temp_monthly_std = np.roll(monthly_std_2darray(gcm_temp_subset), roll_amt, axis=1)
 
     # Monthly bias adjustment (additive)
     gcm_temp_monthly_adj = ref_temp_monthly_avg - gcm_temp_monthly_avg
@@ -162,38 +140,23 @@ def temp_biasadj_HH2015(
         t_m_Navg_subset = uniform_filter(t_m_subset, size=(1, N))
         t_m_Navg[:, month::12] = t_m_Navg_subset
 
-    gcm_temp_biasadj = t_m_Navg + (t_mt - t_m_Navg) * np.tile(
-        variability_monthly_std, int(bc_temp.shape[1] / 12)
-    )
+    gcm_temp_biasadj = t_m_Navg + (t_mt - t_m_Navg) * np.tile(variability_monthly_std, int(bc_temp.shape[1] / 12))
 
     # Update elevation
     gcm_elev_biasadj = ref_elev
 
     # Assert that mean temperatures for all the glaciers must be more-or-less equal
-    gcm_temp_biasadj_subset = gcm_temp_biasadj[
-        :, gcm_subset_idx_start : gcm_subset_idx_end + 1
-    ]
+    gcm_temp_biasadj_subset = gcm_temp_biasadj[:, gcm_subset_idx_start : gcm_subset_idx_end + 1]
 
     if sim_startyear == ref_startyear:
         if debug:
-            print(
-                (np.mean(gcm_temp_biasadj_subset, axis=1) - np.mean(ref_temp, axis=1))
-            )
-        assert (
-            np.max(
-                np.abs(
-                    np.mean(gcm_temp_biasadj_subset, axis=1) - np.mean(ref_temp, axis=1)
-                )
-            )
-            < 1
-        ), (
+            print((np.mean(gcm_temp_biasadj_subset, axis=1) - np.mean(ref_temp, axis=1)))
+        assert np.max(np.abs(np.mean(gcm_temp_biasadj_subset, axis=1) - np.mean(ref_temp, axis=1))) < 1, (
             'Error with gcm temperature bias adjustment: mean ref and gcm temps differ by more than 1 degree'
         )
     else:
         if debug:
-            print(
-                (np.mean(gcm_temp_biasadj_subset, axis=1) - np.mean(ref_temp, axis=1))
-            )
+            print((np.mean(gcm_temp_biasadj_subset, axis=1) - np.mean(ref_temp, axis=1)))
 
     return gcm_temp_biasadj, gcm_elev_biasadj
 
@@ -229,12 +192,8 @@ def prec_biasadj_HH2015(
         GCM precipitation bias corrected to the reference climate dataset according to Huss and Hock (2015)
     """
     # GCM subset to agree with reference time period to calculate bias corrections
-    gcm_subset_idx_start = np.where(
-        dates_table.date.values == dates_table_ref.date.values[0]
-    )[0][0]
-    gcm_subset_idx_end = np.where(
-        dates_table.date.values == dates_table_ref.date.values[-1]
-    )[0][0]
+    gcm_subset_idx_start = np.where(dates_table.date.values == dates_table_ref.date.values[0])[0][0]
+    gcm_subset_idx_end = np.where(dates_table.date.values == dates_table_ref.date.values[-1])[0][0]
     gcm_prec_subset = gcm_prec[:, gcm_subset_idx_start : gcm_subset_idx_end + 1]
 
     # Roll months so they are aligned with simulation months
@@ -243,9 +202,7 @@ def prec_biasadj_HH2015(
     # PRECIPITATION BIAS CORRECTIONS
     # Monthly mean precipitation
     ref_prec_monthly_avg = np.roll(monthly_avg_2darray(ref_prec), roll_amt, axis=1)
-    gcm_prec_monthly_avg = np.roll(
-        monthly_avg_2darray(gcm_prec_subset), roll_amt, axis=1
-    )
+    gcm_prec_monthly_avg = np.roll(monthly_avg_2darray(gcm_prec_subset), roll_amt, axis=1)
     bias_adj_prec_monthly = ref_prec_monthly_avg / gcm_prec_monthly_avg
 
     # if/else statement for whether or not the full GCM period is the same as the simulation period
@@ -262,24 +219,16 @@ def prec_biasadj_HH2015(
         bc_prec = gcm_prec[:, sim_idx_start:]
 
     # Bias adjusted precipitation accounting for differences in monthly mean
-    gcm_prec_biasadj = bc_prec * np.tile(
-        bias_adj_prec_monthly, int(bc_prec.shape[1] / 12)
-    )
+    gcm_prec_biasadj = bc_prec * np.tile(bias_adj_prec_monthly, int(bc_prec.shape[1] / 12))
 
     # Update elevation
     gcm_elev_biasadj = ref_elev
 
     # Assertion that bias adjustment does not drastically modify the precipitation and are reasonable
-    gcm_prec_biasadj_subset = gcm_prec_biasadj[
-        :, gcm_subset_idx_start : gcm_subset_idx_end + 1
-    ]
+    gcm_prec_biasadj_subset = gcm_prec_biasadj[:, gcm_subset_idx_start : gcm_subset_idx_end + 1]
     gcm_prec_biasadj_frac = gcm_prec_biasadj_subset.sum(axis=1) / ref_prec.sum(axis=1)
-    assert gcm_prec_biasadj.max() <= 10, (
-        'gcm_prec_adj (precipitation bias adjustment) too high, needs to be modified'
-    )
-    assert gcm_prec_biasadj.min() >= 0, (
-        'gcm_prec_adj is producing a negative precipitation value'
-    )
+    assert gcm_prec_biasadj.max() <= 10, 'gcm_prec_adj (precipitation bias adjustment) too high, needs to be modified'
+    assert gcm_prec_biasadj.min() >= 0, 'gcm_prec_adj is producing a negative precipitation value'
 
     return gcm_prec_biasadj, gcm_elev_biasadj, gcm_prec_biasadj_frac
 
@@ -315,12 +264,8 @@ def prec_biasadj_opt1(
         new gcm elevation is the elevation of the reference climate dataset
     """
     # GCM subset to agree with reference time period to calculate bias corrections
-    gcm_subset_idx_start = np.where(
-        dates_table.date.values == dates_table_ref.date.values[0]
-    )[0][0]
-    gcm_subset_idx_end = np.where(
-        dates_table.date.values == dates_table_ref.date.values[-1]
-    )[0][0]
+    gcm_subset_idx_start = np.where(dates_table.date.values == dates_table_ref.date.values[0])[0][0]
+    gcm_subset_idx_end = np.where(dates_table.date.values == dates_table_ref.date.values[-1])[0][0]
     gcm_prec_subset = gcm_prec[:, gcm_subset_idx_start : gcm_subset_idx_end + 1]
 
     # Roll months so they are aligned with simulation months
@@ -329,9 +274,7 @@ def prec_biasadj_opt1(
     # PRECIPITATION BIAS CORRECTIONS
     # Monthly mean precipitation
     ref_prec_monthly_avg = np.roll(monthly_avg_2darray(ref_prec), roll_amt, axis=1)
-    gcm_prec_monthly_avg = np.roll(
-        monthly_avg_2darray(gcm_prec_subset), roll_amt, axis=1
-    )
+    gcm_prec_monthly_avg = np.roll(monthly_avg_2darray(gcm_prec_subset), roll_amt, axis=1)
     bias_adj_prec_monthly = ref_prec_monthly_avg / gcm_prec_monthly_avg
 
     # if/else statement for whether or not the full GCM period is the same as the simulation period
@@ -348,28 +291,19 @@ def prec_biasadj_opt1(
         bc_prec = gcm_prec[:, sim_idx_start:]
 
     # Bias adjusted precipitation accounting for differences in monthly mean
-    gcm_prec_biasadj_raw = bc_prec * np.tile(
-        bias_adj_prec_monthly, int(bc_prec.shape[1] / 12)
-    )
+    gcm_prec_biasadj_raw = bc_prec * np.tile(bias_adj_prec_monthly, int(bc_prec.shape[1] / 12))
 
     # Adjust variance based on zscore and reference standard deviation
     ref_prec_monthly_std = np.roll(monthly_std_2darray(ref_prec), roll_amt, axis=1)
-    gcm_prec_biasadj_raw_monthly_avg = monthly_avg_2darray(
-        gcm_prec_biasadj_raw[:, 0 : ref_prec.shape[1]]
-    )
-    gcm_prec_biasadj_raw_monthly_std = monthly_std_2darray(
-        gcm_prec_biasadj_raw[:, 0 : ref_prec.shape[1]]
-    )
+    gcm_prec_biasadj_raw_monthly_avg = monthly_avg_2darray(gcm_prec_biasadj_raw[:, 0 : ref_prec.shape[1]])
+    gcm_prec_biasadj_raw_monthly_std = monthly_std_2darray(gcm_prec_biasadj_raw[:, 0 : ref_prec.shape[1]])
     # Calculate value compared to mean and standard deviation
     gcm_prec_biasadj_zscore = (
-        gcm_prec_biasadj_raw
-        - np.tile(gcm_prec_biasadj_raw_monthly_avg, int(bc_prec.shape[1] / 12))
+        gcm_prec_biasadj_raw - np.tile(gcm_prec_biasadj_raw_monthly_avg, int(bc_prec.shape[1] / 12))
     ) / np.tile(gcm_prec_biasadj_raw_monthly_std, int(bc_prec.shape[1] / 12))
     gcm_prec_biasadj = np.tile(
         gcm_prec_biasadj_raw_monthly_avg, int(bc_prec.shape[1] / 12)
-    ) + gcm_prec_biasadj_zscore * np.tile(
-        ref_prec_monthly_std, int(bc_prec.shape[1] / 12)
-    )
+    ) + gcm_prec_biasadj_zscore * np.tile(ref_prec_monthly_std, int(bc_prec.shape[1] / 12))
     gcm_prec_biasadj[gcm_prec_biasadj < 0] = 0
 
     # Identify outliers using reference's monthly maximum adjusted for future increases
@@ -385,19 +319,15 @@ def prec_biasadj_opt1(
         roll_amt,
         axis=1,
     )
-    gcm_prec_max_check = np.tile(
-        ref_prec_monthly_max, int(gcm_prec_biasadj.shape[1] / 12)
-    )
+    gcm_prec_max_check = np.tile(ref_prec_monthly_max, int(gcm_prec_biasadj.shape[1] / 12))
     # For wetter years in future, adjust monthly max by the annual increase in precipitation
     gcm_prec_annual = annual_sum_2darray(bc_prec)
     gcm_prec_annual_norm = gcm_prec_annual / gcm_prec_annual.mean(1)[:, np.newaxis]
-    gcm_prec_annual_norm_repeated = np.repeat(gcm_prec_annual_norm, 12).reshape(
-        gcm_prec_biasadj.shape
-    )
+    gcm_prec_annual_norm_repeated = np.repeat(gcm_prec_annual_norm, 12).reshape(gcm_prec_biasadj.shape)
     gcm_prec_max_check_adj = gcm_prec_max_check * gcm_prec_annual_norm_repeated
-    gcm_prec_max_check_adj[gcm_prec_max_check_adj < gcm_prec_max_check] = (
-        gcm_prec_max_check[gcm_prec_max_check_adj < gcm_prec_max_check]
-    )
+    gcm_prec_max_check_adj[gcm_prec_max_check_adj < gcm_prec_max_check] = gcm_prec_max_check[
+        gcm_prec_max_check_adj < gcm_prec_max_check
+    ]
 
     # Replace outliers with monthly mean adjusted for the normalized annual variation
     outlier_replacement = gcm_prec_annual_norm_repeated * np.tile(
@@ -411,16 +341,10 @@ def prec_biasadj_opt1(
     gcm_elev_biasadj = ref_elev
 
     # Assertion that bias adjustment does not drastically modify the precipitation and are reasonable
-    gcm_prec_biasadj_subset = gcm_prec_biasadj[
-        :, gcm_subset_idx_start : gcm_subset_idx_end + 1
-    ]
+    gcm_prec_biasadj_subset = gcm_prec_biasadj[:, gcm_subset_idx_start : gcm_subset_idx_end + 1]
     gcm_prec_biasadj_frac = gcm_prec_biasadj_subset.sum(axis=1) / ref_prec.sum(axis=1)
-    assert gcm_prec_biasadj.max() <= 10, (
-        'gcm_prec_adj (precipitation bias adjustment) too high, needs to be modified'
-    )
-    assert gcm_prec_biasadj.min() >= 0, (
-        'gcm_prec_adj is producing a negative precipitation value'
-    )
+    assert gcm_prec_biasadj.max() <= 10, 'gcm_prec_adj (precipitation bias adjustment) too high, needs to be modified'
+    assert gcm_prec_biasadj.min() >= 0, 'gcm_prec_adj is producing a negative precipitation value'
 
     return gcm_prec_biasadj, gcm_elev_biasadj, gcm_prec_biasadj_frac
 
@@ -469,12 +393,8 @@ def temp_biasadj_QDM(
         new gcm elevation is the elevation of the reference climate dataset
     """
     # GCM historic subset to agree with reference time period to enable QDM bias correction
-    gcm_subset_idx_start = np.where(
-        dates_table.date.values == dates_table_ref.date.values[0]
-    )[0][0]
-    gcm_subset_idx_end = np.where(
-        dates_table.date.values == dates_table_ref.date.values[-1]
-    )[0][0]
+    gcm_subset_idx_start = np.where(dates_table.date.values == dates_table_ref.date.values[0])[0][0]
+    gcm_subset_idx_end = np.where(dates_table.date.values == dates_table_ref.date.values[-1])[0][0]
     gcm_temp_historic = gcm_temp[:, gcm_subset_idx_start : gcm_subset_idx_end + 1]
 
     # Convert to Kelvin
@@ -497,9 +417,7 @@ def temp_biasadj_QDM(
     # create an empty array for the bias-corrected GCM data
     # gcm_temp_biasadj = np.zeros(bc_temp.size)
     loop_years = 20  # number of years used for each bias-correction period
-    loop_months = (
-        loop_years * 12
-    )  # number of months used for each bias-correction period
+    loop_months = loop_years * 12  # number of months used for each bias-correction period
 
     # convert to Kelvin to better handle Celsius values around 0)
     bc_temp = bc_temp + 273.15
@@ -508,9 +426,7 @@ def temp_biasadj_QDM(
 
     for j in range(0, len(bc_temp)):
         gcm_temp_biasadj = []  # empty list for bias-corrected data
-        bc_loops = (
-            len(bc_temp[j]) / loop_months
-        )  # determine number of loops needed for bias-correction
+        bc_loops = len(bc_temp[j]) / loop_months  # determine number of loops needed for bias-correction
 
         # loop through however many times are required to bias-correct the entire time period
         #   using smaller time periods (typically 20-30 years) to better capture the
@@ -522,9 +438,9 @@ def temp_biasadj_QDM(
             # now loop through each individual value within the time period for bias correction
             for ival, projected_value in enumerate(bc_temp_loop):
                 percentile = percentileofscore(bc_temp_loop, projected_value)
-                bias_correction_factor = np.percentile(
-                    ref_temp, percentile
-                ) / np.percentile(gcm_temp_historic, percentile)
+                bias_correction_factor = np.percentile(ref_temp, percentile) / np.percentile(
+                    gcm_temp_historic, percentile
+                )
                 bc_temp_loop_corrected[ival] = projected_value * bias_correction_factor
             # append the values from each time period to a list
             gcm_temp_biasadj.append(bc_temp_loop_corrected)
@@ -592,12 +508,8 @@ def prec_biasadj_QDM(
     """
 
     # GCM historic subset to agree with reference time period to enable QDM bias correction
-    gcm_subset_idx_start = np.where(
-        dates_table.date.values == dates_table_ref.date.values[0]
-    )[0][0]
-    gcm_subset_idx_end = np.where(
-        dates_table.date.values == dates_table_ref.date.values[-1]
-    )[0][0]
+    gcm_subset_idx_start = np.where(dates_table.date.values == dates_table_ref.date.values[0])[0][0]
+    gcm_subset_idx_end = np.where(dates_table.date.values == dates_table_ref.date.values[-1])[0][0]
     gcm_prec_historic = gcm_prec[:, gcm_subset_idx_start : gcm_subset_idx_end + 1]
 
     # if/else statement for whether or not the full GCM period is the same as the simulation period
@@ -616,18 +528,14 @@ def prec_biasadj_QDM(
     # create an empty array for the bias-corrected GCM data
     # gcm_prec_biasadj = np.zeros(bc_prec.size)
     loop_years = 20  # number of years used for each bias-correction period
-    loop_months = (
-        loop_years * 12
-    )  # number of months used for each bias-correction period
+    loop_months = loop_years * 12  # number of months used for each bias-correction period
 
     # bc_prec = bc_prec[0]
     all_gcm_prec_biasadj = []  # empty list for all glaciers
 
     for j in range(0, len(bc_prec)):
         gcm_prec_biasadj = []  # empty list for bias-corrected data
-        bc_loops = (
-            len(bc_prec[j]) / loop_months
-        )  # determine number of loops needed for bias-correction
+        bc_loops = len(bc_prec[j]) / loop_months  # determine number of loops needed for bias-correction
 
         # loop through however many times are required to bias-correct the entire time period
         #   using smaller time periods (typically 20-30 years) to better capture the
@@ -639,9 +547,9 @@ def prec_biasadj_QDM(
             # now loop through each individual value within the time period for bias correction
             for ival, projected_value in enumerate(bc_prec_loop):
                 percentile = percentileofscore(bc_prec_loop, projected_value)
-                bias_correction_factor = np.percentile(
-                    ref_prec, percentile
-                ) / np.percentile(gcm_prec_historic, percentile)
+                bias_correction_factor = np.percentile(ref_prec, percentile) / np.percentile(
+                    gcm_prec_historic, percentile
+                )
                 bc_prec_loop_corrected[ival] = projected_value * bias_correction_factor
             # append the values from each time period to a list
             gcm_prec_biasadj.append(bc_prec_loop_corrected)
@@ -658,9 +566,7 @@ def prec_biasadj_QDM(
     return gcm_prec_biasadj, gcm_elev_biasadj
 
 
-def monthly_avg_array_rolled(
-    ref_array, dates_table_ref, dates_table, sim_startyear, ref_startyear
-):
+def monthly_avg_array_rolled(ref_array, dates_table_ref, dates_table, sim_startyear, ref_startyear):
     """Monthly average array from reference data rolled to ensure proper months
 
     Parameters
@@ -678,9 +584,7 @@ def monthly_avg_array_rolled(
         gcm climate data based on monthly average of reference data
     """
     # GCM subset to agree with reference time period to calculate bias corrections
-    gcm_subset_idx_start = np.where(
-        dates_table.date.values == dates_table_ref.date.values[0]
-    )[0][0]
+    gcm_subset_idx_start = np.where(dates_table.date.values == dates_table_ref.date.values[0])[0][0]
 
     # Roll months so they are aligned with simulation months
     roll_amt = -1 * (12 - gcm_subset_idx_start % 12)

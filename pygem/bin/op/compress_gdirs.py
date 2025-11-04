@@ -24,9 +24,7 @@ pygem_prms = config_manager.read_config()
 
 # Initialize OGGM subprocess
 cfg.initialize(logging_level='WARNING')
-cfg.PATHS['working_dir'] = (
-    f'{pygem_prms["root"]}/{pygem_prms["oggm"]["oggm_gdir_relpath"]}'
-)
+cfg.PATHS['working_dir'] = f'{pygem_prms["root"]}/{pygem_prms["oggm"]["oggm_gdir_relpath"]}'
 cfg.PARAMS['border'] = pygem_prms['oggm']['border']
 cfg.PARAMS['use_multiprocessing'] = True
 
@@ -34,9 +32,7 @@ cfg.PARAMS['use_multiprocessing'] = True
 def compress_region(region):
     print(f'\n=== Compressing glacier directories for RGI Region: {region} ===')
     # Get glacier IDs from the RGI shapefile
-    rgi_ids = gpd.read_file(
-        utils.get_rgi_region_file(str(region).zfill(2), version='62')
-    )['RGIId'].tolist()
+    rgi_ids = gpd.read_file(utils.get_rgi_region_file(str(region).zfill(2), version='62'))['RGIId'].tolist()
 
     # Initialize glacier directories
     gdirs = workflow.init_glacier_directories(rgi_ids)
@@ -52,9 +48,7 @@ def compress_region(region):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description='Script to compress and store OGGM glacier directories'
-    )
+    parser = argparse.ArgumentParser(description='Script to compress and store OGGM glacier directories')
     # add arguments
     parser.add_argument(
         '-rgi_region01',

@@ -1,7 +1,7 @@
 """
 Python Glacier Evolution Model (PyGEM)
 
-copyright © 2018 David Rounce <drounce@cmu.edu
+copyright © 2025 Brandon Tober <btober@cmu.edu>, David Rounce <drounce@cmu.edu>
 
 Distributed under the MIT license
 
@@ -38,33 +38,38 @@ def inverse_z_normalize(z_params, means, std_devs):
     return z_params * std_devs + means
 
 
-def log_normal_density(x, **kwargs):
+def log_normal_density(x, method='mean', **kwargs):
     """
-    Computes the log probability density of a normal distribution.
+    Evaluate the log probability density of a normal distribution.
 
     Parameters:
-    - x: Input tensor where you want to evaluate the log probability.
-    - mu: Mean of the normal distribution.
-    - sigma: Standard deviation of the normal distribution.
+    - x: input data point or array of data points.
+    - mu: mean of the normal distribution (diagonal covariance matrix).
+    - sigma: standard deviation (diagonal elements of the covariance matrix).
 
     Returns:
-        Log probability density at the given input tensor x.
+        log probability density
     """
     mu, sigma = kwargs['mu'], kwargs['sigma']
 
-    # flatten arrays and get dimensionality
-    x = x.flatten()
-    mu = mu.flatten()
-    sigma = sigma.flatten()
+    # ensure tensors are flattened
+    x, mu, sigma = map(torch.flatten, (x, mu, sigma))
+
+    # compute log normal density per element
     k = mu.shape[-1]
 
-    return torch.tensor(
-        [
-            -k / 2.0 * torch.log(torch.tensor(2 * np.pi))
-            - torch.log(sigma).nansum()
-            - 0.5 * (((x - mu) / sigma) ** 2).nansum()
-        ]
-    )
+    # scale sigma by sqrt(k)
+    # sigma *= torch.sqrt(torch.tensor(k))
+
+    # compute log normal density per element
+    log_prob = -k / 2.0 * torch.log(torch.tensor(2 * np.pi)) - torch.log(sigma) - 0.5 * ((x - mu) / sigma) ** 2
+
+    if method == 'sum':
+        return torch.tensor([log_prob.nansum()])
+    elif method == 'mean':
+        return torch.tensor([log_prob.nanmean()])
+    else:
+        raise ValueError("method must be one of ['sum', 'mean']")
 
 
 def log_gamma_density(x, **kwargs):
@@ -80,15 +85,10 @@ def log_gamma_density(x, **kwargs):
         Log probability density at the given input tensor x.
     """
     alpha, beta = kwargs['alpha'], kwargs['beta']  # shape, scale
-    return (
-        alpha * torch.log(beta)
-        + (alpha - 1) * torch.log(x)
-        - beta * x
-        - torch.lgamma(alpha)
-    )
+    return alpha * torch.log(beta) + (alpha - 1) * torch.log(x) - beta * x - torch.lgamma(alpha)
 
 
-def log_truncated_normal(x, **kwargs):
+def log_truncated_normal_density(x, **kwargs):
     """
     Computes the log probability density of a truncated normal distribution.
 
@@ -120,19 +120,37 @@ def log_truncated_normal(x, **kwargs):
     return torch.log(pdf) - torch.log(normalization)
 
 
+def log_uniform_density(x, **kwargs):
+    """
+    Computes the log probability density of a Uniform distribution for scalar x.
+
+    Parameters:
+    - x: Scalar tensor where you want to evaluate the log probability.
+    - low: Lower bound of the uniform distribution.
+    - high: Upper bound of the uniform distribution.
+
+    Returns:
+        Scalar log probability density at x.
+    """
+    low, high = kwargs['low'], kwargs['high']
+    if low <= x <= high:
+        return -torch.log(high - low)
+    else:
+        return torch.tensor([float('-inf')])
+
+
 # mapper dictionary - maps to appropriate log probability density function for given distribution `type`
 log_prob_fxn_map = {
     'normal': log_normal_density,
     'gamma': log_gamma_density,
-    'truncnormal': log_truncated_normal,
+    'truncnormal': log_truncated_normal_density,
+    'uniform': log_uniform_density,
 }
 
 
 # mass balance posterior class
 class mbPosterior:
-    def __init__(
-        self, obs, priors, mb_func, mb_args=None, potential_fxns=None, **kwargs
-    ):
+    def __init__(self, obs, priors, mb_func, mb_args=None, potential_fxns=None, **kwargs):
         # obs will be passed as a list, where each item is a tuple with the first element being the mean observation, and the second being the variance
         self.obs = obs
         self.priors = copy.deepcopy(priors)
@@ -141,6 +159,11 @@ class mbPosterior:
         self.potential_functions = potential_fxns if potential_fxns is not None else []
         self.preds = None
         self.check_priors()
+
+        self.ela = kwargs.get('ela', None)
+        self.bin_z = kwargs.get('bin_z', None)
+        if self.ela:
+            self.abl_mask = self.bin_z < self.ela
 
         # get mean and std for each parameter type
         self.means = torch.tensor([params['mu'] for params in self.priors.values()])
@@ -165,20 +188,20 @@ class mbPosterior:
         for k in self.priors.keys():
             if self.priors[k]['type'] == 'gamma' and 'mu' not in self.priors[k].keys():
                 self.priors[k]['mu'] = self.priors[k]['alpha'] / self.priors[k]['beta']
-                self.priors[k]['sigma'] = float(
-                    np.sqrt(self.priors[k]['alpha']) / self.priors[k]['beta']
-                )
+                self.priors[k]['sigma'] = float(np.sqrt(self.priors[k]['alpha']) / self.priors[k]['beta'])
+
+            if self.priors[k]['type'] == 'uniform' and 'mu' not in self.priors[k].keys():
+                self.priors[k]['mu'] = (self.priors[k]['low'] / self.priors[k]['high']) / 2
+                self.priors[k]['sigma'] = (self.priors[k]['high'] - self.priors[k]['low']) / (12 ** (1 / 2))
 
     # update modelprms for evaluation
     def update_modelprms(self, m):
         for i, k in enumerate(['tbias', 'kp', 'ddfsnow']):
             self.mb_args[1][k] = float(m[i])
-        self.mb_args[1]['ddfice'] = (
-            self.mb_args[1]['ddfsnow'] / pygem_prms['sim']['params']['ddfsnow_iceratio']
-        )
+        self.mb_args[1]['ddfice'] = self.mb_args[1]['ddfsnow'] / pygem_prms['sim']['params']['ddfsnow_iceratio']
 
     # get mb_pred
-    def get_mb_pred(self, m):
+    def get_model_pred(self, m):
         if self.mb_args:
             self.update_modelprms(m)
             self.preds = self.mb_func(*self.mb_args)
@@ -186,9 +209,7 @@ class mbPosterior:
             self.preds = self.mb_func([*m])
         if not isinstance(self.preds, tuple):
             self.preds = [self.preds]
-        self.preds = [
-            torch.tensor(item) for item in self.preds
-        ]  # make all preds torch.tensor() objects
+        self.preds = [torch.tensor(item) for item in self.preds]  # make all preds torch.tensor() objects
 
     # get total log prior density
     def log_prior(self, m):
@@ -202,28 +223,65 @@ class mbPosterior:
         return log_prior
 
     # get log likelihood
-    def log_likelihood(self):
+    def log_likelihood(self, m):
         log_likehood = 0
         for i, pred in enumerate(self.preds):
-            log_likehood += log_normal_density(
-                self.obs[i][0], **{'mu': pred, 'sigma': self.obs[i][1]}
-            )
+            # --- Check for invalid predictions early ---
+            if torch.all(pred == float('-inf')):
+                # Invalid model output -> assign -inf likelihood
+                return torch.tensor([-float('inf')])
+
+            if i == 0:
+                # --- Base case: mass balance likelihood ---
+                log_likehood += log_normal_density(
+                    self.obs[i][0],  # observed values
+                    mu=pred,  # predicted values
+                    sigma=self.obs[i][1],  # observation uncertainty
+                )
+
+            elif i == 1 and len(m) > 3:
+                # --- Extended case: apply density scaling to get binned elevation change ---
+                # Create density field, separate values for ablation/accumulation zones
+                rho = np.ones_like(self.bin_z)
+                rho[self.abl_mask] = m[3]  # rhoabl
+                rho[~self.abl_mask] = m[4]  # rhoacc
+                rho = torch.tensor(rho)
+                self.preds[i] = pred = (
+                    self.preds[i] * (pygem_prms['constants']['density_ice'] / rho[:, np.newaxis])
+                )  # scale prediction by model density values (convert from m ice to m thickness change considering modeled density)
+
+                log_likehood += log_normal_density(
+                    self.obs[i][0],  # observations
+                    mu=pred,  # scaled predictions
+                    sigma=self.obs[i][1],  # uncertainty
+                )
         return log_likehood
 
-    # get log potential (sum up as any declared potential functions)
+    # compute the log-potential, summing over all declared potential functions.
     def log_potential(self, m):
-        log_potential = 0
-        for potential_function in self.potential_functions:
-            log_potential += potential_function(*m, **{'massbal': self.preds[0]})
-        return log_potential
+        # --- Base arguments ---
+        # kp, tbias, ddfsnow, massbal
+        kwargs = {
+            'kp': m[0],
+            'tbias': m[1],
+            'ddfsnow': m[2],
+            'massbal': self.preds[0],
+        }
+
+        # --- Optional arguments(if len(m) > 3) ---
+        # rhoabl, rhoacc
+        if len(m) > 3:
+            kwargs['rhoabl'] = m[-2]
+            kwargs['rhoacc'] = m[-1]
+
+        # --- Evaluate all potential functions ---
+        return sum(pf(**kwargs) for pf in self.potential_functions)
 
     # get log posterior (sum of log prior, log likelihood and log potential)
     def log_posterior(self, m):
         # anytime log_posterior is called for a new step, calculate the predicted mass balance
-        self.get_mb_pred(m)
-        return self.log_prior(m) + self.log_likelihood() + self.log_potential(
-            m
-        ), self.preds
+        self.get_model_pred(m)
+        return self.log_prior(m) + self.log_likelihood(m) + self.log_potential(m), self.preds
 
 
 # Metropolis-Hastings Markov chain Monte Carlo class
@@ -250,11 +308,13 @@ class Metropolis:
         """
         n_params = len(self.m_chain[0])
         n_rms = []
+        # get z-normalized vals
+        z_norms = [z_normalize(vals, self.means, self.stds) for vals in self.m_chain]
         for i in range(n_params):
-            vals = [val[i] for val in self.m_chain]
-            first_value = vals[0]
+            param_vals = [vals[i] for vals in z_norms]
+            first_value = param_vals[0]
             count = 0
-            for value in vals:
+            for value in param_vals:
                 if abs(value - first_value) <= tol:
                     count += 1
                 else:
@@ -289,7 +349,7 @@ class Metropolis:
         progress_bar=False,
     ):
         # Compute initial unscaled log-posterior
-        P_0, pred_0 = log_posterior(inverse_z_normalize(m_0, self.means, self.stds))
+        P_0, pred_0 = log_posterior(m_0)
 
         n = len(m_0)
 
@@ -302,12 +362,13 @@ class Metropolis:
             # Propose new value according to
             # proposal distribution Q(m) = N(m_0,h)
             step = torch.randn(n) * h
-            m_prime = m_0 + step
+
+            # update m_prime based on normalized values
+            m_prime = z_normalize(m_0, self.means, self.stds) + step
+            m_prime = inverse_z_normalize(m_prime, self.means, self.stds)
 
             # Compute new unscaled log-posterior
-            P_1, pred_1 = log_posterior(
-                inverse_z_normalize(m_prime, self.means, self.stds)
-            )
+            P_1, pred_1 = log_posterior(m_prime)
 
             # Compute logarithm of probability ratio
             log_ratio = P_1 - P_0
@@ -332,9 +393,7 @@ class Metropolis:
                     self.P_chain.append(P_0)
                     self.m_chain.append(m_0)
                     self.m_primes.append(m_prime)
-                    self.acceptance.append(
-                        self.naccept / (i + (thin_factor * self.n_rm))
-                    )
+                    self.acceptance.append(self.naccept / (i + (thin_factor * self.n_rm)))
                     for j in range(len(pred_1)):
                         if j not in self.preds_chain.keys():
                             self.preds_chain[j] = []
@@ -370,220 +429,3 @@ class Metropolis:
             torch.vstack(self.steps),
             self.acceptance,
         )
-
-
-### some other useful functions ###
-
-
-def effective_n(x):
-    """
-    Compute the effective sample size of a trace.
-
-    Takes the trace and computes the effective sample size
-    according to its detrended autocorrelation.
-
-    Parameters
-    ----------
-    x : list or array of chain samples
-
-    Returns
-    -------
-    effective_n : int
-        effective sample size
-    """
-    if len(set(x)) == 1:
-        return 1
-    try:
-        # detrend trace using mean to be consistent with statistics
-        # definition of autocorrelation
-        x = np.asarray(x)
-        x = x - x.mean()
-        # compute autocorrelation (note: only need second half since
-        # they are symmetric)
-        rho = np.correlate(x, x, mode='full')
-        rho = rho[len(rho) // 2 :]
-        # normalize the autocorrelation values
-        #  note: rho[0] is the variance * n_samples, so this is consistent
-        #  with the statistics definition of autocorrelation on wikipedia
-        # (dividing by n_samples gives you the expected value).
-        rho_norm = rho / rho[0]
-        # Iterate until sum of consecutive estimates of autocorrelation is
-        # negative to avoid issues with the sum being -0.5, which returns an
-        # effective_n of infinity
-        negative_autocorr = False
-        t = 1
-        n = len(x)
-        while not negative_autocorr and (t < n):
-            if not t % 2:
-                negative_autocorr = sum(rho_norm[t - 1 : t + 1]) < 0
-            t += 1
-        return int(n / (1 + 2 * rho_norm[1:t].sum()))
-    except:
-        return None
-
-
-def plot_chain(
-    m_primes, m_chain, mb_obs, ar, title, ms=1, fontsize=8, show=False, fpath=None
-):
-    # Plot the trace of the parameters
-    fig, axes = plt.subplots(5, 1, figsize=(6, 8), sharex=True)
-    m_chain = m_chain.detach().numpy()
-    m_primes = m_primes.detach().numpy()
-
-    # get n_eff
-    neff = [effective_n(arr) for arr in m_chain.T]
-
-    axes[0].plot(
-        [],
-        [],
-        label=f'mean={np.mean(m_chain[:, 0]):.3f}\nstd={np.std(m_chain[:, 0]):.3f}',
-    )
-    l0 = axes[0].legend(
-        loc='upper right', handlelength=0, borderaxespad=0, fontsize=fontsize
-    )
-
-    axes[0].plot(m_primes[:, 0], '.', ms=ms, label='proposed', c='tab:blue')
-    axes[0].plot(m_chain[:, 0], '.', ms=ms, label='accepted', c='tab:orange')
-    hands, ls = axes[0].get_legend_handles_labels()
-
-    # axes[0].add_artist(leg)
-    axes[0].set_ylabel(r'$T_{bias}$', fontsize=fontsize)
-
-    axes[1].plot(m_primes[:, 1], '.', ms=ms, c='tab:blue')
-    axes[1].plot(m_chain[:, 1], '.', ms=ms, c='tab:orange')
-    axes[1].plot(
-        [],
-        [],
-        label=f'mean={np.mean(m_chain[:, 1]):.3f}\nstd={np.std(m_chain[:, 1]):.3f}',
-    )
-    l1 = axes[1].legend(
-        loc='upper right', handlelength=0, borderaxespad=0, fontsize=fontsize
-    )
-    axes[1].set_ylabel(r'$K_p$', fontsize=fontsize)
-
-    axes[2].plot(m_primes[:, 2], '.', ms=ms, c='tab:blue')
-    axes[2].plot(m_chain[:, 2], '.', ms=ms, c='tab:orange')
-    axes[2].plot(
-        [],
-        [],
-        label=f'mean={np.mean(m_chain[:, 2]):.3f}\nstd={np.std(m_chain[:, 2]):.3f}',
-    )
-    l2 = axes[2].legend(
-        loc='upper right', handlelength=0, borderaxespad=0, fontsize=fontsize
-    )
-    axes[2].set_ylabel(r'$fsnow$', fontsize=fontsize)
-
-    axes[3].fill_between(
-        np.arange(len(ar)),
-        mb_obs[0] - (2 * mb_obs[1]),
-        mb_obs[0] + (2 * mb_obs[1]),
-        color='grey',
-        alpha=0.3,
-    )
-    axes[3].fill_between(
-        np.arange(len(ar)),
-        mb_obs[0] - mb_obs[1],
-        mb_obs[0] + mb_obs[1],
-        color='grey',
-        alpha=0.3,
-    )
-    axes[3].plot(m_primes[:, 3], '.', ms=ms, c='tab:blue')
-    axes[3].plot(m_chain[:, 3], '.', ms=ms, c='tab:orange')
-    axes[3].plot(
-        [],
-        [],
-        label=f'mean={np.mean(m_chain[:, 3]):.3f}\nstd={np.std(m_chain[:, 3]):.3f}',
-    )
-    l3 = axes[3].legend(
-        loc='upper right', handlelength=0, borderaxespad=0, fontsize=fontsize
-    )
-    axes[3].set_ylabel(r'$\dot{{b}}$', fontsize=fontsize)
-
-    axes[4].plot(ar, 'tab:orange', lw=1)
-    axes[4].plot(
-        np.convolve(ar, np.ones(100) / 100, mode='valid'),
-        'k',
-        label='moving avg.',
-        lw=1,
-    )
-    l4 = axes[4].legend(
-        loc='upper left', handlelength=0.5, borderaxespad=0, fontsize=fontsize
-    )
-    axes[4].set_ylabel(r'$AR$', fontsize=fontsize)
-
-    for i, ax in enumerate(axes):
-        ax.xaxis.set_ticks_position('both')
-        ax.yaxis.set_ticks_position('both')
-        ax.tick_params(axis='both', direction='inout')
-        if i == 4:
-            continue
-        ax.plot([], [], label=f'n_eff={neff[i]}')
-        hands, ls = ax.get_legend_handles_labels()
-        if i == 0:
-            ax.legend(
-                handles=[hands[1], hands[2], hands[3]],
-                labels=[ls[1], ls[2], ls[3]],
-                loc='upper left',
-                borderaxespad=0,
-                handlelength=0,
-                fontsize=fontsize,
-            )
-        else:
-            ax.legend(
-                handles=[hands[-1]],
-                labels=[ls[-1]],
-                loc='upper left',
-                borderaxespad=0,
-                handlelength=0,
-                fontsize=fontsize,
-            )
-
-    axes[0].add_artist(l0)
-    axes[1].add_artist(l1)
-    axes[2].add_artist(l2)
-    axes[3].add_artist(l3)
-    axes[4].add_artist(l4)
-    axes[0].set_xlim([0, m_chain.shape[0]])
-    axes[0].set_title(title, fontsize=fontsize)
-    plt.tight_layout()
-    plt.subplots_adjust(hspace=0.1, wspace=0)
-    if fpath:
-        fig.savefig(fpath, dpi=400)
-    if show:
-        plt.show(block=True)  # wait until the figure is closed
-    plt.close(fig)
-    return
-
-
-def plot_resid_hist(obs, preds, title, fontsize=8, show=False, fpath=None):
-    # Plot the trace of the parameters
-    fig, axes = plt.subplots(1, 1, figsize=(3, 2))
-    # subtract obs from preds to get residuals
-    diffs = np.concatenate(
-        [pred.flatten() - obs[0].flatten().numpy() for pred in preds]
-    )
-    # mask nans to avoid error in np.histogram()
-    diffs = diffs[~np.isnan(diffs)]
-    # Calculate histogram counts and bin edges
-    counts, bin_edges = np.histogram(diffs, bins=20)
-    pct = counts / counts.sum() * 100
-    bin_width = bin_edges[1] - bin_edges[0]
-    axes.bar(
-        bin_edges[:-1],
-        pct,
-        width=bin_width,
-        edgecolor='black',
-        color='gray',
-        align='edge',
-    )
-    axes.set_xlabel('residuals (pred - obs)', fontsize=fontsize)
-    axes.set_ylabel('count (%)', fontsize=fontsize)
-    axes.set_title(title, fontsize=fontsize)
-    plt.tight_layout()
-    plt.subplots_adjust(hspace=0.1, wspace=0)
-    if fpath:
-        fig.savefig(fpath, dpi=400)
-    if show:
-        plt.show(block=True)  # wait until the figure is closed
-    plt.close(fig)
-    return

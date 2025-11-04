@@ -50,8 +50,8 @@ run_calibration_frontalablation = "pygem.bin.run.run_calibration_frontalablation
 run_calibration = "pygem.bin.run.run_calibration:main"
 run_mcmc_priors = "pygem.bin.run.run_mcmc_priors:main"
 run_simulation = "pygem.bin.run.run_simulation:main"
-postproc_monthly_mass = "pygem.bin.postproc.postproc_monthly_mass:main"
-postproc_binned_monthly_mass = "pygem.bin.postproc.postproc_binned_monthly_mass:main"
+postproc_subannual_mass = "pygem.bin.postproc.postproc_subannual_mass:main"
+postproc_binned_subannual_thick = "pygem.bin.postproc.postproc_binned_subannual_thick:main"
 postproc_distribute_ice = "pygem.bin.postproc.postproc_distribute_ice:main"
 postproc_compile_simulations = "pygem.bin.postproc.postproc_compile_simulations:main"
 list_failed_simulations = "pygem.bin.op.list_failed_simulations:main"
@@ -63,7 +63,7 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
-line-length = 88  # Default
+line-length = 120
 
 [tool.ruff.format]
 quote-style = "single"

@@ -12,9 +12,7 @@ config_manager.update_config({'sim.out.export_extra_vars': True})
 
 
 # Get all notebooks in the PyGEM-notebooks repository
-nb_dir = os.environ.get('PYGEM_NOTEBOOKS_DIRPATH') or os.path.join(
-    os.path.expanduser('~'), 'PyGEM-notebooks'
-)
+nb_dir = os.environ.get('PYGEM_NOTEBOOKS_DIRPATH') or os.path.join(os.path.expanduser('~'), 'PyGEM-notebooks')
 # TODO #54: Test all notebooks
 # notebooks = [f for f in os.listdir(nb_dir) if f.endswith('.ipynb')]
 
@@ -22,7 +20,7 @@ nb_dir = os.environ.get('PYGEM_NOTEBOOKS_DIRPATH') or os.path.join(
 notebooks = [
     'simple_test.ipynb',
     'advanced_test.ipynb',
-    'advanced_test_spinup.ipynb',
+    'advanced_test_spinup_elev_change_calib.ipynb',
     'advanced_test_tw.ipynb',
 ]
 

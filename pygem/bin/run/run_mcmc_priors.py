@@ -95,16 +95,12 @@ def getparser():
         '-priors_reg_outpath',
         action='store',
         type=str,
-        default=pygem_prms['root']
-        + '/Output/calibration/'
-        + pygem_prms['calib']['priors_reg_fn'],
+        default=pygem_prms['root'] + '/Output/calibration/' + pygem_prms['calib']['priors_reg_fn'],
         help='output path',
     )
     # flags
     parser.add_argument('-v', '--debug', action='store_true', help='Flag for debugging')
-    parser.add_argument(
-        '-p', '--plot', action='store_true', help='Flag for plotting regional priors'
-    )
+    parser.add_argument('-p', '--plot', action='store_true', help='Flag for plotting regional priors')
     return parser
 
 
@@ -113,9 +109,7 @@ def export_priors(priors_df_single, reg, regO2, priors_reg_outpath=''):
     if os.path.exists(priors_reg_outpath):
         priors_df = pd.read_csv(priors_reg_outpath)
         # Add or overwrite existing priors
-        priors_idx = np.where(
-            (priors_df.O1Region == reg) & (priors_df.O2Region == regO2)
-        )[0]
+        priors_idx = np.where((priors_df.O1Region == reg) & (priors_df.O2Region == regO2))[0]
         if len(priors_idx) > 0:
             priors_df.loc[priors_idx, :] = priors_df_single.values
         else:
@@ -132,18 +126,12 @@ def export_priors(priors_df_single, reg, regO2, priors_reg_outpath=''):
 
 def plot_hist(main_glac_rgi_subset, fig_fp, reg, regO2=''):
     # Histograms and record model parameter statistics
-    fig, ax = plt.subplots(
-        1, 2, figsize=(6, 4), gridspec_kw={'wspace': 0.3, 'hspace': 0.3}
-    )
+    fig, ax = plt.subplots(1, 2, figsize=(6, 4), gridspec_kw={'wspace': 0.3, 'hspace': 0.3})
     labelsize = 1
     fig.text(
         0.5,
         0.9,
-        'Region '
-        + str(reg)
-        + ' (subregion: '
-        + str(regO2)
-        + ')'.replace(' (subregion: )', '(all subregions)'),
+        'Region ' + str(reg) + ' (subregion: ' + str(regO2) + ')'.replace(' (subregion: )', '(all subregions)'),
         ha='center',
         size=14,
     )
@@ -166,9 +154,7 @@ def plot_reg_priors(main_glac_rgi, priors_df, reg, rgi_regionsO2, fig_fp):
     nrows = int(np.ceil(len(rgi_regionsO2) / ncols))
     priors_df_regO1 = priors_df.loc[priors_df['O1Region'] == reg]
 
-    fig, ax = plt.subplots(
-        nrows, ncols, squeeze=False, gridspec_kw={'wspace': 0.5, 'hspace': 0.5}
-    )
+    fig, ax = plt.subplots(nrows, ncols, squeeze=False, gridspec_kw={'wspace': 0.5, 'hspace': 0.5})
     nrow = 0
     ncol = 0
     for nreg, regO2 in enumerate(rgi_regionsO2):
@@ -256,16 +242,12 @@ def plot_reg_priors(main_glac_rgi, priors_df, reg, rgi_regionsO2, fig_fp):
     )
 
     # ===== REGIONAL PRIOR: TEMPERATURE BIAS ======
-    fig, ax = plt.subplots(
-        nrows, ncols, squeeze=False, gridspec_kw={'wspace': 0.3, 'hspace': 0.3}
-    )
+    fig, ax = plt.subplots(nrows, ncols, squeeze=False, gridspec_kw={'wspace': 0.3, 'hspace': 0.3})
     nrow = 0
     ncol = 0
     for nreg, regO2 in enumerate(rgi_regionsO2):
         priors_df_regO2 = priors_df_regO1.loc[priors_df['O2Region'] == regO2]
-        tbias_values = main_glac_rgi.loc[
-            main_glac_rgi['O2Region'] == regO2, 'tbias'
-        ].values
+        tbias_values = main_glac_rgi.loc[main_glac_rgi['O2Region'] == regO2, 'tbias'].values
         nglaciers = tbias_values.shape[0]
 
         # Plot histogram
@@ -285,13 +267,7 @@ def plot_reg_priors(main_glac_rgi, priors_df, reg, rgi_regionsO2, fig_fp):
         ax[nrow, ncol].plot(bins, rv.pdf(bins), color='k')
         # add alpha and beta as text
         normtext = (
-            r'$\mu$='
-            + str(np.round(mu, 2))
-            + '\n'
-            + r'$\sigma$='
-            + str(np.round(sigma, 2))
-            + '\n$n$='
-            + str(nglaciers)
+            r'$\mu$=' + str(np.round(mu, 2)) + '\n' + r'$\sigma$=' + str(np.round(sigma, 2)) + '\n$n$=' + str(nglaciers)
         )
         ax[nrow, ncol].text(
             0.98,
@@ -348,17 +324,11 @@ def plot_reg_priors(main_glac_rgi, priors_df, reg, rgi_regionsO2, fig_fp):
     )
 
 
-def run(
-    reg, option_calibration='emulator', priors_reg_outpath='', debug=False, plot=False
-):
+def run(reg, option_calibration='emulator', priors_reg_outpath='', debug=False, plot=False):
     # Calibration filepath
     modelprms_fp = pygem_prms['root'] + '/Output/calibration/' + str(reg).zfill(2) + '/'
     # Load glaciers
-    glac_list = [
-        x.split('-')[0]
-        for x in os.listdir(modelprms_fp)
-        if x.endswith('-modelprms_dict.json')
-    ]
+    glac_list = [x.split('-')[0] for x in os.listdir(modelprms_fp) if x.endswith('-modelprms_dict.json')]
     glac_list = sorted(glac_list)
 
     main_glac_rgi = modelsetup.selectglaciersrgitable(glac_no=glac_list)
@@ -391,9 +361,7 @@ def run(
         main_glac_rgi.loc[nglac, 'mb_obs_mwea'] = modelprms['mb_obs_mwea'][0]
 
     # get regional difference between calibrated mb_mwea and observed
-    main_glac_rgi['mb_dif_obs_cal'] = (
-        main_glac_rgi['mb_obs_mwea'] - main_glac_rgi['mb_mwea']
-    )
+    main_glac_rgi['mb_dif_obs_cal'] = main_glac_rgi['mb_obs_mwea'] - main_glac_rgi['mb_mwea']
 
     # define figure output path
     if plot:
@@ -404,9 +372,7 @@ def run(
     if reg not in [19]:
         rgi_regionsO2 = np.unique(main_glac_rgi.O2Region.values)
         for regO2 in rgi_regionsO2:
-            main_glac_rgi_subset = main_glac_rgi.loc[
-                main_glac_rgi['O2Region'] == regO2, :
-            ]
+            main_glac_rgi_subset = main_glac_rgi.loc[main_glac_rgi['O2Region'] == regO2, :]
             if plot:
                 plot_hist(main_glac_rgi_subset, fig_fp, reg, regO2)
 
@@ -456,9 +422,7 @@ def run(
                 )
 
             # export results
-            priors_df_single = pd.DataFrame(
-                np.zeros((1, len(priors_cn))), columns=priors_cn
-            )
+            priors_df_single = pd.DataFrame(np.zeros((1, len(priors_cn))), columns=priors_cn)
             priors_df_single.loc[0, :] = [
                 reg,
                 regO2,
@@ -531,9 +495,7 @@ def run(
 
         for regO2 in rgi_regionsO2:
             # export results
-            priors_df_single = pd.DataFrame(
-                np.zeros((1, len(priors_cn))), columns=priors_cn
-            )
+            priors_df_single = pd.DataFrame(np.zeros((1, len(priors_cn))), columns=priors_cn)
             priors_df_single.loc[0, :] = [
                 reg,
                 regO2,
