@@ -18,7 +18,7 @@ __all__ = ['ConfigManager']
 class ConfigManager:
     """Manages PyGEMs configuration file, ensuring it exists, reading, updating, and validating its contents."""
 
-    def __init__(self, config_filename='config.yaml', base_dir=None, overwrite=False):
+    def __init__(self, config_filename='config.yaml', base_dir=None, overwrite=False, check_paths=True):
         """
         Initialize the ConfigManager class.
 
@@ -26,12 +26,14 @@ class ConfigManager:
         config_filename (str, optional): Name of the configuration file. Defaults to 'config.yaml'.
         base_dir (str, optional): Directory where the configuration file is stored. Defaults to '~/PyGEM'.
         overwrite (bool, optional): Whether to overwrite an existing configuration file. Defaults to False.
+        check_paths (bool, optional): Whether to check for relative paths existing. Defaults to True.
         """
         self.config_filename = config_filename
         self.base_dir = base_dir or os.path.join(os.path.expanduser('~'), 'PyGEM')
         self.config_path = os.path.join(self.base_dir, self.config_filename)
         self.source_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.yaml')
         self.overwrite = overwrite
+        self.check_paths = check_paths
         self._ensure_config()
 
     def _ensure_config(self):
@@ -131,6 +133,9 @@ class ConfigManager:
                         f"Invalid type for elements in '{key}': expected all elements to be {elem_type}, but got {sub_data}"
                     )
 
+        if not self.check_paths:
+            return
+
         # --- Flatten the dict ---
         def flatten_dict(d, parent_key=''):
             items = {}
@@ -157,6 +162,7 @@ class ConfigManager:
             # Skip patterns
             if any(fnmatch.fnmatch(key, pat) for pat in skip_patterns):
                 continue
+            print(key, value)
 
             path = os.path.join(root, value.strip(os.sep))
 
