@@ -32,9 +32,9 @@ If you use a different file structure and do not update the relative file paths 
 The model code itself is heavily commented with the hope that the code is easy to follow and develop further. After [installing PyGEM](install_pygem_target), downloading the required [input files](model_inputs_target), and setting up the [directory structure](directory_structure_target) (or modifying the *~/PyGEM/config.yaml* with your preferred directory structure) you are ready to run the code! Generally speaking, the workflow includes:
 * [Pre-process data](preprocessing_target) <em>(optional if including more data)</em>
 * [Set up configuration file](config_workflow_target)
-* [Calibrate frontal ablation parameter](workflow_cal_frontalablation_target) <em>(optional for marine-terimating glaciers)</em>
 * [Calibrate climatic mass balance parameters](workflow_cal_prms_target)
-* [Calibrate ice viscosity parameter](workflow_cal_glena_target)
+* [Calibrate frontal ablation parameter](workflow_cal_frontalablation_target) <em>(optional for marine-terimating glaciers)</em>
+* [Calibrate ice viscosity parameter](workflow_run_inversion_target)
 * [Run model simulation](workflow_sim_target)
 * [Post-process output](workflow_post_target)
 * [Analyze output](workflow_analyze_target)
@@ -92,17 +92,14 @@ Circularity issues exist in calibrating the frontal ablation parameter as the ma
 ```
 
 
-(workflow_cal_glena_target)=
+(workflow_run_inversion_target)=
 ### Calibrate ice viscosity model parameter
 The ice viscosity ("Glen A") model parameter is calibrated such that the ice volume estimated using the calibrated mass balance gradients are consistent with the reference ice volume estimates ([Farinotti et al. (2019)](https://www.nature.com/articles/s41561-019-0300-3)) for each RGI region. This is done by running the following:
 ```
-run_calibration_reg_glena
+run_inversion
 ```
 
-If successful, the script will run without error and output the following:
-* ../Output/calibration/‘glena_region.csv’ 
-
-For more details, see the [run_calibration_reg_glena.py Script Overview](run_calibration_reg_glena_overview_target).
+For more details, see the [run_inversion.py Script Overview](run_inversion_overview_target).
 
 
 (workflow_sim_target)=
@@ -130,7 +127,7 @@ For more details, see the [run_simulation.py Script Overview](run_simulation_tar
 There are currently several scripts available to post-process PyGEM simulations. To aggregate simulations by RGI region, climate scenario, and variable, run the *postproc_compile_simulations.py* script. For example to compile all Alaska's glacier mass, area, runoff, etc. for various scenarios we would run the following:
 
  ```
-compile_simulations -rgi_region 01 -scenario ssp245 ssp370 ssp585
+postproc_compile_simulations -rgi_region 01 -scenario ssp245 ssp370 ssp585
  ```
 
 (workflow_analyze_target)=

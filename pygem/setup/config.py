@@ -330,7 +330,6 @@ class ConfigManager:
         'calib.data.meltextent_1d.meltextent_1d_relpath': (str, type(None)),
         'calib.data.snowline_1d': dict,
         'calib.data.snowline_1d.snowline_1d_relpath': (str, type(None)),
-        'calib.icethickness_cal_frac_byarea': float,
         'sim': dict,
         'sim.option_dynamics': (str, type(None)),
         'sim.option_bias_adjustment': int,
