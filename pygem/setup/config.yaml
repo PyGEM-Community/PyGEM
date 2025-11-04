@@ -203,7 +203,7 @@ calib:
     massbalance:
       massbalance_relpath: massbalance_data/Hugonnet2021/                                           # relative to main data path
       massbalance_fn: df_pergla_global_20yr-filled.csv                                              # this file is 'raw', filled geodetic mass balance from Hugonnet et al. (2021) - pulled by prerproc_fetch_mbdata.py
-      massbalance_fn_facorrected_fn: df_pergla_global_20yr-filled-frontalablation-corrected.csv     # frontal ablation corrected geodetic mass balance (produced by run_calibration_frontalablation.py)
+      massbalance_facorrected_fn: df_pergla_global_20yr-filled-frontalablation-corrected.csv     # frontal ablation corrected geodetic mass balance (produced by run_calibration_frontalablation.py)
       # mass balance dataset fields names and formats
       massbalance_rgiid_colname: rgiid                                                              # RGI glacier ID column name
       massbalance_mb_colname: mb_mwea                                                               # mass balance column name

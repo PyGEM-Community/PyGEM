@@ -317,7 +317,7 @@ class ConfigManager:
         'calib.data.massbalance': dict,
         'calib.data.massbalance.massbalance_relpath': str,
         'calib.data.massbalance.massbalance_fn': str,
-        'calib.data.massbalance.massbalance_fn_facorrected_fn': str,
+        'calib.data.massbalance.massbalance_facorrected_fn': str,
         'calib.data.massbalance.massbalance_rgiid_colname': str,
         'calib.data.massbalance.massbalance_mb_colname': str,
         'calib.data.massbalance.massbalance_mb_error_colname': str,

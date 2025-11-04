@@ -53,7 +53,7 @@ def mb_df_to_gdir(
     """
     # get dataset filepath
     mbdata_fp = f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["massbalance"]["massbalance_relpath"]}'
-    mbdata_fp_fa = mbdata_fp + pygem_prms['calib']['data']['massbalance']['massbalance_fn_facorrected_fn']
+    mbdata_fp_fa = mbdata_fp + pygem_prms['calib']['data']['massbalance']['massbalance_facorrected_fn']
     if facorrected and os.path.exists(mbdata_fp_fa):
         mbdata_fp = mbdata_fp_fa
     else:
