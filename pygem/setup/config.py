@@ -163,7 +163,6 @@ class ConfigManager:
             # Skip patterns
             if any(fnmatch.fnmatch(key, pat) for pat in skip_patterns):
                 continue
-            print(key, value)
 
             path = os.path.join(root, value.strip(os.sep))
 
