@@ -230,6 +230,9 @@ class mbPosterior:
                 # Invalid model output -> assign -inf likelihood
                 return torch.tensor([-float('inf')])
 
+            if k == 'glacierwide_mb_mwea' and not self.calib_glacierwide_mb_mwea:
+                continue  # skip this model output if not calibrating glacierwide mass balance
+
             # if key is `elev_change_1d` scale by density to predict binned surface elevation change
             if k == 'elev_change_1d':
                 # Create density field, separate values for ablation/accumulation zones
@@ -241,9 +244,6 @@ class mbPosterior:
                 pred *= pygem_prms['constants']['density_ice'] / rho[:, np.newaxis]
                 # update values in preds dict
                 self.preds[k] = pred
-
-            if k == 'glacierwide_mb_mwea' and not self.calib_glacierwide_mb_mwea:
-                continue  # skip this model output if not calibrating glacierwide mass balance
 
             log_likehood += log_normal_density(
                 self.obs[k][0],  # observations
