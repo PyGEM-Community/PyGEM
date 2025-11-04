@@ -150,12 +150,15 @@ log_prob_fxn_map = {
 
 # mass balance posterior class
 class mbPosterior:
-    def __init__(self, obs, priors, mb_func, mb_args=None, potential_fxns=None, **kwargs):
+    def __init__(
+        self, obs, priors, fxn2eval, fxnargs=None, calib_glacierwide_mb_mwea=True, potential_fxns=None, **kwargs
+    ):
         # obs will be passed as a list, where each item is a tuple with the first element being the mean observation, and the second being the variance
         self.obs = obs
         self.priors = copy.deepcopy(priors)
-        self.mb_func = mb_func
-        self.mb_args = mb_args
+        self.fxn2eval = fxn2eval
+        self.fxnargs = fxnargs
+        self.calib_glacierwide_mb_mwea = calib_glacierwide_mb_mwea
         self.potential_functions = potential_fxns if potential_fxns is not None else []
         self.preds = None
         self.check_priors()
@@ -197,19 +200,15 @@ class mbPosterior:
     # update modelprms for evaluation
     def update_modelprms(self, m):
         for i, k in enumerate(['tbias', 'kp', 'ddfsnow']):
-            self.mb_args[1][k] = float(m[i])
-        self.mb_args[1]['ddfice'] = self.mb_args[1]['ddfsnow'] / pygem_prms['sim']['params']['ddfsnow_iceratio']
+            self.fxnargs[1][k] = float(m[i])
+        self.fxnargs[1]['ddfice'] = self.fxnargs[1]['ddfsnow'] / pygem_prms['sim']['params']['ddfsnow_iceratio']
 
-    # get mb_pred
+    # get model predictions
     def get_model_pred(self, m):
-        if self.mb_args:
-            self.update_modelprms(m)
-            self.preds = self.mb_func(*self.mb_args)
-        else:
-            self.preds = self.mb_func([*m])
-        if not isinstance(self.preds, tuple):
-            self.preds = [self.preds]
-        self.preds = [torch.tensor(item) for item in self.preds]  # make all preds torch.tensor() objects
+        self.update_modelprms(m)  # update modelprms with current step
+        self.preds = self.fxn2eval(*self.fxnargs)
+        # convert all values to torch tensors
+        self.preds = {k: torch.tensor(v, dtype=torch.float) for k, v in self.preds.items()}
 
     # get total log prior density
     def log_prior(self, m):
@@ -225,36 +224,33 @@ class mbPosterior:
     # get log likelihood
     def log_likelihood(self, m):
         log_likehood = 0
-        for i, pred in enumerate(self.preds):
-            # --- Check for invalid predictions early ---
+        for k, pred in self.preds.items():
+            # --- Check for invalid predictions  ---
             if torch.all(pred == float('-inf')):
                 # Invalid model output -> assign -inf likelihood
                 return torch.tensor([-float('inf')])
 
-            if i == 0:
-                # --- Base case: mass balance likelihood ---
-                log_likehood += log_normal_density(
-                    self.obs[i][0],  # observed values
-                    mu=pred,  # predicted values
-                    sigma=self.obs[i][1],  # observation uncertainty
-                )
+            if k == 'glacierwide_mb_mwea' and not self.calib_glacierwide_mb_mwea:
+                continue  # skip this model output if not calibrating glacierwide mass balance
 
-            elif i == 1 and len(m) > 3:
-                # --- Extended case: apply density scaling to get binned elevation change ---
+            # if key is `elev_change_1d` scale by density to predict binned surface elevation change
+            if k == 'elev_change_1d':
                 # Create density field, separate values for ablation/accumulation zones
                 rho = np.ones_like(self.bin_z)
                 rho[self.abl_mask] = m[3]  # rhoabl
                 rho[~self.abl_mask] = m[4]  # rhoacc
                 rho = torch.tensor(rho)
-                self.preds[i] = pred = (
-                    self.preds[i] * (pygem_prms['constants']['density_ice'] / rho[:, np.newaxis])
-                )  # scale prediction by model density values (convert from m ice to m thickness change considering modeled density)
+                # scale prediction by model density values (convert from m ice to m surface elevation change considering modeled density)
+                pred *= pygem_prms['constants']['density_ice'] / rho[:, np.newaxis]
+                # update values in preds dict
+                self.preds[k] = pred
 
-                log_likehood += log_normal_density(
-                    self.obs[i][0],  # observations
-                    mu=pred,  # scaled predictions
-                    sigma=self.obs[i][1],  # uncertainty
-                )
+            log_likehood += log_normal_density(
+                self.obs[k][0],  # observations
+                mu=pred,  # scaled predictions
+                sigma=self.obs[k][1],  # uncertainty
+            )
+
         return log_likehood
 
     # compute the log-potential, summing over all declared potential functions.
@@ -265,7 +261,7 @@ class mbPosterior:
             'kp': m[0],
             'tbias': m[1],
             'ddfsnow': m[2],
-            'massbal': self.preds[0],
+            'massbal': self.preds['glacierwide_mb_mwea'],
         }
 
         # --- Optional arguments(if len(m) > 3) ---
@@ -332,9 +328,9 @@ class Metropolis:
         self.m_primes = self.m_primes[self.n_rm :]
         self.steps = self.steps[self.n_rm :]
         self.acceptance = self.acceptance[self.n_rm :]
-        for j in self.preds_primes.keys():
-            self.preds_primes[j] = self.preds_primes[j][self.n_rm :]
-            self.preds_chain[j] = self.preds_chain[j][self.n_rm :]
+        for k in self.preds_primes.keys():
+            self.preds_primes[k] = self.preds_primes[k][self.n_rm :]
+            self.preds_chain[k] = self.preds_chain[k][self.n_rm :]
         return
 
     def sample(
@@ -394,12 +390,12 @@ class Metropolis:
                     self.m_chain.append(m_0)
                     self.m_primes.append(m_prime)
                     self.acceptance.append(self.naccept / (i + (thin_factor * self.n_rm)))
-                    for j in range(len(pred_1)):
-                        if j not in self.preds_chain.keys():
-                            self.preds_chain[j] = []
-                            self.preds_primes[j] = []
-                        self.preds_chain[j].append(pred_0[j])
-                        self.preds_primes[j].append(pred_1[j])
+                    for k, values in pred_1.items():
+                        if k not in self.preds_chain.keys():
+                            self.preds_chain[k] = []
+                            self.preds_primes[k] = []
+                        self.preds_chain[k].append(pred_0[k])
+                        self.preds_primes[k].append(pred_1[k])
 
             # trim off any initial steps that are stagnant
             if (i == (n_samples - 1)) and (trim):

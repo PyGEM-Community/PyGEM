@@ -13,6 +13,7 @@ from datetime import datetime
 
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
 from scipy.stats import binned_statistic
 
 from pygem.utils.stats import effective_n
@@ -119,10 +120,15 @@ def plot_modeloutput_section(
     ax.set_title(title, loc='left')
 
 
-def plot_mcmc_chain(m_primes, m_chain, mb_obs, ar, title, ms=1, fontsize=8, show=False, fpath=None):
+def plot_mcmc_chain(
+    m_primes, m_chain, pred_primes, pred_chain, obs, ar, title, ms=1, fontsize=8, show=False, fpath=None
+):
     # Plot the trace of the parameters
-    n = m_primes.shape[1]
-    fig, axes = plt.subplots(n + 1, 1, figsize=(6, n * 1.5), sharex=True)
+    nparams = m_primes.shape[1]
+    npreds = len(pred_chain.keys())
+    N = nparams + npreds + 1
+    fig, axes = plt.subplots(N, 1, figsize=(6, N * 1), sharex=True)
+    # convert torch objects to numpy
     m_chain = m_chain.detach().numpy()
     m_primes = m_primes.detach().numpy()
 
@@ -131,6 +137,7 @@ def plot_mcmc_chain(m_primes, m_chain, mb_obs, ar, title, ms=1, fontsize=8, show
     # instantiate list to hold legend objs
     legs = []
 
+    # axes[0] will always be tbias
     axes[0].plot(
         [],
         [],
@@ -145,6 +152,7 @@ def plot_mcmc_chain(m_primes, m_chain, mb_obs, ar, title, ms=1, fontsize=8, show
     # axes[0].add_artist(leg)
     axes[0].set_ylabel(r'$T_{bias}$', fontsize=fontsize)
 
+    # axes[1] will always be kp
     axes[1].plot(m_primes[:, 1], '.', ms=ms, c='tab:blue')
     axes[1].plot(m_chain[:, 1], '.', ms=ms, c='tab:orange')
     axes[1].plot(
@@ -156,6 +164,7 @@ def plot_mcmc_chain(m_primes, m_chain, mb_obs, ar, title, ms=1, fontsize=8, show
     legs.append(l1)
     axes[1].set_ylabel(r'$K_p$', fontsize=fontsize)
 
+    # axes[2] will always be ddfsnow
     axes[2].plot(m_primes[:, 2], '.', ms=ms, c='tab:blue')
     axes[2].plot(m_chain[:, 2], '.', ms=ms, c='tab:orange')
     axes[2].plot(
@@ -167,7 +176,8 @@ def plot_mcmc_chain(m_primes, m_chain, mb_obs, ar, title, ms=1, fontsize=8, show
     legs.append(l2)
     axes[2].set_ylabel(r'$fsnow$', fontsize=fontsize)
 
-    if n > 4:
+    if nparams > 3:
+        # axes[3] will be rho_ablation if more than 3 model params
         m_chain[:, 3] = m_chain[:, 3]
         m_primes[:, 3] = m_primes[:, 3]
         axes[3].plot(m_primes[:, 3], '.', ms=ms, c='tab:blue')
@@ -181,6 +191,7 @@ def plot_mcmc_chain(m_primes, m_chain, mb_obs, ar, title, ms=1, fontsize=8, show
         legs.append(l3)
         axes[3].set_ylabel(r'$\rho_{abl}$', fontsize=fontsize)
 
+        # axes[4] will be rho_accumulation if more than 3 model params
         m_chain[:, 4] = m_chain[:, 4]
         m_primes[:, 4] = m_primes[:, 4]
         axes[4].plot(m_primes[:, 4], '.', ms=ms, c='tab:blue')
@@ -194,31 +205,69 @@ def plot_mcmc_chain(m_primes, m_chain, mb_obs, ar, title, ms=1, fontsize=8, show
         legs.append(l4)
         axes[4].set_ylabel(r'$\rho_{acc}$', fontsize=fontsize)
 
-    axes[-2].fill_between(
-        np.arange(len(ar)),
-        mb_obs[0] - (2 * mb_obs[1]),
-        mb_obs[0] + (2 * mb_obs[1]),
-        color='grey',
-        alpha=0.3,
-    )
-    axes[-2].fill_between(
-        np.arange(len(ar)),
-        mb_obs[0] - mb_obs[1],
-        mb_obs[0] + mb_obs[1],
-        color='grey',
-        alpha=0.3,
-    )
-    axes[-2].plot(m_primes[:, -1], '.', ms=ms, c='tab:blue')
-    axes[-2].plot(m_chain[:, -1], '.', ms=ms, c='tab:orange')
-    axes[-2].plot(
-        [],
-        [],
-        label=f'median={np.median(m_chain[:, -1]):.3f}\niqr={np.subtract(*np.percentile(m_chain[:, -1], [75, 25])):.3f}',
-    )
-    ln2 = axes[-2].legend(loc='upper right', handlelength=0, borderaxespad=0, fontsize=fontsize)
-    legs.append(ln2)
-    axes[-2].set_ylabel(r'$\dot{{b}}$', fontsize=fontsize)
+    # plot predictions
+    if 'glacierwide_mb_mwea' in pred_primes.keys():
+        mb_obs = obs['glacierwide_mb_mwea']
+        axes[nparams].fill_between(
+            np.arange(len(ar)),
+            mb_obs[0] - (2 * mb_obs[1]),
+            mb_obs[0] + (2 * mb_obs[1]),
+            color='grey',
+            alpha=0.3,
+        )
+        axes[nparams].fill_between(
+            np.arange(len(ar)),
+            mb_obs[0] - mb_obs[1],
+            mb_obs[0] + mb_obs[1],
+            color='grey',
+            alpha=0.3,
+        )
 
+        mb_primes = torch.stack(pred_primes['glacierwide_mb_mwea']).numpy()
+        mb_chain = torch.stack(pred_chain['glacierwide_mb_mwea']).numpy()
+        axes[nparams].plot(mb_primes, '.', ms=ms, c='tab:blue')
+        axes[nparams].plot(mb_chain, '.', ms=ms, c='tab:orange')
+        axes[nparams].plot(
+            [],
+            [],
+            label=f'median={np.median(mb_chain):.3f}\niqr={np.subtract(*np.percentile(mb_chain, [75, 25])):.3f}',
+        )
+        ln2 = axes[nparams].legend(loc='upper right', handlelength=0, borderaxespad=0, fontsize=fontsize)
+        legs.append(ln2)
+        axes[nparams].set_ylabel(r'$\dot{{b}}$', fontsize=fontsize)
+        nparams += 1
+
+    # plot along-chain mean residual for all other prediction keys
+    for key in pred_primes.keys():
+        if key == 'glacierwide_mb_mwea':
+            continue
+
+        # stack predictions first (shape: n_steps x ... x ...) - may end up being 2d or 3d
+        pred_primes = torch.stack(pred_primes[key]).numpy()
+        pred_chain = torch.stack(pred_chain[key]).numpy()
+
+        # flatten all axes except the first (n_steps) -> 2D array (n_steps, M)
+        pred_primes_flat = pred_primes.reshape(pred_primes.shape[0], -1)
+        pred_chain_flat = pred_chain.reshape(pred_chain.shape[0], -1)
+
+        # make obs array broadcastable (flatten if needed)
+        obs_vals_flat = np.ravel(np.array(obs[key][0]))
+
+        # compute mean residual per step
+        mean_resid_primes = np.nanmean(pred_primes_flat - obs_vals_flat, axis=1)
+        mean_resid_chain = np.nanmean(pred_chain_flat - obs_vals_flat, axis=1)
+
+        axes[nparams].plot(mean_resid_primes, '.', ms=ms, c='tab:blue')
+        axes[nparams].plot(mean_resid_chain, '.', ms=ms, c='tab:orange')
+
+        if key == 'elev_change_1d':
+            axes[nparams].set_ylabel(r'$\overline{\hat{dh} - dh}$', fontsize=fontsize)
+        else:
+            axes[nparams].set_ylabel(r'$\overline{\mathrm{pred} - \mathrm{obs}}$', fontsize=fontsize)
+        legs.append(None)
+        nparams += 1
+
+    # axes[-1] will always be acceptance rate
     axes[-1].plot(ar, 'tab:orange', lw=1)
     axes[-1].plot(
         np.convolve(ar, np.ones(100) / 100, mode='valid'),
@@ -234,7 +283,8 @@ def plot_mcmc_chain(m_primes, m_chain, mb_obs, ar, title, ms=1, fontsize=8, show
         ax.xaxis.set_ticks_position('both')
         ax.yaxis.set_ticks_position('both')
         ax.tick_params(axis='both', direction='inout')
-        if i == n:
+        ax.yaxis.set_label_coords(-0.1, 0.5)
+        if i > m_primes.shape[1] - 1:
             continue
         ax.plot([], [], label=f'n_eff={neff[i]}')
         hands, ls = ax.get_legend_handles_labels()
@@ -256,9 +306,8 @@ def plot_mcmc_chain(m_primes, m_chain, mb_obs, ar, title, ms=1, fontsize=8, show
                 handlelength=0,
                 fontsize=fontsize,
             )
-
-    for i, ax in enumerate(axes):
-        ax.add_artist(legs[i])
+        if legs[i] is not None:
+            ax.add_artist(legs[i])
 
     axes[0].set_xlim([0, m_chain.shape[0]])
     axes[0].set_title(title, fontsize=fontsize)
