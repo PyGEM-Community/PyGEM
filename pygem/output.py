@@ -53,6 +53,8 @@ class single_glacier:
         DataFrame containing metadata and characteristics of the glacier from the Randolph Glacier Inventory.
     dates_table : pd.DataFrame
         DataFrame containing the time series of dates associated with the model output.
+    timestep : str
+        The time step resolution ('monthly' or 'daily')
     sim_climate_name : str
         Name of the General Circulation Model (GCM) used for climate forcing.
     sim_climate_scenario : str
@@ -79,6 +81,7 @@ class single_glacier:
 
     glacier_rgi_table: pd.DataFrame
     dates_table: pd.DataFrame
+    timestep: str
     sim_climate_name: str
     sim_climate_scenario: str
     realization: str
@@ -90,6 +93,7 @@ class single_glacier:
     sim_endyear: int
     option_calibration: str
     option_bias_adjustment: str
+    option_dynamics: str
     extra_vars: bool = False
 
     def __post_init__(self):
@@ -176,8 +180,7 @@ class single_glacier:
             self.annual_columns = np.unique(self.dates_table['year'].values)[0 : int(self.dates_table.shape[0] / 12)]
         elif pygem_prms['climate']['sim_wateryear'] == 'custom':
             self.year_type = 'custom year'
-        self.time_values = self.dates_table['date'].values.tolist()
-        self.time_values = [cftime.DatetimeNoLeap(x.year, x.month, x.day) for x in self.time_values]
+        self.time_values = [cftime.DatetimeGregorian(x.year, x.month, x.day) for x in self.dates_table['date']]
         # append additional year to self.year_values to account for mass and area at end of period
         self.year_values = self.annual_columns
         self.year_values = np.concatenate((self.year_values, np.array([self.annual_columns[-1] + 1])))
@@ -196,6 +199,8 @@ class single_glacier:
         self.mdl_params_dict['sim_climate_scenario'] = self.sim_climate_scenario
         self.mdl_params_dict['option_calibration'] = self.option_calibration
         self.mdl_params_dict['option_bias_adjustment'] = self.option_bias_adjustment
+        self.mdl_params_dict['option_dynamics'] = self.option_dynamics
+        self.mdl_params_dict['timestep'] = self.timestep
         # record manually defined modelprms if calibration option is None
         if not self.option_calibration:
             self._update_modelparams_record()
@@ -349,13 +354,13 @@ class glacierwide_stats(single_glacier):
 
     def _update_dicts(self):
         """Update coordinate and attribute dictionaries specific to glacierwide_stats outputs"""
-        self.output_coords_dict['glac_runoff_monthly'] = collections.OrderedDict(
+        self.output_coords_dict['glac_runoff'] = collections.OrderedDict(
             [('glac', self.glac_values), ('time', self.time_values)]
         )
-        self.output_attrs_dict['glac_runoff_monthly'] = {
+        self.output_attrs_dict['glac_runoff'] = {
             'long_name': 'glacier-wide runoff',
             'units': 'm3',
-            'temporal_resolution': 'monthly',
+            'temporal_resolution': self.timestep,
             'comment': 'runoff from the glacier terminus, which moves over time',
         }
         self.output_coords_dict['glac_area_annual'] = collections.OrderedDict(
@@ -394,25 +399,25 @@ class glacierwide_stats(single_glacier):
             'temporal_resolution': 'annual',
             'comment': 'equilibrium line altitude is the elevation where the climatic mass balance is zero',
         }
-        self.output_coords_dict['offglac_runoff_monthly'] = collections.OrderedDict(
+        self.output_coords_dict['offglac_runoff'] = collections.OrderedDict(
             [('glac', self.glac_values), ('time', self.time_values)]
         )
-        self.output_attrs_dict['offglac_runoff_monthly'] = {
+        self.output_attrs_dict['offglac_runoff'] = {
             'long_name': 'off-glacier-wide runoff',
             'units': 'm3',
-            'temporal_resolution': 'monthly',
+            'temporal_resolution': self.timestep,
             'comment': 'off-glacier runoff from area where glacier no longer exists',
         }
 
         # if nsims > 1, store median-absolute deviation metrics
         if self.nsims > 1:
-            self.output_coords_dict['glac_runoff_monthly_mad'] = collections.OrderedDict(
+            self.output_coords_dict['glac_runoff_mad'] = collections.OrderedDict(
                 [('glac', self.glac_values), ('time', self.time_values)]
             )
-            self.output_attrs_dict['glac_runoff_monthly_mad'] = {
+            self.output_attrs_dict['glac_runoff_mad'] = {
                 'long_name': 'glacier-wide runoff median absolute deviation',
                 'units': 'm3',
-                'temporal_resolution': 'monthly',
+                'temporal_resolution': self.timestep,
                 'comment': 'runoff from the glacier terminus, which moves over time',
             }
             self.output_coords_dict['glac_area_annual_mad'] = collections.OrderedDict(
@@ -451,93 +456,93 @@ class glacierwide_stats(single_glacier):
                 'temporal_resolution': 'annual',
                 'comment': 'equilibrium line altitude is the elevation where the climatic mass balance is zero',
             }
-            self.output_coords_dict['offglac_runoff_monthly_mad'] = collections.OrderedDict(
+            self.output_coords_dict['offglac_runoff_mad'] = collections.OrderedDict(
                 [('glac', self.glac_values), ('time', self.time_values)]
             )
-            self.output_attrs_dict['offglac_runoff_monthly_mad'] = {
+            self.output_attrs_dict['offglac_runoff_mad'] = {
                 'long_name': 'off-glacier-wide runoff median absolute deviation',
                 'units': 'm3',
-                'temporal_resolution': 'monthly',
+                'temporal_resolution': self.timestep,
                 'comment': 'off-glacier runoff from area where glacier no longer exists',
             }
 
         # optionally store extra variables
         if self.extra_vars:
-            self.output_coords_dict['glac_prec_monthly'] = collections.OrderedDict(
+            self.output_coords_dict['glac_prec'] = collections.OrderedDict(
                 [('glac', self.glac_values), ('time', self.time_values)]
             )
-            self.output_attrs_dict['glac_prec_monthly'] = {
+            self.output_attrs_dict['glac_prec'] = {
                 'long_name': 'glacier-wide precipitation (liquid)',
                 'units': 'm3',
-                'temporal_resolution': 'monthly',
+                'temporal_resolution': self.timestep,
                 'comment': 'only the liquid precipitation, solid precipitation excluded',
             }
-            self.output_coords_dict['glac_temp_monthly'] = collections.OrderedDict(
+            self.output_coords_dict['glac_temp'] = collections.OrderedDict(
                 [('glac', self.glac_values), ('time', self.time_values)]
             )
-            self.output_attrs_dict['glac_temp_monthly'] = {
+            self.output_attrs_dict['glac_temp'] = {
                 'standard_name': 'air_temperature',
                 'long_name': 'glacier-wide mean air temperature',
                 'units': 'K',
-                'temporal_resolution': 'monthly',
+                'temporal_resolution': self.timestep,
                 'comment': (
                     'each elevation bin is weighted equally to compute the mean temperature, and '
                     'bins where the glacier no longer exists due to retreat have been removed'
                 ),
             }
-            self.output_coords_dict['glac_acc_monthly'] = collections.OrderedDict(
+            self.output_coords_dict['glac_acc'] = collections.OrderedDict(
                 [('glac', self.glac_values), ('time', self.time_values)]
             )
-            self.output_attrs_dict['glac_acc_monthly'] = {
+            self.output_attrs_dict['glac_acc'] = {
                 'long_name': 'glacier-wide accumulation, in water equivalent',
                 'units': 'm3',
-                'temporal_resolution': 'monthly',
+                'temporal_resolution': self.timestep,
                 'comment': 'only the solid precipitation',
             }
-            self.output_coords_dict['glac_refreeze_monthly'] = collections.OrderedDict(
+            self.output_coords_dict['glac_refreeze'] = collections.OrderedDict(
                 [('glac', self.glac_values), ('time', self.time_values)]
             )
-            self.output_attrs_dict['glac_refreeze_monthly'] = {
+            self.output_attrs_dict['glac_refreeze'] = {
                 'long_name': 'glacier-wide refreeze, in water equivalent',
                 'units': 'm3',
-                'temporal_resolution': 'monthly',
+                'temporal_resolution': self.timestep,
             }
-            self.output_coords_dict['glac_melt_monthly'] = collections.OrderedDict(
+            self.output_coords_dict['glac_melt'] = collections.OrderedDict(
                 [('glac', self.glac_values), ('time', self.time_values)]
             )
-            self.output_attrs_dict['glac_melt_monthly'] = {
+            self.output_attrs_dict['glac_melt'] = {
                 'long_name': 'glacier-wide melt, in water equivalent',
                 'units': 'm3',
-                'temporal_resolution': 'monthly',
+                'temporal_resolution': self.timestep,
             }
-            self.output_coords_dict['glac_frontalablation_monthly'] = collections.OrderedDict(
+            self.output_coords_dict['glac_frontalablation'] = collections.OrderedDict(
                 [('glac', self.glac_values), ('time', self.time_values)]
             )
-            self.output_attrs_dict['glac_frontalablation_monthly'] = {
+            self.output_attrs_dict['glac_frontalablation'] = {
                 'long_name': 'glacier-wide frontal ablation, in water equivalent',
                 'units': 'm3',
-                'temporal_resolution': 'monthly',
+                'temporal_resolution': self.timestep,
                 'comment': (
                     'mass losses from calving, subaerial frontal melting, sublimation above the '
                     'waterline and subaqueous frontal melting below the waterline; positive values indicate mass lost like melt'
                 ),
             }
-            self.output_coords_dict['glac_massbaltotal_monthly'] = collections.OrderedDict(
+            self.output_coords_dict['glac_massbaltotal'] = collections.OrderedDict(
                 [('glac', self.glac_values), ('time', self.time_values)]
             )
-            self.output_attrs_dict['glac_massbaltotal_monthly'] = {
+            self.output_attrs_dict['glac_massbaltotal'] = {
                 'long_name': 'glacier-wide total mass balance, in water equivalent',
                 'units': 'm3',
-                'temporal_resolution': 'monthly',
+                'temporal_resolution': self.timestep,
                 'comment': 'total mass balance is the sum of the climatic mass balance and frontal ablation',
             }
-            self.output_coords_dict['glac_snowline_monthly'] = collections.OrderedDict(
+            self.output_coords_dict['glac_snowline'] = collections.OrderedDict(
                 [('glac', self.glac_values), ('time', self.time_values)]
             )
-            self.output_attrs_dict['glac_snowline_monthly'] = {
+            self.output_attrs_dict['glac_snowline'] = {
                 'long_name': 'transient snowline altitude above mean sea level',
                 'units': 'm',
-                'temporal_resolution': 'monthly',
+                'temporal_resolution': self.timestep,
                 'comment': 'transient snowline is altitude separating snow from ice/firn',
             }
             self.output_coords_dict['glac_mass_change_ignored_annual'] = collections.OrderedDict(
@@ -549,119 +554,119 @@ class glacierwide_stats(single_glacier):
                 'temporal_resolution': 'annual',
                 'comment': 'glacier mass change ignored due to flux divergence',
             }
-            self.output_coords_dict['offglac_prec_monthly'] = collections.OrderedDict(
+            self.output_coords_dict['offglac_prec'] = collections.OrderedDict(
                 [('glac', self.glac_values), ('time', self.time_values)]
             )
-            self.output_attrs_dict['offglac_prec_monthly'] = {
+            self.output_attrs_dict['offglac_prec'] = {
                 'long_name': 'off-glacier-wide precipitation (liquid)',
                 'units': 'm3',
-                'temporal_resolution': 'monthly',
+                'temporal_resolution': self.timestep,
                 'comment': 'only the liquid precipitation, solid precipitation excluded',
             }
-            self.output_coords_dict['offglac_refreeze_monthly'] = collections.OrderedDict(
+            self.output_coords_dict['offglac_refreeze'] = collections.OrderedDict(
                 [('glac', self.glac_values), ('time', self.time_values)]
             )
-            self.output_attrs_dict['offglac_refreeze_monthly'] = {
+            self.output_attrs_dict['offglac_refreeze'] = {
                 'long_name': 'off-glacier-wide refreeze, in water equivalent',
                 'units': 'm3',
-                'temporal_resolution': 'monthly',
+                'temporal_resolution': self.timestep,
             }
-            self.output_coords_dict['offglac_melt_monthly'] = collections.OrderedDict(
+            self.output_coords_dict['offglac_melt'] = collections.OrderedDict(
                 [('glac', self.glac_values), ('time', self.time_values)]
             )
-            self.output_attrs_dict['offglac_melt_monthly'] = {
+            self.output_attrs_dict['offglac_melt'] = {
                 'long_name': 'off-glacier-wide melt, in water equivalent',
                 'units': 'm3',
-                'temporal_resolution': 'monthly',
+                'temporal_resolution': self.timestep,
                 'comment': 'only melt of snow and refreeze since off-glacier',
             }
-            self.output_coords_dict['offglac_snowpack_monthly'] = collections.OrderedDict(
+            self.output_coords_dict['offglac_snowpack'] = collections.OrderedDict(
                 [('glac', self.glac_values), ('time', self.time_values)]
             )
-            self.output_attrs_dict['offglac_snowpack_monthly'] = {
+            self.output_attrs_dict['offglac_snowpack'] = {
                 'long_name': 'off-glacier-wide snowpack, in water equivalent',
                 'units': 'm3',
-                'temporal_resolution': 'monthly',
+                'temporal_resolution': self.timestep,
                 'comment': 'snow remaining accounting for new accumulation, melt, and refreeze',
             }
 
             # if nsims > 1, store median-absolute deviation metrics
             if self.nsims > 1:
-                self.output_coords_dict['glac_prec_monthly_mad'] = collections.OrderedDict(
+                self.output_coords_dict['glac_prec_mad'] = collections.OrderedDict(
                     [('glac', self.glac_values), ('time', self.time_values)]
                 )
-                self.output_attrs_dict['glac_prec_monthly_mad'] = {
+                self.output_attrs_dict['glac_prec_mad'] = {
                     'long_name': 'glacier-wide precipitation (liquid) median absolute deviation',
                     'units': 'm3',
-                    'temporal_resolution': 'monthly',
+                    'temporal_resolution': self.timestep,
                     'comment': 'only the liquid precipitation, solid precipitation excluded',
                 }
-                self.output_coords_dict['glac_temp_monthly_mad'] = collections.OrderedDict(
+                self.output_coords_dict['glac_temp_mad'] = collections.OrderedDict(
                     [('glac', self.glac_values), ('time', self.time_values)]
                 )
-                self.output_attrs_dict['glac_temp_monthly_mad'] = {
+                self.output_attrs_dict['glac_temp_mad'] = {
                     'standard_name': 'air_temperature',
                     'long_name': 'glacier-wide mean air temperature median absolute deviation',
                     'units': 'K',
-                    'temporal_resolution': 'monthly',
+                    'temporal_resolution': self.timestep,
                     'comment': (
                         'each elevation bin is weighted equally to compute the mean temperature, and '
                         'bins where the glacier no longer exists due to retreat have been removed'
                     ),
                 }
-                self.output_coords_dict['glac_acc_monthly_mad'] = collections.OrderedDict(
+                self.output_coords_dict['glac_acc_mad'] = collections.OrderedDict(
                     [('glac', self.glac_values), ('time', self.time_values)]
                 )
-                self.output_attrs_dict['glac_acc_monthly_mad'] = {
+                self.output_attrs_dict['glac_acc_mad'] = {
                     'long_name': 'glacier-wide accumulation, in water equivalent, median absolute deviation',
                     'units': 'm3',
-                    'temporal_resolution': 'monthly',
+                    'temporal_resolution': self.timestep,
                     'comment': 'only the solid precipitation',
                 }
-                self.output_coords_dict['glac_refreeze_monthly_mad'] = collections.OrderedDict(
+                self.output_coords_dict['glac_refreeze_mad'] = collections.OrderedDict(
                     [('glac', self.glac_values), ('time', self.time_values)]
                 )
-                self.output_attrs_dict['glac_refreeze_monthly_mad'] = {
+                self.output_attrs_dict['glac_refreeze_mad'] = {
                     'long_name': 'glacier-wide refreeze, in water equivalent, median absolute deviation',
                     'units': 'm3',
-                    'temporal_resolution': 'monthly',
+                    'temporal_resolution': self.timestep,
                 }
-                self.output_coords_dict['glac_melt_monthly_mad'] = collections.OrderedDict(
+                self.output_coords_dict['glac_melt_mad'] = collections.OrderedDict(
                     [('glac', self.glac_values), ('time', self.time_values)]
                 )
-                self.output_attrs_dict['glac_melt_monthly_mad'] = {
+                self.output_attrs_dict['glac_melt_mad'] = {
                     'long_name': 'glacier-wide melt, in water equivalent, median absolute deviation',
                     'units': 'm3',
-                    'temporal_resolution': 'monthly',
+                    'temporal_resolution': self.timestep,
                 }
-                self.output_coords_dict['glac_frontalablation_monthly_mad'] = collections.OrderedDict(
+                self.output_coords_dict['glac_frontalablation_mad'] = collections.OrderedDict(
                     [('glac', self.glac_values), ('time', self.time_values)]
                 )
-                self.output_attrs_dict['glac_frontalablation_monthly_mad'] = {
+                self.output_attrs_dict['glac_frontalablation_mad'] = {
                     'long_name': 'glacier-wide frontal ablation, in water equivalent, median absolute deviation',
                     'units': 'm3',
-                    'temporal_resolution': 'monthly',
+                    'temporal_resolution': self.timestep,
                     'comment': (
                         'mass losses from calving, subaerial frontal melting, sublimation above the '
                         'waterline and subaqueous frontal melting below the waterline'
                     ),
                 }
-                self.output_coords_dict['glac_massbaltotal_monthly_mad'] = collections.OrderedDict(
+                self.output_coords_dict['glac_massbaltotal_mad'] = collections.OrderedDict(
                     [('glac', self.glac_values), ('time', self.time_values)]
                 )
-                self.output_attrs_dict['glac_massbaltotal_monthly_mad'] = {
+                self.output_attrs_dict['glac_massbaltotal_mad'] = {
                     'long_name': 'glacier-wide total mass balance, in water equivalent, median absolute deviation',
                     'units': 'm3',
-                    'temporal_resolution': 'monthly',
+                    'temporal_resolution': self.timestep,
                     'comment': 'total mass balance is the sum of the climatic mass balance and frontal ablation',
                 }
-                self.output_coords_dict['glac_snowline_monthly_mad'] = collections.OrderedDict(
+                self.output_coords_dict['glac_snowline_mad'] = collections.OrderedDict(
                     [('glac', self.glac_values), ('time', self.time_values)]
                 )
-                self.output_attrs_dict['glac_snowline_monthly_mad'] = {
+                self.output_attrs_dict['glac_snowline_mad'] = {
                     'long_name': 'transient snowline above mean sea level median absolute deviation',
                     'units': 'm',
-                    'temporal_resolution': 'monthly',
+                    'temporal_resolution': self.timestep,
                     'comment': 'transient snowline is altitude separating snow from ice/firn',
                 }
                 self.output_coords_dict['glac_mass_change_ignored_annual_mad'] = collections.OrderedDict(
@@ -673,39 +678,39 @@ class glacierwide_stats(single_glacier):
                     'temporal_resolution': 'annual',
                     'comment': 'glacier mass change ignored due to flux divergence',
                 }
-                self.output_coords_dict['offglac_prec_monthly_mad'] = collections.OrderedDict(
+                self.output_coords_dict['offglac_prec_mad'] = collections.OrderedDict(
                     [('glac', self.glac_values), ('time', self.time_values)]
                 )
-                self.output_attrs_dict['offglac_prec_monthly_mad'] = {
+                self.output_attrs_dict['offglac_prec_mad'] = {
                     'long_name': 'off-glacier-wide precipitation (liquid) median absolute deviation',
                     'units': 'm3',
-                    'temporal_resolution': 'monthly',
+                    'temporal_resolution': self.timestep,
                     'comment': 'only the liquid precipitation, solid precipitation excluded',
                 }
-                self.output_coords_dict['offglac_refreeze_monthly_mad'] = collections.OrderedDict(
+                self.output_coords_dict['offglac_refreeze_mad'] = collections.OrderedDict(
                     [('glac', self.glac_values), ('time', self.time_values)]
                 )
-                self.output_attrs_dict['offglac_refreeze_monthly_mad'] = {
+                self.output_attrs_dict['offglac_refreeze_mad'] = {
                     'long_name': 'off-glacier-wide refreeze, in water equivalent, median absolute deviation',
                     'units': 'm3',
-                    'temporal_resolution': 'monthly',
+                    'temporal_resolution': self.timestep,
                 }
-                self.output_coords_dict['offglac_melt_monthly_mad'] = collections.OrderedDict(
+                self.output_coords_dict['offglac_melt_mad'] = collections.OrderedDict(
                     [('glac', self.glac_values), ('time', self.time_values)]
                 )
-                self.output_attrs_dict['offglac_melt_monthly_mad'] = {
+                self.output_attrs_dict['offglac_melt_mad'] = {
                     'long_name': 'off-glacier-wide melt, in water equivalent, median absolute deviation',
                     'units': 'm3',
-                    'temporal_resolution': 'monthly',
+                    'temporal_resolution': self.timestep,
                     'comment': 'only melt of snow and refreeze since off-glacier',
                 }
-                self.output_coords_dict['offglac_snowpack_monthly_mad'] = collections.OrderedDict(
+                self.output_coords_dict['offglac_snowpack_mad'] = collections.OrderedDict(
                     [('glac', self.glac_values), ('time', self.time_values)]
                 )
-                self.output_attrs_dict['offglac_snowpack_monthly_mad'] = {
+                self.output_attrs_dict['offglac_snowpack_mad'] = {
                     'long_name': 'off-glacier-wide snowpack, in water equivalent, median absolute deviation',
                     'units': 'm3',
-                    'temporal_resolution': 'monthly',
+                    'temporal_resolution': self.timestep,
                     'comment': 'snow remaining accounting for new accumulation, melt, and refreeze',
                 }
 
@@ -824,60 +829,60 @@ class binned_stats(single_glacier):
                 'comment': 'climatic mass balance is computed before dynamics so can theoretically exceed ice thickness',
             },
         )
-        self.output_coords_dict['bin_massbalclim_monthly'] = collections.OrderedDict(
+        self.output_coords_dict['bin_massbalclim'] = collections.OrderedDict(
             [
                 ('glac', self.glac_values),
                 ('bin', self.bin_values),
                 ('time', self.time_values),
             ]
         )
-        self.output_attrs_dict['bin_massbalclim_monthly'] = {
-            'long_name': 'binned monthly climatic mass balance, in water equivalent',
+        self.output_attrs_dict['bin_massbalclim'] = {
+            'long_name': 'binned climatic mass balance, in water equivalent',
             'units': 'm',
-            'temporal_resolution': 'monthly',
-            'comment': 'monthly climatic mass balance from the PyGEM mass balance module',
+            'temporal_resolution': self.timestep,
+            'comment': 'climatic mass balance from the PyGEM mass balance module',
         }
 
         # optionally store binned mass balance components
         if self.binned_components:
-            self.output_coords_dict['bin_accumulation_monthly'] = collections.OrderedDict(
+            self.output_coords_dict['bin_accumulation'] = collections.OrderedDict(
                 [
                     ('glac', self.glac_values),
                     ('bin', self.bin_values),
                     ('time', self.time_values),
                 ]
             )
-            self.output_attrs_dict['bin_accumulation_monthly'] = {
-                'long_name': 'binned monthly accumulation, in water equivalent',
+            self.output_attrs_dict['bin_accumulation'] = {
+                'long_name': 'binned accumulation, in water equivalent',
                 'units': 'm',
-                'temporal_resolution': 'monthly',
-                'comment': 'monthly accumulation from the PyGEM mass balance module',
+                'temporal_resolution': self.timestep,
+                'comment': 'accumulation from the PyGEM mass balance module',
             }
-            self.output_coords_dict['bin_melt_monthly'] = collections.OrderedDict(
+            self.output_coords_dict['bin_melt'] = collections.OrderedDict(
                 [
                     ('glac', self.glac_values),
                     ('bin', self.bin_values),
                     ('time', self.time_values),
                 ]
             )
-            self.output_attrs_dict['bin_melt_monthly'] = {
-                'long_name': 'binned monthly melt, in water equivalent',
+            self.output_attrs_dict['bin_melt'] = {
+                'long_name': 'binned melt, in water equivalent',
                 'units': 'm',
-                'temporal_resolution': 'monthly',
-                'comment': 'monthly melt from the PyGEM mass balance module',
+                'temporal_resolution': self.timestep,
+                'comment': 'melt from the PyGEM mass balance module',
             }
-            self.output_coords_dict['bin_refreeze_monthly'] = collections.OrderedDict(
+            self.output_coords_dict['bin_refreeze'] = collections.OrderedDict(
                 [
                     ('glac', self.glac_values),
                     ('bin', self.bin_values),
                     ('time', self.time_values),
                 ]
             )
-            self.output_attrs_dict['bin_refreeze_monthly'] = {
-                'long_name': 'binned monthly refreeze, in water equivalent',
+            self.output_attrs_dict['bin_refreeze'] = {
+                'long_name': 'binned refreeze, in water equivalent',
                 'units': 'm',
-                'temporal_resolution': 'monthly',
-                'comment': 'monthly refreeze from the PyGEM mass balance module',
+                'temporal_resolution': self.timestep,
+                'comment': 'refreeze from the PyGEM mass balance module',
             }
 
         # if nsims > 1, store median-absolute deviation metrics

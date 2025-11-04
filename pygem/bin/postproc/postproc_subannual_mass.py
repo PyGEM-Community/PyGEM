@@ -5,18 +5,22 @@ copyright © 2024 Brandon Tober <btober@cmu.edu> David Rounce <drounce@cmu.edu>
 
 Distributed under the MIT license
 
-derive monthly glacierwide mass for PyGEM simulation using annual glacier mass and monthly total mass balance
+derive sub-annual glacierwide mass for PyGEM simulation using annual glacier mass and sub-annual total mass balance
 """
 
 # Built-in libraries
 import argparse
 import collections
 import glob
+import json
 import multiprocessing
 import os
 import time
+from functools import partial
 
+import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 # External libraries
 import xarray as xr
@@ -36,7 +40,7 @@ def getparser():
     Use argparse to add arguments from the command line
     """
     parser = argparse.ArgumentParser(
-        description='process monthly glacierwide mass from annual mass and total monthly mass balance'
+        description='process sub-annual glacierwide mass from annual mass and total sub-annual mass balance'
     )
     # add arguments
     parser.add_argument(
@@ -51,7 +55,7 @@ def getparser():
         action='store',
         type=str,
         default=None,
-        help='directory with glacierwide simulation outputs for which to process monthly mass',
+        help='directory with glacierwide simulation outputs for which to process sub-annual mass',
     )
     parser.add_argument(
         '-ncores',
@@ -60,14 +64,14 @@ def getparser():
         default=1,
         help='number of simultaneous processes (cores) to use',
     )
-
+    parser.add_argument('-v', '--debug', action='store_true', help='Flag for debugging')
     return parser
 
 
-def get_monthly_mass(glac_mass_annual, glac_massbaltotal_monthly):
+def get_subannual_mass(df_annual, df_sub, debug=False):
     """
-    funciton to calculate the monthly glacier mass
-    from annual glacier mass and monthly total mass balance
+    funciton to calculate the sub-annual glacier mass
+    from annual glacier mass and sub-annual total mass balance
 
     Parameters
     ----------
@@ -75,35 +79,65 @@ def get_monthly_mass(glac_mass_annual, glac_massbaltotal_monthly):
         ndarray containing the annual glacier mass for each year computed by PyGEM
         shape: [#glac, #years]
         unit: kg
-    glac_massbaltotal_monthly : float
-        ndarray containing the monthly total mass balance computed by PyGEM
-        shape: [#glac, #months]
+    glac_massbaltotal : float
+        ndarray containing the total mass balance computed by PyGEM
+        shape: [#glac, #steps]
         unit: kg
 
     Returns
     -------
-    glac_mass_monthly: float
-        ndarray containing the monthly glacier mass
-        shape : [#glac, #months]
+    glac_mass: float
+        ndarray containing the running glacier mass
+        shape : [#glac, #steps]
         unit: kg
 
     """
-    # get running total monthly mass balance - reshape into subarrays of all values for a given year, then take cumulative sum
-    oshape = glac_massbaltotal_monthly.shape
-    running_glac_massbaltotal_monthly = (
-        np.reshape(glac_massbaltotal_monthly, (-1, 12), order='C').cumsum(axis=-1).reshape(oshape)
-    )
 
-    # tile annual mass to then superimpose atop running glacier mass balance (trim off final year from annual mass)
-    glac_mass_monthly = np.repeat(glac_mass_annual[:, :-1], 12, axis=-1)
+    # ensure datetime and sorted
+    df_annual['time'] = pd.to_datetime(df_annual['time'])
+    df_sub['time'] = pd.to_datetime(df_sub['time'])
+    df_annual = df_annual.sort_values('time').reset_index(drop=True)
+    df_sub = df_sub.sort_values('time').reset_index(drop=True)
 
-    # add annual mass values to running glacier mass balance
-    glac_mass_monthly += running_glac_massbaltotal_monthly
+    # year columns
+    df_annual['year'] = df_annual['time'].dt.year
+    df_sub['year'] = df_sub['time'].dt.year
 
-    return glac_mass_monthly
+    # map annual starting mass to sub rows
+    annual_by_year = df_annual.set_index('year')['mass']
+    df_sub['annual_mass'] = df_sub['year'].map(annual_by_year)
+
+    # shift massbaltotal within each year so the Jan value doesn't affect Jan mass itself
+    # i.e., massbaltotal at Jan-01 contributes to Feb-01 mass
+    df_sub['mb_shifted'] = df_sub.groupby('year')['massbaltotal'].shift(1).fillna(0.0)
+
+    # cumulative sum of shifted values within each year
+    df_sub['cum_mb_since_year_start'] = df_sub.groupby('year')['mb_shifted'].cumsum()
+
+    # compute sub-annual mass
+    df_sub['mass'] = df_sub['annual_mass'] + df_sub['cum_mb_since_year_start']
+
+    if debug:
+        # --- Quick plot of Jan start points (sub vs annual) ---
+        # Plot all sub-annual masses as a line
+        plt.figure(figsize=(12, 5))
+        plt.plot(df_sub['time'], df_sub['mass'], label='Sub-annual mass', color='blue')
+
+        # Overlay annual masses as points/line
+        plt.plot(df_annual['time'], df_annual['mass'], 'o--', label='Annual mass', color='orange', markersize=6)
+
+        # Labels and legend
+        plt.xlabel('Time')
+        plt.ylabel('Glacier Mass')
+        plt.title('Sub-annual Glacier Mass vs Annual Mass')
+        plt.legend()
+        plt.tight_layout()
+        plt.show()
+
+    return df_sub['mass'].values
 
 
-def update_xrdataset(input_ds, glac_mass_monthly):
+def update_xrdataset(input_ds, glac_mass, timestep):
     """
     update xarray dataset to add new fields
 
@@ -126,15 +160,15 @@ def update_xrdataset(input_ds, glac_mass_monthly):
     time_values = input_ds.time.values
 
     output_coords_dict = collections.OrderedDict()
-    output_coords_dict['glac_mass_monthly'] = collections.OrderedDict([('glac', glac_values), ('time', time_values)])
+    output_coords_dict['glac_mass'] = collections.OrderedDict([('glac', glac_values), ('time', time_values)])
 
     # Attributes dictionary
     output_attrs_dict = {}
-    output_attrs_dict['glac_mass_monthly'] = {
+    output_attrs_dict['glac_mass'] = {
         'long_name': 'glacier mass',
         'units': 'kg',
-        'temporal_resolution': 'monthly',
-        'comment': 'monthly glacier mass',
+        'temporal_resolution': timestep,
+        'comment': 'glacier mass',
     }
 
     # Add variables to empty dataset and merge together
@@ -160,15 +194,14 @@ def update_xrdataset(input_ds, glac_mass_monthly):
             pass
         # Encoding (specify _FillValue, offsets, etc.)
         encoding[vn] = {'_FillValue': None, 'zlib': True, 'complevel': 9}
-
-    output_ds_all['glac_mass_monthly'].values = glac_mass_monthly
+    output_ds_all['glac_mass'].values = glac_mass[np.newaxis, :]
 
     return output_ds_all, encoding
 
 
-def run(simpath):
+def run(simpath, debug=False):
     """
-    create monthly mass data product
+    create sub-annual mass data product
     Parameters
     ----------
     simpath : str
@@ -178,16 +211,27 @@ def run(simpath):
         try:
             # open dataset
             statsds = xr.open_dataset(simpath)
-
-            # calculate monthly mass - pygem glac_massbaltotal_monthly is in units of m3, so convert to mass using density of ice
-            glac_mass_monthly = get_monthly_mass(
-                statsds.glac_mass_annual.values,
-                statsds.glac_massbaltotal_monthly.values * pygem_prms['constants']['density_ice'],
+            timestep = json.loads(statsds.attrs['model_parameters'])['timestep']
+            yvals = statsds.year.values
+            # convert to pandas dataframe with annual mass
+            annual_df = pd.DataFrame(
+                {'time': pd.to_datetime([f'{y}-01-01' for y in yvals]), 'mass': statsds.glac_mass_annual[0].values}
             )
+            tvals = statsds.time.values
+            # convert to pandas dataframe with sub-annual mass balance
+            steps_df = pd.DataFrame(
+                {
+                    'time': pd.to_datetime([t.strftime('%Y-%m-%d') for t in tvals]),
+                    'massbaltotal': statsds.glac_massbaltotal[0].values * pygem_prms['constants']['density_ice'],
+                }
+            )
+
+            # calculate sub-annual mass - pygem glac_massbaltotal is in units of m3, so convert to mass using density of ice
+            glac_mass = get_subannual_mass(annual_df, steps_df, debug=debug)
             statsds.close()
 
-            # update dataset to add monthly mass change
-            output_ds_stats, encoding = update_xrdataset(statsds, glac_mass_monthly)
+            # update dataset to add sub-annual mass change
+            output_ds_stats, encoding = update_xrdataset(statsds, glac_mass, timestep)
 
             # close input ds before write
             statsds.close()
@@ -225,10 +269,13 @@ def main():
         else:
             ncores = 1
 
+        # set up partial function with debug argument
+        run_partial = partial(run, debug=args.debug)
+
         # Parallel processing
         print('Processing with ' + str(ncores) + ' cores...')
         with multiprocessing.Pool(ncores) as p:
-            p.map(run, simpath)
+            p.map(run_partial, simpath)
 
     print('Total processing time:', time.time() - time_start, 's')
 
