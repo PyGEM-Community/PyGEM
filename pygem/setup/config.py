@@ -111,6 +111,7 @@ class ConfigManager:
             '*meltextent*',
             '*dh_1d*',
             '*dhdt_2d*',
+            '*elev_change_1d*',
         ]
 
         # --- Type validation (existing code) ---
