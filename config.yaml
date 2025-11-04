@@ -1,0 +1,365 @@
+﻿#########################################################
+### Python Glacier Evolution Model configuration file ###
+#########################################################
+# some useful info: 
+# boolean options are either `true` or `false`
+# exponential values are formatted as `##.#e+#` (mest be decimal point before `e`, with either `+` or `-` following)
+# infintiy values are either `.inf` or `-.inf`
+# `null` is imported to Python as `None`
+# lists are indicated as:
+#                           - item1
+#                           - item2
+#                           - item3
+#########################################################
+
+# ===== ROOT PATH =====
+root: /path/to/pygem/data/                        # note, this parameter must be modfied as to point to the appropriate location. all other paths are assumed relative to this (inputs and outputs).
+
+# ===== USER INFO =====
+user:
+  name: David Rounce
+  institution: Carnegie Mellon University, Pittsburgh PA
+  email: drounce@cmu.edu
+
+# ===== GLACIER SELECTION =====
+setup:
+  rgi_region01:
+    - 1
+  rgi_region02: all
+  glac_no_skip: null                              # optionally specify rgi glacier numbers to skip
+  glac_no: null                                   # either `null` or a list of rgi glacier numbers, including the region # (e.g., 1.00570)
+    # - 1.00570
+    # - 1.22193                                   
+  min_glac_area_km2: 0                            # glacies below the specified area threshold will be excluded
+  # Types of glaciers to include (true) or exclude (false)
+  include_landterm: true                          # Switch to include land-terminating glaciers
+  include_laketerm: true                          # Switch to include lake-terminating glaciers
+  include_tidewater: true                         # Switch to include marine-terminating glaciers
+  include_frontalablation: true                   # Switch to ignore calving and treat tidewater glaciers as land-terminating 
+                                                  # note, calibration parameters from Rounc et al. (2023) already accounted for frontal ablation, 
+                                                  # and thus one cannot ignore frontal ablation if using them (must use parameters from calibration neglecting frontal ablation).
+
+# ===== OGGM SETTINGS =====
+oggm:
+  base_url: https://cluster.klima.uni-bremen.de/~oggm/gdirs/oggm_v1.6/L1-L2_files/elev_bands/
+  logging_level: WORKFLOW                         # DEBUG, INFO, WARNING, ERROR, WORKFLOW, CRITICAL (recommended WORKFLOW)
+  border: 80                                      # 10, 80, 160, 240 (recommend 240 if expecting glaciers for long runs where glaciers may grow)
+  oggm_gdir_relpath: /oggm_gdirs/
+  overwrite_gdirs: false
+  has_internet: true
+
+# ===== CLIMATE DATA AND TIME PERIODS ===== 
+climate:
+  # Reference period runs (reference period refers to the calibration period)
+  #   This will typically vary between 1980-present
+  ref_climate_name: ERA5                          # reference climate dataset
+  ref_startyear: 2000                             # first year of model run (reference dataset)
+  ref_endyear: 2019                               # last year of model run (reference dataset)
+  ref_wateryear: calendar                         # options for years: 'calendar', 'hydro', 'custom'
+  # GCM period used for simulation run
+  sim_climate_name: ERA5                          # simulation climate dataset
+  sim_climate_scenario: null                      # simulation scenario
+  sim_startyear: 2000                             # first year of model run (simulation dataset)
+  sim_endyear: 2019                               # last year of model run (simulation dataset)
+  sim_wateryear: calendar                         # options for years: 'calendar', 'hydro', 'custom'
+  constantarea_years: 0                           # number of years to not let the area or volume change
+  # ===== CLIMATE DATA FILEPATHS AND FILENAMES =====
+  paths:
+    # ERA5 (default reference climate data)
+    era5_relpath: /climate_data/ERA5/
+    era5_temp_fn: ERA5_temp_monthly.nc
+    era5_tempstd_fn: ERA5_tempstd_monthly.nc
+    era5_prec_fn: ERA5_totalprecip_monthly.nc
+    era5_elev_fn: ERA5_geopotential.nc
+    era5_pressureleveltemp_fn: ERA5_pressureleveltemp_monthly.nc
+    era5_lr_fn: ERA5_lapserates_monthly.nc
+
+    # CMIP5 (GCM data)
+    cmip5_relpath: /climate_data/cmip5/
+    cmip5_fp_var_ending: _r1i1p1_monNG/
+    cmip5_fp_fx_ending: _r0i0p0_fx/
+    # CMIP6 (GCM data)
+    cmip6_relpath: /climate_data/cmip6/
+    # CESM2 Large Ensemble (GCM data)
+    cesm2_relpath: /climate_data/cesm2/
+    cesm2_fp_var_ending: _mon/
+    cesm2_fp_fx_ending: _fx/
+    # GFDL SPEAR Large Ensemble (GCM data)
+    gfdl_relpath: /climate_data/gfdl/
+    gfdl_fp_var_ending: _mon/
+    gfdl_fp_fx_ending: _fx/
+
+# ===== CALIBRATION OPTIONS =====
+calib:
+  option_calibration: MCMC                        # calibration option ('emulator', 'MCMC' 'HH2015', 'HH2015mod', 'null')
+  priors_reg_fn: priors_region.csv                # Prior distribution (specify filename, relative to `path`/Output/calibration/, or set to null)
+
+  # HH2015 params
+  HH2015_params: 
+    tbias_init: 0
+    tbias_step: 1
+    kp_init: 1.5
+    kp_bndlow: 0.8
+    kp_bndhigh: 2
+    ddfsnow_init: 0.003
+    ddfsnow_bndlow: 0.00175
+    ddfsnow_bndhigh: 0.0045
+
+  # HH2015mod params
+  HH2015mod_params:
+    tbias_init: 0
+    tbias_step: 0.5
+    kp_init: 1
+    kp_bndlow: 0.5
+    kp_bndhigh: 3
+    ddfsnow_init: 0.0041
+    method_opt: SLSQP                             # SciPy optimization scheme ('SLSQP' or 'L-BFGS-B')
+    params2opt:                                   # parameters to optimize
+      - tbias
+      - kp                         
+    ftol_opt: 1e-3                                # tolerance for SciPy optimization scheme
+    eps_opt: 0.01                                 # epsilon (adjust variables for jacobian) for SciPy optimization scheme (1e-6 works)
+  
+  # emulator params
+  emulator_params:
+    emulator_sims: 100                            # Number of simulations to develop the emulator
+    overwrite_em_sims: true                       # Overwrite emulator simulations
+    opt_hh2015_mod: true                          # Option to also perform the HH2015_mod calibration using the emulator
+    tbias_step: 0.5                               # tbias step size
+    tbias_init: 0                                 # tbias initial value
+    kp_init: 1                                    # kp initial value
+    kp_bndlow: 0.5                                # kp lower bound
+    kp_bndhigh: 3                                 # kp upper bound
+    ddfsnow_init: 0.0041                          # ddfsnow initial value
+    option_areaconstant: true                     # Option to keep area constant or evolve
+    tbias_disttype: truncnormal                   # Temperature bias distribution ('truncnormal', 'uniform')
+    tbias_sigma: 3                                # tbias standard deviation for truncnormal distribution
+    kp_gamma_alpha: 2                             # Precipitation factor gamma distribution alpha
+    kp_gamma_beta: 1                              # Precipitation factor gamma distribution beta
+    ddfsnow_disttype: truncnormal                 # Degree-day factor of snow distribution ('truncnormal')
+    ddfsnow_mu: 0.0041                            # ddfsnow mean
+    ddfsnow_sigma: 0.0015                         # ddfsnow standard deviation
+    ddfsnow_bndlow: 0                             # ddfsnow lower bound
+    ddfsnow_bndhigh: .inf                         # ddfsnow upper bound
+    method_opt: SLSQP                             # SciPy optimization scheme ('SLSQP' or 'L-BFGS-B')
+    params2opt:                                   # parameters to optimize
+      - tbias
+      - kp      
+    ftol_opt: 1e-6                                # tolerance for SciPy optimization scheme
+    eps_opt: 0.01                                 # epsilon (adjust variables for jacobian) for SciPy optimization scheme
+  
+  # MCMC params
+  MCMC_params:
+    option_use_emulator: true                     # use emulator or full model (if true, calibration must have first been run with option_calibretion=='emulator')
+    emulator_sims: 100
+    tbias_step: 0.1
+    tbias_stepsmall: 0.05
+    option_areaconstant: true                     # Option to keep area constant or evolve
+    # Chain options
+    mcmc_step: 0.5                                # mcmc step size (in terms of standard deviation)
+    n_chains: 1                                   # number of chains (min 1, max 3)
+    mcmc_sample_no: 20000                         # number of steps (10000 was found to be sufficient in HMA)
+    mcmc_burn_pct: 2                              # percentage of steps to burn-in (0 records all steps in chain)
+    thin_interval: 10                             # thin interval if need to reduce file size (best to leave at 1 if space allows)
+    # Degree-day factor of snow distribution options
+    ddfsnow_disttype: truncnormal                 # distribution type ('truncnormal', 'uniform')
+    ddfsnow_mu: 0.0041                            # ddfsnow mean
+    ddfsnow_sigma: 0.0015                         # ddfsnow standard deviation
+    ddfsnow_bndlow: 0                             # ddfsnow lower bound
+    ddfsnow_bndhigh: .inf                         # ddfsnow upper bound
+    # Precipitation factor distribution options
+    kp_disttype: gamma                            # distribution type ('gamma' (recommended), 'lognormal', 'uniform')
+    # tbias and kp priors - won't be used if priors_reg_fn is null
+    tbias_disttype: normal                        # distribution type ('normal' (recommended), 'truncnormal', 'uniform')
+    tbias_mu: 0                                   # temperature bias mean of normal distribution
+    tbias_sigma: 1                                # temperature bias mean of standard deviation
+    tbias_bndlow: -10                             # temperature bias lower bound
+    tbias_bndhigh: 10                             # temperature bias upper bound
+    kp_gamma_alpha: 9                             # precipitation factor alpha value of gamma distribution
+    kp_gamma_beta: 4                              # precipitation factor beta value of gamme distribution
+    kp_lognorm_mu: 0                              # precipitation factor mean of log normal distribution
+    kp_lognorm_tau: 4                             # precipitation factor tau of log normal distribution
+    kp_mu: 0                                      # precipitation factor mean of normal distribution
+    kp_sigma: 1.5                                 # precipitation factor standard deviation of normal distribution
+    kp_bndlow: 0.5                                # precipitation factor lower bound
+    kp_bndhigh: 1.5                               # precipitation factor upper bound
+    # options for calibrating against 1d elevation change
+    option_calib_elev_change_1d: false            # option to calibrate against 1d elevation change data (true or false)
+    rhoabl_disttype: normal                       # ablation area density prior distribution type (currently only 'normal' option)
+    rhoabl_mu: 900                                # ablation area density prior mean (kg m^-3)
+    rhoabl_sigma: 17                              # ablation area density prior standard deviation (kg m^-3)
+    rhoaccum_disttype: normal                     # ablation area density prior distribution type (currently only 'normal' option)
+    rhoaccum_mu: 600                              # accumulation area density prior mean (kg m^-3). default value from Huss, 2013 Table 1
+    rhoaccum_sigma: 60                            # accumulation area density prior standard deviation (kg m^-3). default value from Huss, 2013 Table 1
+    # options for calibrating against 1d melt extent data
+    option_calib_meltextent_1d: false             # option to calibrate against 1d melt extent data (true or false)
+    # options for calibrating against 1d snowline data
+    option_calib_snowline_1d: false               # option to calibrate against 1d snowline data (true or false)
+
+  # calibration datasets
+  data:
+    # mass balance data
+    massbalance:
+      hugonnet2021_relpath: /DEMs/Hugonnet2021/   # relative to main data path
+      hugonnet2021_fn: df_pergla_global_20yr-filled.csv                                             # this file is 'raw', filled geodetic mass balance from Hugonnet et al. (2021) - pulled by prerproc_fetch_mbdata.py
+      hugonnet2021_facorrected_fn: df_pergla_global_20yr-filled-frontalablation-corrected.csv       # frontal ablation corrected geodetic mass balance (produced by run_calibration_frontalablation.py)
+    # frontal ablation
+    frontalablation:
+      frontalablation_relpath: /frontalablation_data/                                               # relative to main data path
+      frontalablation_cal_fn: all-frontalablation_cal_ind.csv                                       # merged frontalablation calibration data (produced by run_calibration_frontalablation.py)
+    # ice thickness
+    icethickness:
+      h_ref_relpath: /IceThickness_Farinotti/composite_thickness_RGI60-all_regions/
+    # 1d elevation change
+    elev_change_1d:
+      elev_change_1d_relpath: /elev_change_1d/                                                      # relative to main data path. per-glacier files within will be expected as <RGI60_id>_elev_change_1d_.json (e.g., 01.00570_elev_change_1d.json)
+    # 1d melt extents
+    meltextent_1d:
+      meltextent_1d_relpath: /SAR_data/merged/                                                      # relative to main data path. per-glacier files within will be expected as <RGI60_id>_melt_extent_elev.csv (e.g., 01.00570_melt_extent_elev.csv)
+    # 1d snowlines
+    snowline_1d:
+      snowline_1d_relpath: /SAR_data/merged/                                                        # relative to main data path. per-glacier files within will be expected as <RGI60_id>_snowline_elev.csv (e.g., 01.00570_snowline_elev.csv)
+
+  icethickness_cal_frac_byarea: 0.9               # Regional glacier area fraction that is used to calibrate the ice thickness
+                                                  #  e.g., 0.9 means only the largest 90% of glaciers by area will be used to calibrate
+                                                  #  glen's a for that region.
+
+# ===== SIMULATION =====
+sim:
+  option_dynamics: null                           # Glacier dynamics scheme (options: 'OGGM', 'MassRedistributionCurves', 'null')
+  option_bias_adjustment: 1                       # Bias adjustment option (options: 0, 1, 2, 3)
+                                                  # 0: no adjustment
+                                                  # 1: new prec scheme and temp building on HH2015
+                                                  # 2: HH2015 methods
+                                                  # 3: quantile delta mapping
+  nsims: 1                                        # number of simulations (note, defaults to 1 if ['calib']['option_calibration'] != 'MCMC')
+  # ===== OUTPUT OPTIONS =====
+  out:
+    sim_stats:                                    # Output statistics of simulations (options include any of the following 'mean', 'std', '2.5%', '25%', 'median', '75%', '97.5%', 'mad')
+      - median
+      - mad
+    # export options (booleans)
+    export_all_simiters: false                    # Exprort individual simulation results (false exports median and MAD from all sim_iters)
+    export_extra_vars: false                      # Option to export extra variables (temp, prec, melt, acc, etc.)
+    export_binned_data: false                     # Export binned ice thickness
+    export_binned_components: false               # Export binned mass balance components (accumulation, melt, refreeze)
+    export_binned_area_threshold: 0               # Area threshold for exporting binned ice thickness
+  # ===== OGGM DYNAMICS =====
+  oggm_dynamics:
+    cfl_number: 0.02                              # Time step threshold (seconds)
+    cfl_number_calving: 0.01                      # Time step threshold for marine-terimating glaciers (seconds)
+    use_regional_glen_a: true
+    glen_a_regional_relpath: /Output/calibration/glena_region.csv
+    # glen_a multiplier if not using regionally calibrated glens_a
+    fs: 0
+    glen_a_multiplier: 1
+  # Mass redistribution / Glacier geometry change options
+  icethickness_advancethreshold: 5                # advancing glacier ice thickness change threshold (5 m in Huss and Hock, 2015)
+  terminus_percentage: 20                         # glacier (%) considered terminus (20% in HH2015), used to size advancing new bins
+  # ===== MODEL PARAMETERS =====
+  params:
+    use_constant_lapserate: false                 # false: use spatially and temporally varying lapse rate, true: use constant value specified below
+    kp: 1                                         # precipitation factor [-] (referred to as k_p in Radic etal 2013; c_prec in HH2015)
+    tbias: 5                                      # temperature bias [deg C]
+    ddfsnow: 0.0041                               # degree-day factor of snow [m w.e. d-1 degC-1]
+    ddfsnow_iceratio: 0.7                         # Ratio degree-day factor snow snow to ice (Note, ddfice = ddfsnow / ddfsnow_iceratio)
+    precgrad: 0.0001                              # precipitation gradient on glacier [m-1]
+    lapserate: -0.0065                            # temperature lapse rate for both gcm to glacier and on glacier between elevation bins [K m-1]
+    tsnow_threshold: 1                            # temperature threshold for snow [deg C] (HH2015 used 1.5 degC +/- 1 degC)
+    calving_k: 0.7                                # frontal ablation rate [yr-1]
+
+# ===== MASS BALANCE MODEL OPTIONS =====
+mb:
+  # Initial surface type options
+  option_surfacetype_initial: 1
+  #  option 1 (default) - use median elevation to classify snow/firn above the median and ice below.
+  #   > Sakai et al. (2015) found that the decadal ELAs are consistent with the median elevation of nine glaciers in High
+  #     Mountain Asia, and Nuimura et al. (2015) also found that the snow line altitude of glaciers in China corresponded
+  #     well with the median elevation.  Therefore, the use of the median elevation for defining the initial surface type
+  #     appears to be a fairly reasonable assumption in High Mountain Asia.
+  #  option 2 - use mean elevation
+  include_firn: true                              # true: firn included, false: firn is modeled as snow
+  include_debris: true                            # true: account for debris with melt factors, false: do not account for debris
+  # debris datasets
+  debris_relpath: /debris_data/
+
+  # Downscaling model options
+  # Reference elevation options for downscaling climate variables
+  option_elev_ref_downscale: Zmed                 # 'Zmed', 'Zmax', or 'Zmin' for median, maximum or minimum glacier elevations
+  # Downscale temperature to bins options
+  option_adjusttemp_surfelev: 1                   # 1: adjust temps based on surface elev changes; 0: no adjustment
+  # Downscale precipitation to bins options
+  option_preclimit: 0                             # 1: limit the uppermost 25% using an expontial fxn
+
+  # Accumulation model options
+  option_accumulation: 2                          # 1: single threshold, 2: threshold +/- 1 deg using linear interpolation
+
+  # Ablation model options
+  option_ablation: 1                              # 1: monthly temp, 2: superimposed daily temps enabling melt near 0 (HH2015)
+  option_ddf_firn: 1                              # 0: ddf_firn = ddf_snow; 1: ddf_firn = mean of ddf_snow and ddf_ice
+
+  # Refreezing model option (options: 'Woodward' or 'HH2015')
+  #  Woodward refers to Woodward et al. 1997 based on mean annual air temperature
+  #  HH2015 refers to heat conduction in Huss and Hock 2015
+  option_refreezing: Woodward                     # Woodward: annual air temp (Woodward etal 1997)
+  Woodard_rf_opts:
+    rf_month: 10                                  # refreeze month
+  HH2015_rf_opts:
+    rf_layers: 5                                  # number of layers for refreezing model (8 is sufficient - Matthias)
+    rf_dz: 2                                      # layer thickness (m)
+    rf_dsc: 3                                     # number of time steps for numerical stability (3 is sufficient - Matthias)
+    rf_meltcrit: 0.002                            # critical amount of melt [m w.e.] for initializing refreezing module
+    pp: 0.3                                       # additional refreeze water to account for water refreezing at bare-ice surface
+    rf_dens_top: 300                              # snow density at surface (kg m-3)
+    rf_dens_bot: 650                              # snow density at bottom refreezing layer (kg m-3)
+    option_rf_limit_meltsnow: 1
+
+#  ===== RGI GLACIER DATA =====
+rgi:
+  # Filepath for RGI files
+  rgi_relpath: /RGI/rgi60/00_rgi60_attribs/
+  # Column names
+  rgi_lat_colname: CenLat
+  rgi_lon_colname: CenLon_360                     # REQUIRED OTHERWISE GLACIERS IN WESTERN HEMISPHERE USE 0 deg
+  elev_colname: elev
+  indexname: GlacNo
+  rgi_O1Id_colname: glacno
+  rgi_glacno_float_colname: RGIId_float
+  # Column names from table to drop (list names or accept an empty list)
+  rgi_cols_drop:
+    - GLIMSId
+    - BgnDate
+    - EndDate
+    - Status
+    - Linkages
+    - Name
+
+# ===== MODEL TIME PERIOD DETAILS =====
+time:
+  # Models require complete data for each year such that refreezing, scaling, etc. can be calculated
+  # Leap year option
+  option_leapyear: 0         # 1: include leap year days, 0: exclude leap years so February always has 28 days
+  # User specified start/end dates
+  #  note: start and end dates must refer to whole years
+  startmonthday: 06-01                            # Only used with custom calendars
+  endmonthday: 05-31                              # Only used with custom calendars
+  wateryear_month_start: 10                       # water year starting month
+  winter_month_start: 10                          # first month of winter (for HMA winter is October 1 - April 30)
+  summer_month_start: 5                           # first month of summer (for HMA summer is May 1 - Sept 30)
+  timestep: monthly                                 # time step ('monthly' or 'daily')
+
+# ===== MODEL CONSTANTS =====
+constants:
+  density_ice: 900                                # Density of ice [kg m-3] (or Gt / 1000 km3)
+  density_water: 1000                             # Density of water [kg m-3]
+  k_ice: 2.33                                     # Thermal conductivity of ice [J s-1 K-1 m-1] recall (W = J s-1)
+  k_air: 0.023                                    # Thermal conductivity of air [J s-1 K-1 m-1] (Mellor, 1997)
+  ch_ice: 1890000                                 # Volumetric heat capacity of ice [J K-1 m-3] (density=900, heat_capacity=2100 J K-1 kg-1)
+  ch_air: 1297                                    # Volumetric Heat capacity of air [J K-1 m-3] (density=1.29, heat_capacity=1005 J K-1 kg-1)
+  Lh_rf: 333550                                   # Latent heat of fusion [J kg-1]
+  tolerance: 1.0e-12                              # Model tolerance (used to remove low values caused by rounding errors)
+
+# ===== DEBUGGING OPTIONS =====
+debug:
+  refreeze: false
+  mb: false
