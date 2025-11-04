@@ -347,32 +347,30 @@ def calc_elev_change_1d(gdir, mbmod, ds):
     h_monthly = running_delta_h_monthly + thickness_m[:, 0][:, np.newaxis]
 
     # get surface height at the specified reference year
-    ref_surface_h = ds[0].bed_h.values + ds[0].thickness_m.sel(time=gdir.elev_change_1d['ref_dem_year']).values
-
+    ref_surface_height = ds[0].bed_h.values + ds[0].thickness_m.sel(time=gdir.elev_change_1d['ref_dem_year']).values
     # aggregate model bin thicknesses as desired
     with warnings.catch_warnings():
         warnings.filterwarnings('ignore')
-        h_monthly = np.column_stack(
+        bin_thick_subannual = np.column_stack(
             [
                 stats.binned_statistic(
-                    x=ref_surface_h,
+                    x=ref_surface_height,
                     values=x,
                     statistic=np.nanmean,
                     bins=gdir.elev_change_1d['bin_edges'],
                 )[0]
-                for x in h_monthly.T
+                for x in bin_thick_subannual.T
             ]
         )
-
     # interpolate over any empty bins
-    h_monthly_ = np.column_stack([interp1d_fill_gaps(x.copy()) for x in h_monthly.T])
+    bin_thick_subannual = np.column_stack([interp1d_fill_gaps(x.copy()) for x in bin_thick_subannual.T])
 
     # difference each set of inds in diff_inds_map
     elev_change_1d = np.column_stack(
         [
-            h_monthly_[:, tup[1]] - h_monthly_[:, tup[0]]
+            bin_thick_subannual[:, tup[1]] - bin_thick_subannual[:, tup[0]]
             if tup[0] is not None and tup[1] is not None
-            else np.full(h_monthly_.shape[0], np.nan)
+            else np.full(bin_thick_subannual.shape[0], np.nan)
             for tup in gdir.elev_change_1d['model2obs_inds_map']
         ]
     )
@@ -772,6 +770,7 @@ def run(list_packed_vars):
 
         # ===== Load glacier data: area (km2), ice thickness (m), width (km) =====
         try:
+            # Note this is where pre-processing of datasets (e.g., mass balance, debris) occurs
             if glacier_rgi_table['TermType'] not in [1, 5] or not pygem_prms['setup']['include_frontalablation']:
                 gdir = oggm_compat.single_flowline_glacier_directory(glacier_str)
                 gdir.is_tidewater = False
@@ -1870,7 +1869,7 @@ def run(list_packed_vars):
                     ]
                     # Melt
                     # energy available for melt [degC day]
-                    melt_energy_available = T_minelev * dates_table['daysinmonth'].values
+                    melt_energy_available = T_minelev * dates_table['days_in_step'].values
                     melt_energy_available[melt_energy_available < 0] = 0
                     # assume all snow melt because anything more would melt underlying ice in lowermost bin
                     # SNOW MELT [m w.e.]

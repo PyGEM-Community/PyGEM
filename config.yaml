@@ -150,7 +150,6 @@ calib:
   
   # MCMC params
   MCMC_params:
-    option_calib_glacierwide_mb_mwea: true        # option to calibrate against average glacierwide mass balance data (true or false)
     option_use_emulator: true                     # use emulator or full model (if true, calibration must have first been run with option_calibretion=='emulator')
     emulator_sims: 100
     tbias_step: 0.1
@@ -220,6 +219,10 @@ calib:
     # 1d snowlines
     snowline_1d:
       snowline_1d_relpath: /SAR_data/merged/                                                        # relative to main data path. per-glacier files within will be expected as <RGI60_id>_snowline_elev.csv (e.g., 01.00570_snowline_elev.csv)
+
+  icethickness_cal_frac_byarea: 0.9               # Regional glacier area fraction that is used to calibrate the ice thickness
+                                                  #  e.g., 0.9 means only the largest 90% of glaciers by area will be used to calibrate
+                                                  #  glen's a for that region.
 
 # ===== SIMULATION =====
 sim:
