@@ -16,10 +16,8 @@ import requests
 
 from pygem.setup.config import ConfigManager
 
-# instantiate ConfigManager
+# instantiate ConfigManager - store new config.yaml file
 config_manager = ConfigManager(overwrite=True)
-# read the config
-pygem_prms = config_manager.read_config()
 
 
 def print_file_tree(start_path, indent=''):
