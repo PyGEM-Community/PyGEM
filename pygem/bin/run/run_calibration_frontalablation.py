@@ -873,13 +873,13 @@ def calib_ind_calving_k(
     frontalablation_fp='',
     frontalablation_fn='',
     output_fp='',
-    hugonnet2021_fp='',
+    massbalance_fp='',
 ):
     verbose = args.verbose
     overwrite = args.overwrite
     # Load calving glacier data
     fa_glac_data = pd.read_csv(frontalablation_fp + frontalablation_fn)
-    mb_data = pd.read_csv(hugonnet2021_fp)
+    mb_data = pd.read_csv(massbalance_fp)
     fa_glac_data['O1Region'] = [int(x.split('-')[1].split('.')[0]) for x in fa_glac_data.RGIId.values]
 
     calving_k_bndhigh_set = np.copy(calving_k_bndhigh_gl)
@@ -2413,8 +2413,8 @@ def update_mbdata(
     regions=list(range(1, 20)),
     frontalablation_fp='',
     frontalablation_fn='',
-    hugonnet2021_fp='',
-    hugonnet2021_facorr_fp='',
+    massbalance_fp='',
+    massbalance_facorr_fp='',
     ncores=1,
     overwrite=False,
     verbose=False,
@@ -2425,13 +2425,13 @@ def update_mbdata(
     )
     fa_glac_data = pd.read_csv(frontalablation_fp + frontalablation_fn)
     # check if fa corrected mass balance data already exists
-    if os.path.exists(hugonnet2021_facorr_fp):
+    if os.path.exists(massbalance_facorr_fp):
         assert overwrite, (
-            f'Frontal ablation corrected mass balance dataset already exists!\t{hugonnet2021_facorr_fp}\nPass `-o` to overwrite, or pass a different filename for `hugonnet2021_facorrected_fn`'
+            f'Frontal ablation corrected mass balance dataset already exists!\t{massbalance_facorr_fp}\nPass `-o` to overwrite, or pass a different filename for `massbalance_facorrected_fn`'
         )
-        mb_data = pd.read_csv(hugonnet2021_facorr_fp)
+        mb_data = pd.read_csv(massbalance_facorr_fp)
     else:
-        mb_data = pd.read_csv(hugonnet2021_fp)
+        mb_data = pd.read_csv(massbalance_fp)
     mb_rgiids = list(mb_data.rgiid)
 
     # Record prior data
@@ -2461,7 +2461,7 @@ def update_mbdata(
                 )
 
     # Export the updated dataset
-    mb_data.to_csv(hugonnet2021_facorr_fp, index=False)
+    mb_data.to_csv(massbalance_facorr_fp, index=False)
 
     # Update gdirs
     glac_strs = []
@@ -2701,18 +2701,18 @@ def main():
         help='reference period ending year for calibration (typically 2019)',
     )
     parser.add_argument(
-        '-hugonnet2021_fn',
+        '-massbalance_fn',
         action='store',
         type=str,
-        default=f'{pygem_prms["calib"]["data"]["massbalance"]["hugonnet2021_fn"]}',
-        help='reference mass balance data file name (default: df_pergla_global_20yr-filled.csv)',
+        default=f'{pygem_prms["calib"]["data"]["massbalance"]["massbalance_fn"]}',
+        help='reference mass balance data file name (default taken from config.yaml)',
     )
     parser.add_argument(
-        '-hugonnet2021_facorrected_fn',
+        '-massbalance_facorrected_fn',
         action='store',
         type=str,
-        default=f'{pygem_prms["calib"]["data"]["massbalance"]["hugonnet2021_facorrected_fn"]}',
-        help='reference mass balance data file name (default: df_pergla_global_20yr-filled.csv)',
+        default=f'{pygem_prms["calib"]["data"]["massbalance"]["massbalance_facorrected_fn"]}',
+        help='reference mass balance data file name (default taken from config.yaml)',
     )
     parser.add_argument(
         '-ncores',
@@ -2748,8 +2748,8 @@ def main():
     )
     frontalablation_cal_fn = pygem_prms['calib']['data']['frontalablation']['frontalablation_cal_fn']
     output_fp = frontalablation_fp + '/analysis/'
-    hugonnet2021_fp = f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["massbalance"]["hugonnet2021_relpath"]}/{args.hugonnet2021_fn}'
-    hugonnet2021_facorr_fp = f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["massbalance"]["hugonnet2021_relpath"]}/{args.hugonnet2021_facorrected_fn}'
+    massbalance_fp = f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["massbalance"]["massbalance_relpath"]}/{args.massbalance_fn}'
+    massbalance_facorr_fp = f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["massbalance"]["massbalance_relpath"]}/{args.massbalance_facorrected_fn}'
     os.makedirs(output_fp, exist_ok=True)
 
     # marge input calving datasets
@@ -2766,7 +2766,7 @@ def main():
         frontalablation_fp=frontalablation_fp,
         frontalablation_fn=merged_calving_data_fn,
         output_fp=output_fp,
-        hugonnet2021_fp=hugonnet2021_fp,
+        massbalance_fp=massbalance_fp,
     )
     with multiprocessing.Pool(args.ncores) as p:
         p.map(calib_ind_calving_k_partial, args.rgi_region01)
@@ -2784,8 +2784,8 @@ def main():
         regions=args.rgi_region01,
         frontalablation_fp=output_fp,
         frontalablation_fn=frontalablation_cal_fn,
-        hugonnet2021_fp=hugonnet2021_fp,
-        hugonnet2021_facorr_fp=hugonnet2021_facorr_fp,
+        massbalance_fp=massbalance_fp,
+        massbalance_facorr_fp=massbalance_facorr_fp,
         ncores=args.ncores,
         overwrite=args.overwrite,
         verbose=args.verbose,

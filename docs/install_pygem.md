@@ -12,7 +12,7 @@ Next, choose your preferred PyGEM installation option:<br>
 
 (stable_install_target)=
 ## Stable install
-The simplest **stable** installation method is to use an environment file. Right-click and save PyGEM's recommended environment file from [this link](https://raw.githubusercontent.com/PyGEM-Community/PyGEM/refs/heads/master/docs/pygem_environment.yml).
+The simplest **stable** installation method is to use an environment file. Right-click and save PyGEM's recommended environment file from [this link](https://raw.githubusercontent.com/PyGEM-Community/PyGEM/refs/heads/main/docs/pygem_environment.yml).
 
 From the folder where you saved the file, run `conda env create -f pygem_environment.yml`.
 ```{note}

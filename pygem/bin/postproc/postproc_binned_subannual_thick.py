@@ -119,8 +119,6 @@ def get_binned_subannual(
     """
 
     n_glac, n_bins, n_steps = bin_massbalclim.shape
-    dates_subannual = pd.to_datetime(dates_subannual)
-    dates_annual = pd.to_datetime(dates_annual)
     years_annual = np.array([d.year for d in dates_annual])
     years_subannual = np.array([d.year for d in dates_subannual])
     yrs = np.unique(years_subannual)
@@ -297,7 +295,7 @@ def run(simpath, debug):
         timestep = json.loads(binned_ds.attrs['model_parameters'])['timestep']
         # get model dates
         dates_annual = pd.to_datetime([f'{y}-01-01' for y in binned_ds.year.values])
-        dates_subannual = pd.to_datetime([t.strftime('%Y-%m-%d') for t in binned_ds.time.values])
+        dates_subannual = pd.to_datetime(binned_ds.time.values)
 
         # calculate subannual thickness and mass
         bin_thick, bin_mass = get_binned_subannual(

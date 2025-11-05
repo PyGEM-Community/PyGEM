@@ -19,6 +19,7 @@ import pandas as pd
 # Local libraries
 from oggm import cfg
 from oggm.utils import entity_task
+from scipy.stats import binned_statistic
 
 # pygem imports
 from pygem.setup.config import ConfigManager
@@ -41,8 +42,14 @@ if 'elev_change_1d' not in cfg.BASENAMES:
 
 
 @entity_task(log, writes=['elev_change_1d'])
-def elev_change_1d_to_gdir(
+def dh_1d_to_gdir(
     gdir,
+    dh_datadir=f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["elev_change"]["dh_1d_relpath"]}/',
+    infile_suffix='',
+    bin_spacing=None,
+    bin_lowcut=None,
+    bin_highcut=None,
+    bin_cut_percentile=True,
 ):
     """
     Add 1D elevation change observations to the given glacier directory.
@@ -111,14 +118,22 @@ def elev_change_1d_to_gdir(
     ----------
     gdir : :py:class:`oggm.GlacierDirectory`
         where to write the data
-
+    dh_datadir : str
+        Directory where binned elevation change data files are stored
+    infile_suffix : str
+        Optional suffix at following "elev_change_1d" in input file name
+    bin_spacing : float or None
+        If provided, rebin the elevation change data to this bin spacing (in meters)
+    bin_lowcut : float or None
+        If provided, cut elevation bins below this elevation (meters or percentile)
+    bin_highcut : float or None
+        If provided, cut elevation bins above this elevation (meters or percentile)
+    bin_cut_percentile : bool
+        If True (default), interpret bin_lowcut and bin_highcut as percentiles of the elevation range.
+        If False, interpret as absolute elevation values (in meters).
     """
     # get dataset file path
-    elev_change_1d_fp = (
-        f'{pygem_prms["root"]}/'
-        f'{pygem_prms["calib"]["data"]["elev_change_1d"]["elev_change_1d_relpath"]}/'
-        f'{gdir.rgi_id.split("-")[1]}_elev_change_1d'
-    )
+    elev_change_1d_fp = f'{dh_datadir}/{gdir.rgi_id.split("-")[1]}_elev_change_1d{infile_suffix}'
 
     # Check for both .json and .csv extensions
     if os.path.exists(elev_change_1d_fp + '.json'):
@@ -134,6 +149,17 @@ def elev_change_1d_to_gdir(
         log.debug('No binned elevation change data to load, skipping task.')
         raise Warning('No binned elevation data to load')  # file not found, skip
 
+    validate_elev_change_1d_structure(data)
+
+    # optionally cut bins
+    if bin_lowcut is not None or bin_highcut is not None:
+        data = filter_elev_change_1d_data(data, bin_lowcut, bin_highcut, bin_cut_percentile)
+
+    # optionally rebin
+    if bin_spacing:
+        data = rebin_elev_change_1d_data(data, float(bin_spacing))
+
+    # can't hurt to validate again after rebinning
     validate_elev_change_1d_structure(data)
 
     gdir.write_json(data, 'elev_change_1d')
@@ -254,11 +280,15 @@ def csv_to_elev_change_1d_dict(csv_path):
     # Ensure sorted bins
     df = df.sort_values(['bin_start', 'date_start', 'date_end']).reset_index(drop=True)
 
-    # Get all unique bin edges
-    bin_edges = sorted(set(df['bin_start']).union(df['bin_stop']))
+    # Drop duplicate (bin_start, bin_stop) pairs
+    df_unique_bins = df.drop_duplicates(subset=['bin_start', 'bin_stop']).sort_values('bin_start')
 
-    if 'bin_area' in df.keys():
-        bin_area = df['bin_area'].tolist()
+    # Define bin edges from unique bins
+    bin_edges = np.concatenate(([df_unique_bins['bin_start'].iloc[0]], df_unique_bins['bin_stop'].values)).tolist()
+
+    # Handle bin_area if present
+    if 'bin_area' in df.columns:
+        bin_area = df_unique_bins['bin_area'].tolist()
     else:
         bin_area = False
 
@@ -305,3 +335,96 @@ def csv_to_elev_change_1d_dict(csv_path):
         del data['bin_area']
 
     return data
+
+
+def rebin_elev_change_1d_data(data, bin_spacing):
+    """
+    Rebin elevation change data to new bin spacing.
+    """
+    bin_centers = data['bin_centers']
+    # estimate bin width (assuming uniform)
+    dz = np.abs(np.diff(bin_centers).mean())
+
+    # optionally rebin
+    if bin_spacing != dz:
+        # define new bin edges
+        new_edges = np.arange(min(data['bin_edges']), max(data['bin_edges']) + bin_spacing, bin_spacing)
+
+        # simple mean of dh per new bin
+        dh_rebinned, _, _ = binned_statistic(bin_centers, data['dh'], statistic='mean', bins=new_edges)
+
+        # simple mean of dh_sigma per new bin
+        dh_sigma_rebinned, _, _ = binned_statistic(bin_centers, data['dh_sigma'], statistic='mean', bins=new_edges)
+
+        # sum of bin_area per new bin
+        bin_area_rebinned, _, _ = binned_statistic(bin_centers, data['bin_area'], statistic='sum', bins=new_edges)
+
+        # replace data values
+        data['bin_edges'] = new_edges.tolist()
+        data['bin_centers'] = [
+            0.5 * (data['bin_edges'][i] + data['bin_edges'][i + 1]) for i in range(len(data['bin_edges']) - 1)
+        ]
+        data['bin_area'] = bin_area_rebinned.tolist()
+        data['dh'] = dh_rebinned.tolist()
+        data['dh_sigma'] = dh_sigma_rebinned.tolist()
+        return data
+
+
+def filter_elev_change_1d_data(data, bin_lowcut, bin_highcut, bin_cut_percentile):
+    """
+    Filter elevation change data to only include bins within specified elevation range.
+
+    Parameters
+    ----------
+    data : dict
+        Elevation change data dictionary.
+    bin_lowcut : float or None
+        Lower elevation cut-off. If None, no lower cut is applied.
+    bin_highcut : float or None
+        Upper elevation cut-off. If None, no upper cut is applied.
+    bin_cut_percentile : bool
+        If True, interpret low/high cut as percentiles of the elevation distribution.
+
+    Returns
+    -------
+    data_filtered : dict
+        Filtered elevation change data dictionary.
+    """
+    bin_centers = np.array(data['bin_centers'])
+    bin_edges = np.array(data['bin_edges'])
+
+    if bin_cut_percentile:
+        if bin_lowcut is not None:
+            bin_lowcut = np.percentile(bin_centers, bin_lowcut)
+        if bin_highcut is not None:
+            bin_highcut = np.percentile(bin_centers, bin_highcut)
+
+    mask = np.ones_like(bin_centers, dtype=bool)
+    if bin_lowcut is not None:
+        mask &= bin_centers >= bin_lowcut
+    if bin_highcut is not None:
+        mask &= bin_centers <= bin_highcut
+
+    # Ensure at least one bin remains
+    if not np.any(mask):
+        raise ValueError('No bins remain after filtering.')
+
+    # Select corresponding edges (N+1)
+    idx = np.where(mask)[0]
+    bin_edges_filtered = bin_edges[idx[0] : idx[-1] + 2]
+
+    data_filtered = data.copy()
+    data_filtered['bin_centers'] = bin_centers[mask].tolist()
+    data_filtered['bin_edges'] = bin_edges_filtered.tolist()
+
+    if 'bin_area' in data:
+        data_filtered['bin_area'] = np.array(data['bin_area'])[mask].tolist()
+
+    data_filtered['dh'] = [np.array(dh_arr)[mask].tolist() for dh_arr in data['dh']]
+
+    if isinstance(data['dh_sigma'], list):
+        data_filtered['dh_sigma'] = [np.array(sigma_arr)[mask].tolist() for sigma_arr in data['dh_sigma']]
+    else:
+        data_filtered['dh_sigma'] = data['dh_sigma']
+
+    return data_filtered

@@ -131,7 +131,7 @@ def single_flowline_glacier_directory(
         workflow.execute_entity_task(debris.debris_binned, gdir)
     # 1d elevation change calibration data
     if not os.path.isfile(gdir.get_filepath('elev_change_1d')):
-        workflow.execute_entity_task(elevchange1d.elev_change_1d_to_gdir, gdir)
+        workflow.execute_entity_task(elevchange1d.dh_1d_to_gdir, gdir)
     # 1d melt extent calibration data
     if not os.path.isfile(gdir.get_filepath('meltextent_1d')):
         workflow.execute_entity_task(meltextent_and_snowline_1d.meltextent_1d_to_gdir, gdir)
@@ -237,7 +237,7 @@ def single_flowline_glacier_directory_with_calving(
         workflow.execute_entity_task(mbdata.mb_df_to_gdir, gdir, **{'facorrected': facorrected})
     # 1d elevation change calibration data
     if not os.path.isfile(gdir.get_filepath('elev_change_1d')):
-        workflow.execute_entity_task(elevchange1d.elev_change_1d_to_gdir, gdir)
+        workflow.execute_entity_task(elevchange1d.dh_1d_to_gdir, gdir)
     # 1d melt extent calibration data
     if not os.path.isfile(gdir.get_filepath('meltextent_1d')):
         workflow.execute_entity_task(meltextent_and_snowline_1d.meltextent_1d_to_gdir, gdir)

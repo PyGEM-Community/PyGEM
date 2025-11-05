@@ -485,7 +485,7 @@ def run(list_packed_vars):
                 args.sim_startyear,
                 args.ref_startyear,
             )
-            print('gcm_elev_adj:', gcm_elev_adj)
+
         # OPTION 2: Adjust temp and prec using Huss and Hock (2015)
         elif args.option_bias_adjustment == 2:
             # Temperature bias correction
@@ -567,8 +567,9 @@ def run(list_packed_vars):
         ref_lr = np.zeros((main_glac_rgi.shape[0], dates_table_ref.shape[0])) + pygem_prms['sim']['params']['lapserate']
     else:
         if sim_climate_name in ['ERA-Interim', 'ERA5']:
-            gcm_lr, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(gcm.lr_fn, gcm.lr_vn, main_glac_rgi, dates_table,
-                                                                       upscale_var_timestep=True, verbose=debug)
+            gcm_lr, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(
+                gcm.lr_fn, gcm.lr_vn, main_glac_rgi, dates_table, upscale_var_timestep=True, verbose=debug
+            )
             ref_lr = gcm_lr
         else:
             # Compute lapse rates based on reference climate data
@@ -1017,7 +1018,7 @@ def run(list_packed_vars):
                                 * pygem_prms['constants']['density_ice']
                                 / pygem_prms['constants']['density_water']
                             )
-                            for n, year in enumerate(np.arange(args.sim_startyear, args.sim_endyear+1)):
+                            for n, year in enumerate(np.arange(args.sim_startyear, args.sim_endyear + 1)):
                                 tstart, tstop = ev_model.mb_model.get_step_inds(year)
                                 ev_model.mb_model.glac_wide_frontalablation[tstop] = calving_m3_annual[n]
 

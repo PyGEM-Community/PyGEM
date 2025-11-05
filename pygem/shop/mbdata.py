@@ -15,17 +15,12 @@ from datetime import timedelta
 
 import numpy as np
 import pandas as pd
-
-# import rasterio
-# import xarray as xr
-# Local libraries
 from oggm import cfg
 from oggm.utils import entity_task
 
-# from oggm.core.gis import rasterio_to_gdir
-# from oggm.utils import ncDataset
 # pygem imports
 from pygem.setup.config import ConfigManager
+from pygem.utils._funcs import parse_period
 
 # instantiate ConfigManager
 config_manager = ConfigManager()
@@ -47,7 +42,6 @@ if 'mb_calib_pygem' not in cfg.BASENAMES:
 @entity_task(log, writes=['mb_calib_pygem'])
 def mb_df_to_gdir(
     gdir,
-    mb_dataset='Hugonnet2021',
     facorrected=pygem_prms['setup']['include_frontalablation'],
 ):
     """Select specific mass balance and add observations to the given glacier directory
@@ -57,20 +51,25 @@ def mb_df_to_gdir(
     gdir : :py:class:`oggm.GlacierDirectory`
         where to write the data
     """
-    # get dataset name (could potentially be swapped with others besides Hugonnet21)
-    mbdata_fp = f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["massbalance"]["hugonnet2021_relpath"]}'
-    mbdata_fp_fa = mbdata_fp + pygem_prms['calib']['data']['massbalance']['hugonnet2021_facorrected_fn']
+    # get dataset filepath
+    mbdata_fp = f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["massbalance"]["massbalance_relpath"]}'
+    mbdata_fp_fa = mbdata_fp + pygem_prms['calib']['data']['massbalance']['massbalance_facorrected_fn']
     if facorrected and os.path.exists(mbdata_fp_fa):
         mbdata_fp = mbdata_fp_fa
     else:
-        mbdata_fp = mbdata_fp + pygem_prms['calib']['data']['massbalance']['hugonnet2021_fn']
+        mbdata_fp = mbdata_fp + pygem_prms['calib']['data']['massbalance']['massbalance_fn']
 
     assert os.path.exists(mbdata_fp), 'Error, mass balance dataset does not exist: {mbdata_fp}'
-    rgiid_cn = 'rgiid'
-    mb_cn = 'mb_mwea'
-    mberr_cn = 'mb_mwea_err'
-    mb_clim_cn = 'mb_clim_mwea'
-    mberr_clim_cn = 'mb_clim_mwea_err'
+
+    # get column names and formats
+    rgiid_cn = pygem_prms['calib']['data']['massbalance']['massbalance_rgiid_colname']
+    mb_cn = pygem_prms['calib']['data']['massbalance']['massbalance_mb_colname']
+    mberr_cn = pygem_prms['calib']['data']['massbalance']['massbalance_mb_error_colname']
+    mb_clim_cn = pygem_prms['calib']['data']['massbalance']['massbalance_mb_clim_colname']
+    mberr_clim_cn = pygem_prms['calib']['data']['massbalance']['massbalance_mb_clim_error_colname']
+    massbalance_period_colname = pygem_prms['calib']['data']['massbalance']['massbalance_period_colname']
+    massbalance_period_date_format = pygem_prms['calib']['data']['massbalance']['massbalance_period_date_format']
+    massbalance_period_delimiter = pygem_prms['calib']['data']['massbalance']['massbalance_period_delimiter']
 
     # read reference mass balance dataset and pull data of interest
     mb_df = pd.read_csv(mbdata_fp)
@@ -84,16 +83,30 @@ def mb_df_to_gdir(
         mb_mwea = mb_df.loc[rgiid_idx, mb_cn]
         mb_mwea_err = mb_df.loc[rgiid_idx, mberr_cn]
 
-        if mb_clim_cn in mb_df.columns:
+        if (
+            mb_clim_cn is not None
+            and mberr_clim_cn is not None
+            and all(col in mb_df.columns for col in [mb_clim_cn, mberr_clim_cn])
+        ):
             mb_clim_mwea = mb_df.loc[rgiid_idx, mb_clim_cn]
             mb_clim_mwea_err = mb_df.loc[rgiid_idx, mberr_clim_cn]
         else:
             mb_clim_mwea = None
             mb_clim_mwea_err = None
 
-        t1_str, t2_str = mb_df.loc[rgiid_idx, 'period'].split('_')
-        t1_datetime = pd.to_datetime(t1_str)
-        t2_datetime = pd.to_datetime(t2_str)
+        # notmalize user-input formats like YYYY-MM-DD -> %Y-%m-%d
+        massbalance_period_date_format = (
+            massbalance_period_date_format.replace('YYYY', '%Y')
+            .replace('YY', '%y')
+            .replace('MM', '%m')
+            .replace('DD', '%d')
+        )
+
+        t1_datetime, t2_datetime = parse_period(
+            mb_df.loc[rgiid_idx, massbalance_period_colname],
+            date_format=massbalance_period_date_format,
+            delimiter=massbalance_period_delimiter,
+        )
 
         # remove one day from t2 datetime for proper indexing (ex. 2001-01-01 want to run through 2000-12-31)
         t2_datetime = t2_datetime - timedelta(days=1)
@@ -108,8 +121,8 @@ def mb_df_to_gdir(
                 'mb_mwea_err': float(mb_mwea_err),
                 'mb_clim_mwea': float(mb_clim_mwea) if mb_clim_mwea is not None else None,
                 'mb_clim_mwea_err': float(mb_clim_mwea_err) if mb_clim_mwea_err is not None else None,
-                't1_str': t1_str,
-                't2_str': t2_str,
+                't1_str': t1_datetime.strftime('%Y-%m-%d'),
+                't2_str': t2_datetime.strftime('%Y-%m-%d'),
                 'nyears': nyears,
             }.items()
             if value is not None

@@ -12,7 +12,9 @@ class TestConfigManager:
     @pytest.fixture(autouse=True)
     def setup(self, tmp_path):
         """Setup a ConfigManager instance for each test."""
-        self.config_manager = ConfigManager(config_filename='config.yaml', base_dir=tmp_path, overwrite=True)
+        self.config_manager = ConfigManager(
+            config_filename='config.yaml', base_dir=tmp_path, overwrite=True, check_paths=False
+        )
 
     def test_config_created(self, tmp_path):
         config_path = pathlib.Path(tmp_path) / 'config.yaml'

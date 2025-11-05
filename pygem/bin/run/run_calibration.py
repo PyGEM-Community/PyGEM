@@ -325,8 +325,11 @@ def run_oggm_dynamics(gdir, modelprms, glacier_rgi_table, fls):
                     / pygem_prms['constants']['density_water']
                 )
                 # record each year's frontal ablation in m3 w.e.
-                for n in np.arange(calving_m3we_annual.shape[0]):
-                    ev_model.mb_model.glac_wide_frontalablation[12 * n + 11] = calving_m3we_annual[n]
+                if pygem_prms['time']['timestep'] == 'monthly':
+                    for n in np.arange(calving_m3we_annual.shape[0]):
+                        ev_model.mb_model.glac_wide_frontalablation[12 * n + 11] = calving_m3we_annual[n]
+                else:
+                    raise ValueError('Need to add functionality for daily timestep')
 
                 # add mass lost from frontal ablation to Glacier-wide total mass balance (m3 w.e.)
                 ev_model.mb_model.glac_wide_massbaltotal = (
@@ -339,30 +342,42 @@ def run_oggm_dynamics(gdir, modelprms, glacier_rgi_table, fls):
     return mbmod, ds
 
 
-def calc_elev_change_1d(gdir, mbmod, ds):
-    ### get monthly ice thickness
+def calc_thick_change_1d(gdir, mbmod, ds):
+    """
+    calculate binned change in ice thickness assuming constant annual flux divergence.
+    sub-annual ice thickness is differenced at timesteps coincident with observations.
+    """
+    years_subannual = np.array([d.year for d in gdir.dates_table['date']])
+    yrs = np.unique(years_subannual)
+    nyrs = len(yrs)
     # grab components of interest
-    thickness_m = ds[0].thickness_m.values.T  # glacier thickness [m ice], (nbins, nyears)
+    bin_thick_annual = ds[0].thickness_m.values.T  # glacier thickness [m ice], (nbins, nyears)
 
     # set any < 0 thickness to nan
-    thickness_m[thickness_m <= 0] = np.nan
+    bin_thick_annual[bin_thick_annual <= 0] = np.nan
 
-    # climatic mass balance
-    dotb_monthly = mbmod.glac_bin_massbalclim  # climatic mass balance [m w.e.] per month
+    #  --- Step 1: convert mass balance from m w.e. to m ice  ---
+    bin_massbalclim = mbmod.glac_bin_massbalclim  # climatic mass balance [m w.e.] per step
     # convert to m ice
-    dotb_monthly = dotb_monthly * (pygem_prms['constants']['density_water'] / pygem_prms['constants']['density_ice'])
+    bin_massbalclim_ice = bin_massbalclim * (
+        pygem_prms['constants']['density_water'] / pygem_prms['constants']['density_ice']
+    )
 
-    ### to get monthly thickness and mass we require monthly flux divergence ###
-    # we'll assume the flux divergence is constant througohut the year
-    # ie. take annual values and divide by 12 - use numpy repeat to repeat values across 12 months
-    flux_div_monthly_mmo = np.repeat(-ds[0].flux_divergence_myr.values.T[:, 1:] / 12, 12, axis=-1)
+    # --- Step 2: expand flux divergence to subannual steps ---
+    # assume flux divergence is constant throughout the year
+    # (divide annual by the number of steps in the binned climatic mass balance to get subannual flux divergence)
+    bin_flux_divergence_annual = -ds[0].flux_divergence_myr.values.T[:, 1:]
+    bin_flux_divergence_subannual = np.zeros_like(bin_massbalclim_ice)
+    for i, year in enumerate(yrs):
+        idx = np.where(years_subannual == year)[0]
+        bin_flux_divergence_subannual[:, idx] = bin_flux_divergence_annual[:, i][:, np.newaxis] / len(idx)
 
-    # get monthly binned change in thickness
-    delta_h_monthly = dotb_monthly - flux_div_monthly_mmo  # [m ice per month]
+    # --- Step 3: compute subannual thickness change ---
+    bin_delta_thick_subannual = bin_massbalclim_ice - bin_flux_divergence_subannual
 
-    # get binned monthly thickness = running thickness change + initial thickness
-    running_delta_h_monthly = np.cumsum(delta_h_monthly, axis=-1)
-    h_monthly = running_delta_h_monthly + thickness_m[:, 0][:, np.newaxis]
+    # --- Step 4: calculate subannual thickness = running thickness change + initial thickness---
+    running_bin_delta_thick_subannual = np.cumsum(bin_delta_thick_subannual, axis=-1)
+    bin_thick_subannual = running_bin_delta_thick_subannual + bin_thick_annual[:, 0][:, np.newaxis]
 
     # --- Step 5: rebin subannual thickness ---
     # get surface height at the specified reference year
@@ -384,8 +399,8 @@ def calc_elev_change_1d(gdir, mbmod, ds):
     # interpolate over any empty bins
     bin_thick_subannual = np.column_stack([interp1d_fill_gaps(x.copy()) for x in bin_thick_subannual.T])
 
-    # difference each set of inds in diff_inds_map
-    elev_change_1d = np.column_stack(
+    # --- Step 5: compute binned thickness change ---
+    bin_thick_change = np.column_stack(
         [
             bin_thick_subannual[:, tup[1]] - bin_thick_subannual[:, tup[0]]
             if tup[0] is not None and tup[1] is not None
@@ -393,7 +408,8 @@ def calc_elev_change_1d(gdir, mbmod, ds):
             for tup in gdir.elev_change_1d['model2obs_inds_map']
         ]
     )
-    return elev_change_1d
+
+    return bin_thick_change
 
 def calc_snowline_1d(gdir, mbmod):
     t1_idx = gdir.mbdata['t1_idx']
@@ -454,7 +470,8 @@ def mcmc_model_eval(
 
     if calib_elev_change_1d:
         mbmod, ds = run_oggm_dynamics(gdir, modelprms, glacier_rgi_table, fls)
-        results['elev_change_1d'] = calc_elev_change_1d(gdir, mbmod, ds) if ds else float('-inf')
+        # note, the binned thickness change is scaled by modeled density in mcmc.mbPosterior.log_likelihood() to calculate modeled surface elevation change
+        results['elev_change_1d'] = calc_thick_change_1d(gdir, mbmod, ds) if ds else float('-inf')
 
     if mbfxn is not None:
         # grab current values from modelprms for the emulator
@@ -500,6 +517,7 @@ def mcmc_model_eval(
         print('Returned keys:', list(results.keys()))
 
     return results
+
 
 # class for Gaussian Process model for mass balance emulator
 class ExactGPModel(gpytorch.models.ExactGP):
@@ -886,15 +904,12 @@ def run(list_packed_vars):
                 t1_month = gdir.mbdata['t1_datetime'].month
                 t2_year = gdir.mbdata['t2_datetime'].year
                 t2_month = gdir.mbdata['t2_datetime'].month
-                t1_idx = dates_table[
+                gdir.mbdata['t1_idx'] = dates_table[
                     (t1_year == dates_table['year']) & (t1_month == dates_table['month'])
                 ].index.values[0]
-                t2_idx = dates_table[
+                gdir.mbdata['t2_idx'] = dates_table[
                     (t2_year == dates_table['year']) & (t2_month == dates_table['month'])
-                ].index.values[0]
-                # Record indices
-                gdir.mbdata['t1_idx'] = t1_idx
-                gdir.mbdata['t2_idx'] = t2_idx
+                ].index.values[-1]
 
                 if debug:
                     print(
@@ -2182,7 +2197,8 @@ def run(list_packed_vars):
                     * consensus_mass
                     / pygem_prms['constants']['density_water']
                     / gdir.rgi_area_m2
-                    / (gdir.dates_table.shape[0] / 12)
+                    # / (gdir.dates_table.shape[0] / 12)
+                    / gdir.mbdata['nyears']
                 )
                 # ---------------------------------
 

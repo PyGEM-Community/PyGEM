@@ -16,10 +16,8 @@ import requests
 
 from pygem.setup.config import ConfigManager
 
-# instantiate ConfigManager
+# instantiate ConfigManager - store new config.yaml file
 config_manager = ConfigManager(overwrite=True)
-# read the config
-pygem_prms = config_manager.read_config()
 
 
 def print_file_tree(start_path, indent=''):
@@ -115,7 +113,7 @@ def main():
     # Define the base directory
     basedir = os.path.join(os.path.expanduser('~'), 'PyGEM')
     # Google Drive file id for sample dataset
-    file_id = '16l2nEdWACwkpdNd8pdIX0ajyfGIsUf_B'
+    file_id = '1cRVG__7dVclut42LdQBjnXKpTvyYWBuK'
     # download and unzip
     out = download_and_unzip_from_google_drive(file_id, basedir)
 
