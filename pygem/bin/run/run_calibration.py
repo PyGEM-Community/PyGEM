@@ -834,15 +834,12 @@ def run(list_packed_vars):
                 t1_month = gdir.mbdata['t1_datetime'].month
                 t2_year = gdir.mbdata['t2_datetime'].year
                 t2_month = gdir.mbdata['t2_datetime'].month
-                t1_idx = dates_table[
+                gdir.mbdata['t1_idx'] = dates_table[
                     (t1_year == dates_table['year']) & (t1_month == dates_table['month'])
                 ].index.values[0]
-                t2_idx = dates_table[
+                gdir.mbdata['t2_idx'] = dates_table[
                     (t2_year == dates_table['year']) & (t2_month == dates_table['month'])
                 ].index.values[-1]
-                # Record indices
-                gdir.mbdata['t1_idx'] = t1_idx
-                gdir.mbdata['t2_idx'] = t2_idx
 
                 if debug:
                     print(
