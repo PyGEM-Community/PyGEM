@@ -307,8 +307,11 @@ def run_oggm_dynamics(gdir, modelprms, glacier_rgi_table, fls):
                     / pygem_prms['constants']['density_water']
                 )
                 # record each year's frontal ablation in m3 w.e.
-                for n in np.arange(calving_m3we_annual.shape[0]):
-                    ev_model.mb_model.glac_wide_frontalablation[12 * n + 11] = calving_m3we_annual[n]
+                if pygem_prms['time']['timestep'] == 'monthly':
+                    for n in np.arange(calving_m3we_annual.shape[0]):
+                        ev_model.mb_model.glac_wide_frontalablation[12 * n + 11] = calving_m3we_annual[n]
+                else:
+                    raise ValueError('Need to add functionality for daily timestep')
 
                 # add mass lost from frontal ablation to Glacier-wide total mass balance (m3 w.e.)
                 ev_model.mb_model.glac_wide_massbaltotal = (
@@ -831,15 +834,12 @@ def run(list_packed_vars):
                 t1_month = gdir.mbdata['t1_datetime'].month
                 t2_year = gdir.mbdata['t2_datetime'].year
                 t2_month = gdir.mbdata['t2_datetime'].month
-                t1_idx = dates_table[
+                gdir.mbdata['t1_idx'] = dates_table[
                     (t1_year == dates_table['year']) & (t1_month == dates_table['month'])
                 ].index.values[0]
-                t2_idx = dates_table[
+                gdir.mbdata['t2_idx'] = dates_table[
                     (t2_year == dates_table['year']) & (t2_month == dates_table['month'])
-                ].index.values[0]
-                # Record indices
-                gdir.mbdata['t1_idx'] = t1_idx
-                gdir.mbdata['t2_idx'] = t2_idx
+                ].index.values[-1]
 
                 if debug:
                     print(
@@ -1995,7 +1995,8 @@ def run(list_packed_vars):
                     * consensus_mass
                     / pygem_prms['constants']['density_water']
                     / gdir.rgi_area_m2
-                    / (gdir.dates_table.shape[0] / 12)
+                    # / (gdir.dates_table.shape[0] / 12)
+                    / gdir.mbdata['nyears']
                 )
                 # ---------------------------------
 
