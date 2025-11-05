@@ -105,8 +105,9 @@ class ConfigManager:
             '*h_ref*',
             '*frontalablation*',
             '*snowline*',
+            '*scaf*',
             '*meltextent*',
-            '*elev_change_1d*',
+            '*elev_change*',
         ]
 
         # --- Type validation (existing code) ---
@@ -311,16 +312,17 @@ class ConfigManager:
         # 'calib.MCMC_params.calib_weights': dict, # TO DO
         'calib.data': dict,
         'calib.data.massbalance': dict,
-        'calib.data.massbalance.hugonnet2021_relpath': str,
-        'calib.data.massbalance.hugonnet2021_fn': str,
-        'calib.data.massbalance.hugonnet2021_facorrected_fn': str,
+        'calib.data.massbalance.massbalance_relpath': str,
+        'calib.data.massbalance.massbalance_fn': str,
+        'calib.data.massbalance.massbalance_facorrected_fn': str,
         'calib.data.frontalablation': dict,
         'calib.data.frontalablation.frontalablation_relpath': str,
         'calib.data.frontalablation.frontalablation_cal_fn': str,
         'calib.data.icethickness': dict,
         'calib.data.icethickness.h_ref_relpath': str,
-        'calib.data.elev_change_1d': dict,
-        'calib.data.elev_change_1d.elev_change_1d_relpath': (str, type(None)),
+        'calib.data.elev_change': dict,
+        'calib.data.elev_change.dhdt_2d_relpath': (str, type(None)),
+        'calib.data.elev_change.dh_1d_relpath': (str, type(None)),
         'calib.data.meltextent_1d': dict,
         'calib.data.meltextent_1d.meltextent_1d_relpath': (str, type(None)),
         'calib.data.snowline_1d': dict,

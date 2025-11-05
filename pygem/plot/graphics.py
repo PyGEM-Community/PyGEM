@@ -536,6 +536,8 @@ def plot_mcmc_snowline_1d(
     vn_max = kwargs.get('vn_max', 'z_max')
     units = kwargs.get('units', '[m a.s.l]')
     inverty = kwargs.get('inverty', False)
+    param = kwargs.get('param', 'Snowline')
+    leg_loc = kwargs.get('leg_loc', 'upper right')
 
     snowline_z = np.array(obs[vn])
     snowline_min = np.array(obs[vn_min])
@@ -597,14 +599,14 @@ def plot_mcmc_snowline_1d(
         handlelength=1,
         borderaxespad=0,
         fancybox=False,
-        loc='upper right',
+        loc=leg_loc,
         edgecolor='k',
         framealpha=1,
     )
     for legobj in leg.legend_handles:
         legobj.set_linewidth(2.0)
 
-    ylbl = f'Snowline {units}'
+    ylbl = f'{param} {units}'
     ax[-1].text(
         0.0125,
         0.5,
@@ -635,6 +637,7 @@ def plot_mcmc_snowline_1v1_1d(
     vn_max = kwargs.get('vn_max', 'z_max')
     units = kwargs.get('units', '[m a.s.l]')
     limit_buff = kwargs.get('limit_buff', 50)
+    param = kwargs.get('param', 'snowline')
 
     snowline_z = np.array(obs[vn])
     snowline_min = np.array(obs[vn_min])
@@ -672,8 +675,8 @@ def plot_mcmc_snowline_1v1_1d(
 
     # set plot limits
     ax[0].set_title(title, fontsize=fontsize)
-    ax[0].set_ylabel(f'Modeled snowline {units}', labelpad=22, size=10, va='center', ha='center')
-    ax[0].set_xlabel(f'Observed snowline {units}', labelpad=22, size=10, va='center', ha='center')
+    ax[0].set_ylabel(f'Modeled {param} {units}', labelpad=22, size=10, va='center', ha='center')
+    ax[0].set_xlabel(f'Observed {param} {units}', labelpad=22, size=10, va='center', ha='center')
     ax[0].set_xlim(lims)
     ax[0].set_ylim(lims)
     ax[0].set_box_aspect(1)

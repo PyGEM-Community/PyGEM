@@ -202,6 +202,12 @@ def getparser():
         help='Flag to calibrate against 1D snow cover area fraction (SCAF) data (default is false)',
     )
     parser.add_argument(
+        '-option_calib_meltextent_1d',
+        action='store_true',
+        default=pygem_prms['calib']['MCMC_params']['option_calib_meltextent_1d'],
+        help='Flag to calibrate against 1D melt extent data (default is false)',
+    )
+    parser.add_argument(
         '-spinup',
         action='store_true',
         help='Flag to use spinup flowlines (default is false)',
@@ -399,7 +405,6 @@ def calc_snowline_1d(gdir, mbmod):
         snowline_1d_full[d] if d is not None else np.nan 
         for d in gdir.snowline_1d['model2obs_inds_map']
         ])
-
     return snowline_1d
 
 def calc_scaf_1d(gdir, mbmod):
@@ -412,8 +417,19 @@ def calc_scaf_1d(gdir, mbmod):
         scaf_1d_full[d] if d is not None else np.nan 
         for d in gdir.scaf_1d['model2obs_inds_map']
         ])
-
     return scaf_1d
+
+def calc_meltextent_1d(gdir, mbmod):
+    t1_idx = gdir.mbdata['t1_idx']
+    t2_idx = gdir.mbdata['t2_idx']
+
+    # Get melt extent for dates aligning with observations
+    meltextent_1d_full = mbmod.glac_wide_meltextent[t1_idx : t2_idx + 1]
+    meltextent_1d = np.array([
+        meltextent_1d_full[d] if d is not None else np.nan 
+        for d in gdir.meltextent_1d['model2obs_inds_map']
+        ])
+    return meltextent_1d
 
 
 def mcmc_model_eval(
@@ -459,27 +475,26 @@ def mcmc_model_eval(
     if calib_snowlines_1d:
         if mbmod is None:
             mbmod = PyGEMMassBalance(gdir, modelprms, glacier_rgi_table, fls=fls, option_areaconstant=True)
-        
         # compute snowlines
         for year in gdir.dates_table.year.unique():
             mbmod.get_annual_mb(fls[0].surface_h, fls=fls, fl_id=0, year=year)
-
         results['snowline_1d'] = calc_snowline_1d(gdir, mbmod)
 
     if calib_scaf_1d:
         if mbmod is None:
             mbmod = PyGEMMassBalance(gdir, modelprms, glacier_rgi_table, fls=fls, option_areaconstant=True)
-        
         # compute SCAF
         for year in gdir.dates_table.year.unique():
             mbmod.get_annual_mb(fls[0].surface_h, fls=fls, fl_id=0, year=year)
-
         results['scaf_1d'] = calc_scaf_1d(gdir, mbmod)
 
-    # (add future calibration options here)
     if calib_meltextent_1d:
-        pass
-        # results["meltextent_1d"] = calc_meltextent_1d(gdir, mbmod)
+        if mbmod is None:
+            mbmod = PyGEMMassBalance(gdir, modelprms, glacier_rgi_table, fls=fls, option_areaconstant=True)
+        # compute melt extent
+        for year in gdir.dates_table.year.unique():
+            mbmod.get_annual_mb(fls[0].surface_h, fls=fls, fl_id=0, year=year)
+        results['meltextent_1d'] = calc_meltextent_1d(gdir, mbmod)
 
     if debug:
         print('Returned keys:', list(results.keys()))
@@ -1004,7 +1019,49 @@ def run(list_packed_vars):
                         date_to_index.get(pd.to_datetime(d)) for d in gdir.scaf_1d['date']
                     ]
 
-                if args.option_calib_elev_change_1d or args.option_calib_snowline_1d or args.option_calib_scaf_1d:
+                # load melt extent data
+                if args.option_calib_meltextent_1d:
+                    if pygem_prms['time']['timestep'] != 'daily':
+                        print(f"Invalid timestep: {pygem_prms['time']['timestep']}. ",
+                              "Transient melt extent calibration requires 'daily' timesteps.")
+                        raise RuntimeError("Incompatible timestep with melt extent calibration data.")
+                    # load melt extent obs to glacier directory
+                    gdir.meltextent_1d = gdir.read_json('meltextent_1d')
+
+                    # --- apply filters if specified ---
+                    dates = np.array(gdir.meltextent_1d['date'], dtype='datetime64[D]')
+                    mask = np.ones(len(dates), dtype=bool)  # start with all True
+                    if sar_data_filt and any(sar_data_filt[k] for k in ['direction', 'date']):
+                        # apply direction filter, if specified
+                        if sar_data_filt['direction']:
+                            mask &= (gdir.meltextent_1d['direction'] == sar_data_filt['direction'])
+                        # apply date range filter, if specified
+                        if sar_data_filt['date']:
+                            date_min = np.datetime64(sar_data_filt['date'][0])
+                            date_max = np.datetime64(sar_data_filt['date'][1])
+                            mask &= (dates >= date_min) & (dates <= date_max)
+
+                    # apply mask
+                    for key in ['z', 'z_min', 'z_max', 'direction', 'date']:
+                        gdir.meltextent_1d[key] = np.array(gdir.meltextent_1d[key])[mask]   
+
+                    # sort obervations by date and apply the sorting
+                    sort_idx = np.argsort(gdir.meltextent_1d['date'])
+                    for key in ['z', 'z_min', 'z_max', 'direction', 'date']:
+                        gdir.meltextent_1d[key] = gdir.meltextent_1d[key][sort_idx]
+
+                    # get z_sigma (assume it is the mean difference of min and max)
+                    gdir.meltextent_1d['z_sigma'] = (gdir.meltextent_1d['z_max'] - gdir.meltextent_1d['z_min']) / 2
+                    gdir.meltextent_1d['z_sigma_min'] = gdir.meltextent_1d['z_max'] - gdir.meltextent_1d['z']
+                    gdir.meltextent_1d['z_sigma_max'] = gdir.meltextent_1d['z'] - gdir.meltextent_1d['z_min']
+                    # get observation period indices in model date_table
+                    # create lookup dict (timestamp → index)
+                    date_to_index = {d: i for i, d in enumerate(gdir.dates_table['date'])}
+                    gdir.meltextent_1d['model2obs_inds_map'] = [
+                        date_to_index.get(pd.to_datetime(d)) for d in gdir.meltextent_1d['date']
+                    ]
+
+                if args.option_calib_elev_change_1d or args.option_calib_snowline_1d or args.option_calib_scaf_1d or args.option_calib_meltextent_1d:
                     # load calibrated calving_k values for tidewater glaciers
                     if gdir.is_tidewater and pygem_prms['setup']['include_frontalablation']:
                         fp = f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["frontalablation"]["frontalablation_relpath"]}/analysis/{pygem_prms["calib"]["data"]["frontalablation"]["frontalablation_cal_fn"]}'
@@ -1042,7 +1099,7 @@ def run(list_packed_vars):
             if args.spinup:
                 fls = oggm_compat.get_spinup_flowlines(gdir, y0=args.ref_startyear)
             # if not `args.spinup` and calibrating elevation change, grab model flowlines
-            elif args.option_calib_elev_change_1d:# or args.option_calib_snowline_1d or args.option_calib_scaf_1d:
+            elif args.option_calib_elev_change_1d:# or args.option_calib_snowline_1d or args.option_calib_scaf_1d or args.option_calib_meltextent_1d:
                 if not os.path.exists(gdir.get_filepath('model_flowlines')):
                     raise FileNotFoundError('No model flowlines found - has inversion been run?')
                 # ref_startyear should not be < 2000 unless spinup was run
@@ -2245,8 +2302,7 @@ def run(list_packed_vars):
                         torch.stack((
                             torch.tensor(gdir.snowline_1d['z_sigma_min']), 
                             torch.tensor(gdir.snowline_1d['z_sigma_max'])
-                        )),
-                        
+                        )),   
                     )
 
                 if args.option_calib_scaf_1d:
@@ -2256,6 +2312,16 @@ def run(list_packed_vars):
                         torch.stack((
                             torch.tensor(gdir.scaf_1d['scaf_sigma_min']), 
                             torch.tensor(gdir.scaf_1d['scaf_sigma_max'])
+                        )),  
+                    )
+                
+                if args.option_calib_meltextent_1d:
+                    # append z obs and and sigma obs list (use two-sided uncertainty)
+                    obs['meltextent_1d'] = (
+                        torch.tensor(gdir.meltextent_1d['z']),
+                        torch.stack((
+                            torch.tensor(gdir.meltextent_1d['z_sigma_min']), 
+                            torch.tensor(gdir.meltextent_1d['z_sigma_max'])
                         )),  
                     )
  
@@ -2271,6 +2337,7 @@ def run(list_packed_vars):
                     args.option_calib_elev_change_1d,
                     args.option_calib_snowline_1d,
                     args.option_calib_scaf_1d,
+                    args.option_calib_meltextent_1d,
                 )
 
                 # instantiate mbPosterior given priors, and observed values
@@ -2410,6 +2477,8 @@ def run(list_packed_vars):
                                 fp += 'snowline/'
                             elif args.option_calib_scaf_1d:
                                 fp += 'scaf/'
+                            elif args.option_calib_meltextent_1d:
+                                fp += 'meltextent/'
                             os.makedirs(fp, exist_ok=True)
                             if ncores > 1:
                                 show = False
@@ -2489,6 +2558,26 @@ def run(list_packed_vars):
                                             units='(SCAF)',
                                             limit_buff=0.05,
                                         )
+                                    if k == 'meltextent_1d':
+                                        graphics.plot_mcmc_snowline_1d(
+                                            pred_chain[k],
+                                            fls,
+                                            gdir.meltextent_1d,
+                                            glacier_str,
+                                            show=show,
+                                            fpath=f'{fp}/{glacier_str}-chain{n_chain}-meltextent_1d.png',
+                                            param='Melt extent',
+                                            leg_loc='lower right',
+                                        )
+                                        graphics.plot_mcmc_snowline_1v1_1d(
+                                            pred_chain[k],
+                                            fls,
+                                            gdir.meltextent_1d,
+                                            glacier_str,
+                                            show=show,
+                                            fpath=f'{fp}/{glacier_str}-chain{n_chain}-meltextent_1v1_1d.png',
+                                            param='melt extent',
+                                        )
                             except Exception as e:
                                 if debug:
                                     print(f'Error plotting chain {n_chain}: {e}')
@@ -2526,6 +2615,8 @@ def run(list_packed_vars):
                         modelprms_fp[0] += 'snowline/'
                     elif args.option_calib_scaf_1d:
                         modelprms_fp[0] += 'scaf/'
+                    elif args.option_calib_meltextent_1d:
+                        modelprms_fp[0] += 'meltextent/'
                     # if not using emulator (running full model), save output in ./calibration/ and ./calibration-fullsim/
                     if not pygem_prms['calib']['MCMC_params']['option_use_emulator']:
                         modelprms_fp.append(

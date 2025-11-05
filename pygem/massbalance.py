@@ -156,6 +156,7 @@ class PyGEMMassBalance(MassBalanceModel):
         self.glac_wide_runoff = np.zeros(self.nsteps)
         self.glac_wide_snowline = np.zeros(self.nsteps)
         self.glac_wide_snowline_scaf = np.zeros(self.nsteps)
+        self.glac_wide_meltextent = np.zeros(self.nsteps)
         self.glac_wide_area_annual = np.zeros(self.nyears + 1)
         self.glac_wide_volume_annual = np.zeros(self.nyears + 1)
         self.glac_wide_volume_change_ignored_annual = np.zeros(self.nyears)
@@ -960,6 +961,27 @@ class PyGEMMassBalance(MassBalanceModel):
                 scaf_area = np.nansum(self.glac_bin_area_annual[:, year_idx][scaf_bins])
                 scaf_out[i] = scaf_area / self.glac_wide_area_annual[year_idx]
             self.glac_wide_snowline_scaf[t_start : t_stop + 1] = scaf_out
+
+            # Melt extent altitude (m a.s.l.)
+            melt_mask = np.zeros(heights_steps.shape)
+            melt_mask[self.glac_bin_melt[:, t_start : t_stop + 1] > 0] = 1
+            heights_steps_wmelt = heights_steps * melt_mask
+            heights_steps_wmelt[heights_steps_wmelt == 0] = np.nan
+            try:
+                # index of highest elevation bin (smallest melt bin index with melt)
+                meltextent_idx = np.nanargmax(heights_steps_wmelt, axis=0)
+                self.glac_wide_meltextent[t_start : t_stop + 1] = heights[meltextent_idx]
+            except:
+                meltextent_idx = np.zeros((heights_steps_wmelt.shape[1])).astype(int)
+                meltextent_idx_nan = []
+                for ncol in range(heights_steps_wmelt.shape[1]):
+                    if ~np.isnan(heights_steps_wmelt[:, ncol]).all():
+                        meltextent_idx[ncol] = np.nanargmax(heights_steps_wmelt[:, ncol])
+                    else:
+                        meltextent_idx_nan.append(ncol)
+                heights_manual = heights[meltextent_idx]
+                heights_manual[meltextent_idx_nan] = np.nan
+                self.glac_wide_meltextent[t_start : t_stop + 1] = heights_manual
 
             # Equilibrium line altitude (m a.s.l.)
             ela_mask = np.zeros(heights.shape)
