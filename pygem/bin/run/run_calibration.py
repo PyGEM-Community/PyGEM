@@ -1998,7 +1998,8 @@ def run(list_packed_vars):
                     * consensus_mass
                     / pygem_prms['constants']['density_water']
                     / gdir.rgi_area_m2
-                    / (gdir.dates_table.shape[0] / gdir.mbdata['nyears'])
+                    # / (gdir.dates_table.shape[0] / 12)
+                    / gdir.mbdata['nyears']
                 )
                 # ---------------------------------
 
