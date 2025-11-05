@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pygem"
-version = "1.0.4"
+version = "1.1.0-beta"
 description = "Python Glacier Evolution Model (PyGEM)"
 authors = ["David Rounce <drounce@cmu.edu>,Brandon Tober <btober@cmu.edu>"]
 license = "MIT License"
@@ -45,13 +45,12 @@ preproc_fetch_mbdata = "pygem.bin.preproc.preproc_fetch_mbdata:main"
 preproc_wgms_estimate_kp = "pygem.bin.preproc.preproc_wgms_estimate_kp:main"
 run_spinup = "pygem.bin.run.run_spinup:main"
 run_inversion = "pygem.bin.run.run_inversion:main"
-run_calibration_reg_glena = "pygem.bin.run.run_calibration_reg_glena:main"
 run_calibration_frontalablation = "pygem.bin.run.run_calibration_frontalablation:main"
 run_calibration = "pygem.bin.run.run_calibration:main"
 run_mcmc_priors = "pygem.bin.run.run_mcmc_priors:main"
 run_simulation = "pygem.bin.run.run_simulation:main"
-postproc_monthly_mass = "pygem.bin.postproc.postproc_monthly_mass:main"
-postproc_binned_monthly_mass = "pygem.bin.postproc.postproc_binned_monthly_mass:main"
+postproc_subannual_mass = "pygem.bin.postproc.postproc_subannual_mass:main"
+postproc_binned_subannual_thick = "pygem.bin.postproc.postproc_binned_subannual_thick:main"
 postproc_distribute_ice = "pygem.bin.postproc.postproc_distribute_ice:main"
 postproc_compile_simulations = "pygem.bin.postproc.postproc_compile_simulations:main"
 list_failed_simulations = "pygem.bin.op.list_failed_simulations:main"
@@ -63,7 +62,7 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
-line-length = 88  # Default
+line-length = 120
 
 [tool.ruff.format]
 quote-style = "single"
@@ -81,6 +80,7 @@ ignore = [
     "B007",  # Loop control variable not used within loop body
     "B008",  # Function call `range` in argument defaults
     "B023",  # Function definition does not bind loop variable
+    "B905",  # Missing explicit `strict=` parameter in `zip()` call
     "C405",  # Unnecessary list literal
     "C408",  # Unnecessary `dict()` call
     "C414",  # Unnecessary `list()` call

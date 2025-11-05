@@ -3,7 +3,7 @@ Python Glacier Evolution Model (PyGEM)
 
 copyright © 2024 Brandon Tober <btober@cmu.edu> David Rounce <drounce@cmu.edu>
 
-Distrubted under the MIT lisence
+Distributed under the MIT license
 
 initialization script (ensure config.yaml and get sample datasets)
 """
@@ -16,10 +16,8 @@ import requests
 
 from pygem.setup.config import ConfigManager
 
-# instantiate ConfigManager
+# instantiate ConfigManager - store new config.yaml file
 config_manager = ConfigManager(overwrite=True)
-# read the config
-pygem_prms = config_manager.read_config()
 
 
 def print_file_tree(start_path, indent=''):
@@ -88,9 +86,7 @@ def download_and_unzip_from_google_drive(file_id, output_dir):
             response = session.get(base_url, params={'id': file_id}, stream=True)
             token = get_confirm_token(response)
             if token:
-                response = session.get(
-                    base_url, params={'id': file_id, 'confirm': token}, stream=True
-                )
+                response = session.get(base_url, params={'id': file_id, 'confirm': token}, stream=True)
             save_response_content(response, zip_path)
 
         # Unzip the file
@@ -99,11 +95,7 @@ def download_and_unzip_from_google_drive(file_id, output_dir):
             zip_ref.extractall(tmppath)
 
         # get root dir name of zipped files
-        dir = [
-            item
-            for item in os.listdir(tmppath)
-            if os.path.isdir(os.path.join(tmppath, item))
-        ][0]
+        dir = [item for item in os.listdir(tmppath) if os.path.isdir(os.path.join(tmppath, item))][0]
         unzip_dir = os.path.join(tmppath, dir)
         # get unique name if root dir name already exists in output_dir
         output_dir = get_unique_folder_name(os.path.join(output_dir, dir))
@@ -121,7 +113,7 @@ def main():
     # Define the base directory
     basedir = os.path.join(os.path.expanduser('~'), 'PyGEM')
     # Google Drive file id for sample dataset
-    file_id = '1Wu4ZqpOKxnc4EYhcRHQbwGq95FoOxMfZ'
+    file_id = '1cRVG__7dVclut42LdQBjnXKpTvyYWBuK'
     # download and unzip
     out = download_and_unzip_from_google_drive(file_id, basedir)
 

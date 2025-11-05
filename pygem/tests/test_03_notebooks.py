@@ -12,17 +12,18 @@ config_manager.update_config({'sim.out.export_extra_vars': True})
 
 
 # Get all notebooks in the PyGEM-notebooks repository
-nb_dir = os.environ.get('PYGEM_NOTEBOOKS_DIRPATH') or os.path.join(
-    os.path.expanduser('~'), 'PyGEM-notebooks'
-)
+nb_dir = os.environ.get('PYGEM_NOTEBOOKS_DIRPATH') or os.path.join(os.path.expanduser('~'), 'PyGEM-notebooks')
 # TODO #54: Test all notebooks
 # notebooks = [f for f in os.listdir(nb_dir) if f.endswith('.ipynb')]
 
-# list of notebooks to test, in the desired order
+# list of notebooks to test, in the desired order (failures may occur if order is changed)
 notebooks = [
-    'simple_test.ipynb',
-    'advanced_test.ipynb',
-    'advanced_test_tw.ipynb',
+    'simple_test.ipynb',  # runs with sample_data
+    'simple_test_daily.ipynb',  # runs with sample_data
+    'advanced_test.ipynb',  # runs with sample_data
+    'dhdt_processing.ipynb',  # runs with sample_data
+    'advanced_test_spinup_elev_change_calib.ipynb',  # runs with sample_data, depends on dhdt_processing.ipynb results
+    'advanced_test_tw.ipynb',  # runs with sample_data_tw
 ]
 
 

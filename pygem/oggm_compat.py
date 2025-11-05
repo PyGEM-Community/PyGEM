@@ -3,7 +3,7 @@ Python Glacier Evolution Model (PyGEM)
 
 copyright © 2018 David Rounce <drounce@cmu.edu
 
-Distrubted under the MIT lisence
+Distributed under the MIT license
 
 PYGEM-OGGGM COMPATIBILITY FUNCTIONS
 """
@@ -19,12 +19,17 @@ from oggm import cfg, workflow
 
 # from oggm import tasks
 from oggm.cfg import SEC_IN_YEAR
+from oggm.core.flowline import FileModel
 from oggm.core.massbalance import MassBalanceModel
 
 from pygem.setup.config import ConfigManager
-
-# from oggm.shop import rgitopo
-from pygem.shop import debris, icethickness, mbdata
+from pygem.shop import (
+    debris,
+    elevchange1d,
+    icethickness,
+    mbdata,
+    meltextent_and_snowline_1d,
+)
 
 # instantiate ConfigManager
 config_manager = ConfigManager()
@@ -121,11 +126,18 @@ def single_flowline_glacier_directory(
     if not os.path.isfile(gdir.get_filepath('mb_calib_pygem')):
         workflow.execute_entity_task(mbdata.mb_df_to_gdir, gdir)
     # debris thickness and melt enhancement factors
-    if not os.path.isfile(gdir.get_filepath('debris_ed')) or not os.path.isfile(
-        gdir.get_filepath('debris_hd')
-    ):
+    if not os.path.isfile(gdir.get_filepath('debris_ed')) or not os.path.isfile(gdir.get_filepath('debris_hd')):
         workflow.execute_entity_task(debris.debris_to_gdir, gdir)
         workflow.execute_entity_task(debris.debris_binned, gdir)
+    # 1d elevation change calibration data
+    if not os.path.isfile(gdir.get_filepath('elev_change_1d')):
+        workflow.execute_entity_task(elevchange1d.dh_1d_to_gdir, gdir)
+    # 1d melt extent calibration data
+    if not os.path.isfile(gdir.get_filepath('meltextent_1d')):
+        workflow.execute_entity_task(meltextent_and_snowline_1d.meltextent_1d_to_gdir, gdir)
+    # 1d snowline calibration data
+    if not os.path.isfile(gdir.get_filepath('snowline_1d')):
+        workflow.execute_entity_task(meltextent_and_snowline_1d.snowline_1d_to_gdir, gdir)
 
     return gdir
 
@@ -137,7 +149,7 @@ def single_flowline_glacier_directory_with_calving(
     k_calving=1,
     logging_level=pygem_prms['oggm']['logging_level'],
     has_internet=pygem_prms['oggm']['has_internet'],
-    working_dir=pygem_prms['root'] + pygem_prms['oggm']['oggm_gdir_relpath'],
+    working_dir=f'{pygem_prms["root"]}/{pygem_prms["oggm"]["oggm_gdir_relpath"]}',
     facorrected=pygem_prms['setup']['include_frontalablation'],
 ):
     """Prepare a GlacierDirectory for PyGEM (single flowline to start with)
@@ -219,11 +231,44 @@ def single_flowline_glacier_directory_with_calving(
 
     # mass balance calibration data (note facorrected kwarg)
     if not os.path.isfile(gdir.get_filepath('mb_calib_pygem')):
-        workflow.execute_entity_task(
-            mbdata.mb_df_to_gdir, gdir, **{'facorrected': facorrected}
-        )
+        workflow.execute_entity_task(mbdata.mb_df_to_gdir, gdir, **{'facorrected': facorrected})
+    # 1d elevation change calibration data
+    if not os.path.isfile(gdir.get_filepath('elev_change_1d')):
+        workflow.execute_entity_task(elevchange1d.dh_1d_to_gdir, gdir)
+    # 1d melt extent calibration data
+    if not os.path.isfile(gdir.get_filepath('meltextent_1d')):
+        workflow.execute_entity_task(meltextent_and_snowline_1d.meltextent_1d_to_gdir, gdir)
+    # 1d snowline calibration data
+    if not os.path.isfile(gdir.get_filepath('snowline_1d')):
+        workflow.execute_entity_task(meltextent_and_snowline_1d.snowline_1d_to_gdir, gdir)
 
     return gdir
+
+
+def get_spinup_flowlines(gdir, y0=None):
+    """Get OGGM spinup flowlines at a desired year.
+
+    Parameters
+    ----------
+    gdir : GlacierDirectory
+        the glacier to compute
+    y0 : int
+        the year at which to get the flowlines (None for last year)
+
+    Returns
+    -------
+    flowline object
+    """
+    # instantiate flowline.FileModel object from model_geometry_dynamic_spinup
+    fmd_dynamic = FileModel(gdir.get_filepath('model_geometry', filesuffix='_dynamic_spinup_pygem_mb'))
+    # run FileModel to startyear (it will be initialized at `spinup_start_yr`)
+    fmd_dynamic.run_until(y0)
+    # write flowlines
+    gdir.write_pickle(fmd_dynamic.fls, 'model_flowlines', filesuffix=f'_dynamic_spinup_pygem_mb_{y0}')
+    # add debris
+    debris.debris_binned(gdir, fl_str='model_flowlines', filesuffix=f'_dynamic_spinup_pygem_mb_{y0}')
+    # return flowlines
+    return gdir.read_pickle('model_flowlines', filesuffix=f'_dynamic_spinup_pygem_mb_{y0}')
 
 
 def update_cfg(updates, dict_name='PARAMS'):
@@ -240,11 +285,7 @@ def update_cfg(updates, dict_name='PARAMS'):
     try:
         target_dict = getattr(cfg, dict_name)
         for key, subdict in updates.items():
-            if (
-                key in target_dict
-                and isinstance(target_dict[key], dict)
-                and isinstance(subdict, dict)
-            ):
+            if key in target_dict and isinstance(target_dict[key], dict) and isinstance(subdict, dict):
                 for subkey, value in subdict.items():
                     if subkey in cfg[dict][key]:
                         target_dict[key][subkey] = value

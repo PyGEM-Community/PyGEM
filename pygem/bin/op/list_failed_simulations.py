@@ -3,7 +3,7 @@ Python Glacier Evolution Model (PyGEM)
 
 copyright © 2018 David Rounce <drounce@cmu.edu>
 
-Distrubted under the MIT lisence
+Distributed under the MIT license
 
 script to check for failed glaciers for a given simulation and export a pickle file containing a list of said glacier numbers to be reprocessed
 """
@@ -63,18 +63,14 @@ def run(
     # instantiate list of galcnos that are not in sim_dir
     failed_glacnos = []
 
-    fps = glob.glob(
-        sim_dir + f'*_{calib_opt}_ba{bias_adj}_*_{sim_startyear}_{sim_endyear}_all.nc'
-    )
+    fps = glob.glob(sim_dir + f'*_{calib_opt}_ba{bias_adj}_*_{sim_startyear}_{sim_endyear}_all.nc')
 
     # Glaciers with successful runs to process
     glacno_ran = [x.split('/')[-1].split('_')[0] for x in fps]
     glacno_ran = [x.split('.')[0].zfill(2) + '.' + x[-5:] for x in glacno_ran]
 
     # print stats of successfully simualated glaciers
-    main_glac_rgi = main_glac_rgi_all.loc[
-        main_glac_rgi_all.apply(lambda x: x.rgino_str in glacno_ran, axis=1)
-    ]
+    main_glac_rgi = main_glac_rgi_all.loc[main_glac_rgi_all.apply(lambda x: x.rgino_str in glacno_ran, axis=1)]
     print(
         f'{gcm} {str(sim_climate_scenario).replace("None", "")} glaciers successfully simulated:\n  - {main_glac_rgi.shape[0]} of {main_glac_rgi_all.shape[0]} glaciers ({np.round(main_glac_rgi.shape[0] / main_glac_rgi_all.shape[0] * 100, 3)}%)'
     )

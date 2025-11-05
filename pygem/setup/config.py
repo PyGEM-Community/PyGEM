@@ -3,9 +3,10 @@ Python Glacier Evolution Model (PyGEM)
 
 copyright © 2018 David Rounce <drounce@cmu.edu>
 
-Distrubted under the MIT lisence
+Distributed under the MIT license
 """
 
+import fnmatch
 import os
 import shutil
 
@@ -17,7 +18,7 @@ __all__ = ['ConfigManager']
 class ConfigManager:
     """Manages PyGEMs configuration file, ensuring it exists, reading, updating, and validating its contents."""
 
-    def __init__(self, config_filename='config.yaml', base_dir=None, overwrite=False):
+    def __init__(self, config_filename='config.yaml', base_dir=None, overwrite=False, check_paths=True):
         """
         Initialize the ConfigManager class.
 
@@ -25,14 +26,14 @@ class ConfigManager:
         config_filename (str, optional): Name of the configuration file. Defaults to 'config.yaml'.
         base_dir (str, optional): Directory where the configuration file is stored. Defaults to '~/PyGEM'.
         overwrite (bool, optional): Whether to overwrite an existing configuration file. Defaults to False.
+        check_paths (bool, optional): Whether to check for relative paths existing. Defaults to True.
         """
         self.config_filename = config_filename
         self.base_dir = base_dir or os.path.join(os.path.expanduser('~'), 'PyGEM')
         self.config_path = os.path.join(self.base_dir, self.config_filename)
-        self.source_config_path = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), 'config.yaml'
-        )
+        self.source_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.yaml')
         self.overwrite = overwrite
+        self.check_paths = check_paths
         self._ensure_config()
 
     def _ensure_config(self):
@@ -99,6 +100,20 @@ class ConfigManager:
         Parameters:
         config (dict): The configuration dictionary to be validated.
         """
+        skip_patterns = [
+            '*cesm2*',
+            '*cmip5*',
+            '*gfdl*',
+            '*debris*',
+            '*h_ref*',
+            '*frontalablation*',
+            '*snowline*',
+            '*meltextent*',
+            '*dh_1d*',
+            '*dhdt_2d*',
+        ]
+
+        # --- Type validation (existing code) ---
         for key, expected_type in self.EXPECTED_TYPES.items():
             keys = key.split('.')
             sub_data = config
@@ -109,17 +124,54 @@ class ConfigManager:
                     raise KeyError(f'Missing required key in configuration: {key}')
 
             if not isinstance(sub_data, expected_type):
-                raise TypeError(
-                    f"Invalid type for '{key}': expected {expected_type}, not {type(sub_data)}"
-                )
+                raise TypeError(f"Invalid type for '{key}': expected {expected_type}, not {type(sub_data)}")
 
-            # Check elements inside lists (if defined)
             if key in self.LIST_ELEMENT_TYPES and isinstance(sub_data, list):
                 elem_type = self.LIST_ELEMENT_TYPES[key]
                 if not all(isinstance(item, elem_type) for item in sub_data):
                     raise TypeError(
                         f"Invalid type for elements in '{key}': expected all elements to be {elem_type}, but got {sub_data}"
                     )
+
+        if not self.check_paths:
+            return
+
+        # --- Flatten the dict ---
+        def flatten_dict(d, parent_key=''):
+            items = {}
+            for k, v in d.items():
+                new_key = f'{parent_key}.{k}' if parent_key else k
+                if isinstance(v, dict):
+                    items.update(flatten_dict(v, new_key))
+                else:
+                    items[new_key] = v
+            return items
+
+        flat = flatten_dict(config)
+
+        # --- _relpath path validation ---
+        root = config.get('root')
+        if not root:
+            raise KeyError("Missing required 'root' key for path validation.")
+        root = os.path.abspath(root)
+
+        for key, value in flat.items():
+            if not key.endswith('_relpath') or not isinstance(value, str):
+                continue
+
+            # Skip patterns
+            if any(fnmatch.fnmatch(key, pat) for pat in skip_patterns):
+                continue
+
+            path = os.path.join(root, value.strip(os.sep))
+
+            # Determine whether to check as file or directory
+            if os.path.splitext(path)[1]:  # has an extension → treat as file
+                if not os.path.isfile(path):
+                    raise FileNotFoundError(f"Missing file for '{key}': {path}")
+            else:  # no extension → treat as directory
+                if not os.path.isdir(path):
+                    raise FileNotFoundError(f"Missing directory for '{key}': {path}")
 
     # expected config types
     EXPECTED_TYPES = {
@@ -129,11 +181,11 @@ class ConfigManager:
         'user.institution': (str, type(None)),
         'user.email': (str, type(None)),
         'setup': dict,
-        'setup.rgi_region01': list,
-        'setup.rgi_region02': str,
+        'setup.rgi_region01': (list, type(None)),
+        'setup.rgi_region02': (str, type(None)),
         'setup.glac_no_skip': (list, type(None)),
         'setup.glac_no': (list, type(None)),
-        'setup.min_glac_area_km2': int,
+        'setup.min_glac_area_km2': (int, float),
         'setup.include_landterm': bool,
         'setup.include_laketerm': bool,
         'setup.include_tidewater': bool,
@@ -157,7 +209,7 @@ class ConfigManager:
         'climate.sim_wateryear': str,
         'climate.constantarea_years': int,
         'climate.paths': dict,
-        'climate.paths.era5_relpath': str,
+        'climate.paths.era5_relpath': (str, type(None)),
         'climate.paths.era5_temp_fn': str,
         'climate.paths.era5_tempstd_fn': str,
         'climate.paths.era5_prec_fn': str,
@@ -178,21 +230,21 @@ class ConfigManager:
         'calib.option_calibration': str,
         'calib.priors_reg_fn': str,
         'calib.HH2015_params': dict,
-        'calib.HH2015_params.tbias_init': int,
-        'calib.HH2015_params.tbias_step': int,
-        'calib.HH2015_params.kp_init': float,
-        'calib.HH2015_params.kp_bndlow': float,
-        'calib.HH2015_params.kp_bndhigh': int,
-        'calib.HH2015_params.ddfsnow_init': float,
-        'calib.HH2015_params.ddfsnow_bndlow': float,
-        'calib.HH2015_params.ddfsnow_bndhigh': float,
+        'calib.HH2015_params.tbias_init': (int, float),
+        'calib.HH2015_params.tbias_step': (int, float),
+        'calib.HH2015_params.kp_init': (int, float),
+        'calib.HH2015_params.kp_bndlow': (int, float),
+        'calib.HH2015_params.kp_bndhigh': (int, float),
+        'calib.HH2015_params.ddfsnow_init': (int, float),
+        'calib.HH2015_params.ddfsnow_bndlow': (int, float),
+        'calib.HH2015_params.ddfsnow_bndhigh': (int, float),
         'calib.HH2015mod_params': dict,
-        'calib.HH2015mod_params.tbias_init': int,
-        'calib.HH2015mod_params.tbias_step': float,
-        'calib.HH2015mod_params.kp_init': int,
-        'calib.HH2015mod_params.kp_bndlow': float,
-        'calib.HH2015mod_params.kp_bndhigh': int,
-        'calib.HH2015mod_params.ddfsnow_init': float,
+        'calib.HH2015mod_params.tbias_init': (int, float),
+        'calib.HH2015mod_params.tbias_step': (int, float),
+        'calib.HH2015mod_params.kp_init': (int, float),
+        'calib.HH2015mod_params.kp_bndlow': (int, float),
+        'calib.HH2015mod_params.kp_bndhigh': (int, float),
+        'calib.HH2015mod_params.ddfsnow_init': (int, float),
         'calib.HH2015mod_params.method_opt': str,
         'calib.HH2015mod_params.params2opt': list,
         'calib.HH2015mod_params.ftol_opt': float,
@@ -201,67 +253,91 @@ class ConfigManager:
         'calib.emulator_params.emulator_sims': int,
         'calib.emulator_params.overwrite_em_sims': bool,
         'calib.emulator_params.opt_hh2015_mod': bool,
-        'calib.emulator_params.tbias_step': float,
-        'calib.emulator_params.tbias_init': int,
-        'calib.emulator_params.kp_init': int,
-        'calib.emulator_params.kp_bndlow': float,
-        'calib.emulator_params.kp_bndhigh': int,
-        'calib.emulator_params.ddfsnow_init': float,
+        'calib.emulator_params.tbias_step': (int, float),
+        'calib.emulator_params.tbias_init': (int, float),
+        'calib.emulator_params.kp_init': (int, float),
+        'calib.emulator_params.kp_bndlow': (int, float),
+        'calib.emulator_params.kp_bndhigh': (int, float),
+        'calib.emulator_params.ddfsnow_init': (int, float),
         'calib.emulator_params.option_areaconstant': bool,
         'calib.emulator_params.tbias_disttype': str,
-        'calib.emulator_params.tbias_sigma': int,
-        'calib.emulator_params.kp_gamma_alpha': int,
-        'calib.emulator_params.kp_gamma_beta': int,
+        'calib.emulator_params.tbias_sigma': (int, float),
+        'calib.emulator_params.kp_gamma_alpha': (int, float),
+        'calib.emulator_params.kp_gamma_beta': (int, float),
         'calib.emulator_params.ddfsnow_disttype': str,
-        'calib.emulator_params.ddfsnow_mu': float,
-        'calib.emulator_params.ddfsnow_sigma': float,
-        'calib.emulator_params.ddfsnow_bndlow': int,
-        'calib.emulator_params.ddfsnow_bndhigh': float,
+        'calib.emulator_params.ddfsnow_mu': (int, float),
+        'calib.emulator_params.ddfsnow_sigma': (int, float),
+        'calib.emulator_params.ddfsnow_bndlow': (int, float),
+        'calib.emulator_params.ddfsnow_bndhigh': (int, float),
         'calib.emulator_params.method_opt': str,
         'calib.emulator_params.params2opt': list,
         'calib.emulator_params.ftol_opt': float,
         'calib.emulator_params.eps_opt': float,
         'calib.MCMC_params': dict,
+        'calib.MCMC_params.option_calib_glacierwide_mb_mwea': bool,
         'calib.MCMC_params.option_use_emulator': bool,
         'calib.MCMC_params.emulator_sims': int,
-        'calib.MCMC_params.tbias_step': float,
-        'calib.MCMC_params.tbias_stepsmall': float,
+        'calib.MCMC_params.tbias_step': (int, float),
+        'calib.MCMC_params.tbias_stepsmall': (int, float),
         'calib.MCMC_params.option_areaconstant': bool,
-        'calib.MCMC_params.mcmc_step': float,
+        'calib.MCMC_params.mcmc_step': (int, float),
         'calib.MCMC_params.n_chains': int,
         'calib.MCMC_params.mcmc_sample_no': int,
         'calib.MCMC_params.mcmc_burn_pct': int,
         'calib.MCMC_params.thin_interval': int,
         'calib.MCMC_params.ddfsnow_disttype': str,
-        'calib.MCMC_params.ddfsnow_mu': float,
-        'calib.MCMC_params.ddfsnow_sigma': float,
-        'calib.MCMC_params.ddfsnow_bndlow': int,
-        'calib.MCMC_params.ddfsnow_bndhigh': float,
+        'calib.MCMC_params.ddfsnow_mu': (int, float),
+        'calib.MCMC_params.ddfsnow_sigma': (int, float),
+        'calib.MCMC_params.ddfsnow_bndlow': (int, float),
+        'calib.MCMC_params.ddfsnow_bndhigh': (int, float),
         'calib.MCMC_params.kp_disttype': str,
         'calib.MCMC_params.tbias_disttype': str,
-        'calib.MCMC_params.tbias_mu': int,
-        'calib.MCMC_params.tbias_sigma': int,
-        'calib.MCMC_params.tbias_bndlow': int,
-        'calib.MCMC_params.tbias_bndhigh': int,
-        'calib.MCMC_params.kp_gamma_alpha': int,
-        'calib.MCMC_params.kp_gamma_beta': int,
-        'calib.MCMC_params.kp_lognorm_mu': int,
-        'calib.MCMC_params.kp_lognorm_tau': int,
-        'calib.MCMC_params.kp_mu': int,
-        'calib.MCMC_params.kp_sigma': float,
-        'calib.MCMC_params.kp_bndlow': float,
-        'calib.MCMC_params.kp_bndhigh': float,
+        'calib.MCMC_params.tbias_mu': (int, float),
+        'calib.MCMC_params.tbias_sigma': (int, float),
+        'calib.MCMC_params.tbias_bndlow': (int, float),
+        'calib.MCMC_params.tbias_bndhigh': (int, float),
+        'calib.MCMC_params.kp_gamma_alpha': (int, float),
+        'calib.MCMC_params.kp_gamma_beta': (int, float),
+        'calib.MCMC_params.kp_lognorm_mu': (int, float),
+        'calib.MCMC_params.kp_lognorm_tau': (int, float),
+        'calib.MCMC_params.kp_mu': (int, float),
+        'calib.MCMC_params.kp_sigma': (int, float),
+        'calib.MCMC_params.kp_bndlow': (int, float),
+        'calib.MCMC_params.kp_bndhigh': (int, float),
+        'calib.MCMC_params.option_calib_elev_change_1d': bool,
+        'calib.MCMC_params.rhoabl_disttype': str,
+        'calib.MCMC_params.rhoabl_mu': (int, float),
+        'calib.MCMC_params.rhoabl_sigma': (int, float),
+        'calib.MCMC_params.rhoaccum_disttype': str,
+        'calib.MCMC_params.rhoaccum_mu': (int, float),
+        'calib.MCMC_params.rhoaccum_sigma': (int, float),
+        'calib.MCMC_params.option_calib_meltextent_1d': bool,
+        'calib.MCMC_params.option_calib_snowline_1d': bool,
         'calib.data': dict,
         'calib.data.massbalance': dict,
-        'calib.data.massbalance.hugonnet2021_relpath': str,
-        'calib.data.massbalance.hugonnet2021_fn': str,
-        'calib.data.massbalance.hugonnet2021_facorrected_fn': str,
+        'calib.data.massbalance.massbalance_relpath': str,
+        'calib.data.massbalance.massbalance_fn': str,
+        'calib.data.massbalance.massbalance_facorrected_fn': str,
+        'calib.data.massbalance.massbalance_rgiid_colname': str,
+        'calib.data.massbalance.massbalance_mb_colname': str,
+        'calib.data.massbalance.massbalance_mb_error_colname': str,
+        'calib.data.massbalance.massbalance_mb_clim_colname': (str, type(None)),
+        'calib.data.massbalance.massbalance_mb_clim_error_colname': (str, type(None)),
+        'calib.data.massbalance.massbalance_period_colname': str,
+        'calib.data.massbalance.massbalance_period_date_format': str,
+        'calib.data.massbalance.massbalance_period_delimiter': str,
         'calib.data.frontalablation': dict,
         'calib.data.frontalablation.frontalablation_relpath': str,
         'calib.data.frontalablation.frontalablation_cal_fn': str,
         'calib.data.icethickness': dict,
         'calib.data.icethickness.h_ref_relpath': str,
-        'calib.icethickness_cal_frac_byarea': float,
+        'calib.data.elev_change': dict,
+        'calib.data.elev_change.dhdt_2d_relpath': (str, type(None)),
+        'calib.data.elev_change.dh_1d_relpath': (str, type(None)),
+        'calib.data.meltextent_1d': dict,
+        'calib.data.meltextent_1d.meltextent_1d_relpath': (str, type(None)),
+        'calib.data.snowline_1d': dict,
+        'calib.data.snowline_1d.snowline_1d_relpath': (str, type(None)),
         'sim': dict,
         'sim.option_dynamics': (str, type(None)),
         'sim.option_bias_adjustment': int,
@@ -272,26 +348,26 @@ class ConfigManager:
         'sim.out.export_extra_vars': bool,
         'sim.out.export_binned_data': bool,
         'sim.out.export_binned_components': bool,
-        'sim.out.export_binned_area_threshold': int,
+        'sim.out.export_binned_area_threshold': (int, float),
         'sim.oggm_dynamics': dict,
         'sim.oggm_dynamics.cfl_number': float,
         'sim.oggm_dynamics.cfl_number_calving': float,
-        'sim.oggm_dynamics.glena_reg_relpath': str,
-        'sim.oggm_dynamics.use_reg_glena': bool,
-        'sim.oggm_dynamics.fs': int,
-        'sim.oggm_dynamics.glen_a_multiplier': int,
-        'sim.icethickness_advancethreshold': int,
-        'sim.terminus_percentage': int,
+        'sim.oggm_dynamics.glen_a_regional_relpath': str,
+        'sim.oggm_dynamics.use_regional_glen_a': bool,
+        'sim.oggm_dynamics.fs': (int, float),
+        'sim.oggm_dynamics.glen_a_multiplier': (int, float),
+        'sim.icethickness_advancethreshold': (int, float),
+        'sim.terminus_percentage': (int, float),
         'sim.params': dict,
         'sim.params.use_constant_lapserate': bool,
-        'sim.params.kp': int,
-        'sim.params.tbias': int,
-        'sim.params.ddfsnow': float,
-        'sim.params.ddfsnow_iceratio': float,
-        'sim.params.precgrad': float,
-        'sim.params.lapserate': float,
-        'sim.params.tsnow_threshold': int,
-        'sim.params.calving_k': float,
+        'sim.params.kp': (int, float),
+        'sim.params.tbias': (int, float),
+        'sim.params.ddfsnow': (int, float),
+        'sim.params.ddfsnow_iceratio': (int, float),
+        'sim.params.precgrad': (int, float),
+        'sim.params.lapserate': (int, float),
+        'sim.params.tsnow_threshold': (int, float),
+        'sim.params.calving_k': (int, float),
         'mb': dict,
         'mb.option_surfacetype_initial': int,
         'mb.include_firn': bool,
@@ -308,12 +384,12 @@ class ConfigManager:
         'mb.Woodard_rf_opts.rf_month': int,
         'mb.HH2015_rf_opts': dict,
         'mb.HH2015_rf_opts.rf_layers': int,
-        'mb.HH2015_rf_opts.rf_dz': int,
-        'mb.HH2015_rf_opts.rf_dsc': int,
-        'mb.HH2015_rf_opts.rf_meltcrit': float,
-        'mb.HH2015_rf_opts.pp': float,
-        'mb.HH2015_rf_opts.rf_dens_top': int,
-        'mb.HH2015_rf_opts.rf_dens_bot': int,
+        'mb.HH2015_rf_opts.rf_dz': (int, float),
+        'mb.HH2015_rf_opts.rf_dsc': (int, float),
+        'mb.HH2015_rf_opts.rf_meltcrit': (int, float),
+        'mb.HH2015_rf_opts.pp': (int, float),
+        'mb.HH2015_rf_opts.rf_dens_top': (int, float),
+        'mb.HH2015_rf_opts.rf_dens_bot': (int, float),
         'mb.HH2015_rf_opts.option_rf_limit_meltsnow': int,
         'rgi': dict,
         'rgi.rgi_relpath': str,
@@ -333,13 +409,13 @@ class ConfigManager:
         'time.summer_month_start': int,
         'time.timestep': str,
         'constants': dict,
-        'constants.density_ice': int,
-        'constants.density_water': int,
-        'constants.k_ice': float,
-        'constants.k_air': float,
-        'constants.ch_ice': int,
-        'constants.ch_air': int,
-        'constants.Lh_rf': int,
+        'constants.density_ice': (int, float),
+        'constants.density_water': (int, float),
+        'constants.k_ice': (int, float),
+        'constants.k_air': (int, float),
+        'constants.ch_ice': (int, float),
+        'constants.ch_air': (int, float),
+        'constants.Lh_rf': (int, float),
         'constants.tolerance': float,
         'debug': dict,
         'debug.refreeze': bool,
