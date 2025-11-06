@@ -816,9 +816,9 @@ def run(list_packed_vars):
 
                 # Tidewater glaciers - use climatic mass balance since calving_k already calibrated separately
                 if gdir.is_tidewater:
-                    assert 'mb_clim_mwea' in gdir.mbdata.keys(), (
-                        'include_frontalablation is set as true, but fontal ablation has yet to be calibrated.'
-                    )
+                    assert (
+                        'mb_clim_mwea' in gdir.mbdata.keys()
+                    ), 'include_frontalablation is set as true, but fontal ablation has yet to be calibrated.'
                     mb_obs_mwea = gdir.mbdata['mb_clim_mwea']
                     mb_obs_mwea_err = gdir.mbdata['mb_clim_mwea_err']
                 # non-tidewater - use geodetic mass balance
@@ -1836,9 +1836,9 @@ def run(list_packed_vars):
                     em_mod_fp = (
                         pygem_prms['root'] + '/Output/emulator/models/' + glacier_str.split('.')[0].zfill(2) + '/'
                     )
-                    assert os.path.exists(em_mod_fp + em_mod_fn), (
-                        f'emulator output does not exist : {em_mod_fp + em_mod_fn}'
-                    )
+                    assert os.path.exists(
+                        em_mod_fp + em_mod_fn
+                    ), f'emulator output does not exist : {em_mod_fp + em_mod_fn}'
                     mbEmulator = massbalEmulator.load(em_mod_path=em_mod_fp + em_mod_fn)
                     outpath_sfix = ''  # output file path suffix if using emulator
                 else:

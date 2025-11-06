@@ -428,9 +428,9 @@ def run(args):
             ds.crs.attrs['semi_major_axis'] = 6378137.0
             ds.crs.attrs['inverse_flattening'] = 298.257223563
             ds.crs.attrs['proj4text'] = '+proj=longlat +datum=WGS84 +no_defs'
-            ds.crs.attrs['crs_wkt'] = (
-                'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]]'
-            )
+            ds.crs.attrs[
+                'crs_wkt'
+            ] = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]]'
 
             # time attributes - different for monthly v annual
             ds.time.attrs['long_name'] = 'time'

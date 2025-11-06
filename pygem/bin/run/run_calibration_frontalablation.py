@@ -2420,15 +2420,13 @@ def update_mbdata(
     verbose=False,
 ):
     # Load calving glacier data (already quality controlled during calibration)
-    assert os.path.exists(frontalablation_fp + frontalablation_fn), (
-        'Calibrated frontal ablation output dataset does not exist'
-    )
+    assert os.path.exists(
+        frontalablation_fp + frontalablation_fn
+    ), 'Calibrated frontal ablation output dataset does not exist'
     fa_glac_data = pd.read_csv(frontalablation_fp + frontalablation_fn)
     # check if fa corrected mass balance data already exists
     if os.path.exists(massbalance_facorr_fp):
-        assert overwrite, (
-            f'Frontal ablation corrected mass balance dataset already exists!\t{massbalance_facorr_fp}\nPass `-o` to overwrite, or pass a different filename for `massbalance_facorrected_fn`'
-        )
+        assert overwrite, f'Frontal ablation corrected mass balance dataset already exists!\t{massbalance_facorr_fp}\nPass `-o` to overwrite, or pass a different filename for `massbalance_facorrected_fn`'
         mb_data = pd.read_csv(massbalance_facorr_fp)
     else:
         mb_data = pd.read_csv(massbalance_fp)

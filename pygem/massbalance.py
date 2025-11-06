@@ -246,9 +246,9 @@ class PyGEMMassBalance(MassBalanceModel):
         """
 
         # assertion to only run with calendar years
-        assert pygem_prms['climate']['sim_wateryear'] == 'calendar', (
-            'This function is not set up yet to handle non-calendar years'
-        )
+        assert (
+            pygem_prms['climate']['sim_wateryear'] == 'calendar'
+        ), 'This function is not set up yet to handle non-calendar years'
 
         # get year index
         year_idx = self.get_year_index(year)
@@ -437,9 +437,9 @@ class PyGEMMassBalance(MassBalanceModel):
                     melt_energy_available[melt_energy_available < 0] = 0
 
                 elif pygem_prms['mb']['option_ablation'] == 2:
-                    assert pygem_prms['time']['timestep'] != 'daily', (
-                        'Option 2 for ablation should not be used with daily data'
-                    )
+                    assert (
+                        pygem_prms['time']['timestep'] != 'daily'
+                    ), 'Option 2 for ablation should not be used with daily data'
 
                     # option 2: monthly temperature superimposed with daily temperature variability
                     # daily temperature variation in each bin for the monthly timestep
@@ -513,9 +513,9 @@ class PyGEMMassBalance(MassBalanceModel):
                         gidx_debug = np.where(heights == heights[glac_idx_t0].min())[0]
 
                     # Loop through each elevation bin of glacier
-                    assert pygem_prms['time']['timestep'] != 'daily', (
-                        'must remove the 12 thats hard-coded here - did not do this for HH2015 given the issue'
-                    )
+                    assert (
+                        pygem_prms['time']['timestep'] != 'daily'
+                    ), 'must remove the 12 thats hard-coded here - did not do this for HH2015 given the issue'
 
                     for nbin, gidx in enumerate(glac_idx_t0):
                         # COMPUTE HEAT CONDUCTION - BUILD COLD RESERVOIR
@@ -701,9 +701,9 @@ class PyGEMMassBalance(MassBalanceModel):
                     #  refreeze cannot exceed rain and melt (snow & glacier melt)
                     self.bin_refreeze[:, step] = self.bin_meltsnow[:, step] + self.bin_prec[:, step]
                     # refreeze cannot exceed snow depth
-                    self.bin_refreeze[self.bin_refreeze[:, step] > self.bin_snowpack[:, step], step] = (
-                        self.bin_snowpack[self.bin_refreeze[:, step] > self.bin_snowpack[:, step], step]
-                    )
+                    self.bin_refreeze[
+                        self.bin_refreeze[:, step] > self.bin_snowpack[:, step], step
+                    ] = self.bin_snowpack[self.bin_refreeze[:, step] > self.bin_snowpack[:, step], step]
                     # refreeze cannot exceed refreeze potential
                     self.bin_refreeze[self.bin_refreeze[:, step] > refreeze_potential, step] = refreeze_potential[
                         self.bin_refreeze[:, step] > refreeze_potential
@@ -745,9 +745,9 @@ class PyGEMMassBalance(MassBalanceModel):
                     # melt of refreezing (assumed to be snow)
                     self.offglac_meltrefreeze = self.surfacetype_ddf_dict[2] * melt_energy_available
                     # melt of refreezing cannot exceed refreezing
-                    self.offglac_meltrefreeze[self.offglac_meltrefreeze > self.bin_refreeze[:, step]] = (
-                        self.bin_refreeze[:, step][self.offglac_meltrefreeze > self.bin_refreeze[:, step]]
-                    )
+                    self.offglac_meltrefreeze[
+                        self.offglac_meltrefreeze > self.bin_refreeze[:, step]
+                    ] = self.bin_refreeze[:, step][self.offglac_meltrefreeze > self.bin_refreeze[:, step]]
                     # off-glacier melt = snow melt + refreezing melt
                     self.offglac_bin_melt[offglac_idx, step] = (
                         self.bin_meltsnow[offglac_idx, step] + self.offglac_meltrefreeze[offglac_idx]

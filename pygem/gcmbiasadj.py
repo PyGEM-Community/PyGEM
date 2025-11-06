@@ -151,9 +151,9 @@ def temp_biasadj_HH2015(
     if sim_startyear == ref_startyear:
         if debug:
             print((np.mean(gcm_temp_biasadj_subset, axis=1) - np.mean(ref_temp, axis=1)))
-        assert np.max(np.abs(np.mean(gcm_temp_biasadj_subset, axis=1) - np.mean(ref_temp, axis=1))) < 1, (
-            'Error with gcm temperature bias adjustment: mean ref and gcm temps differ by more than 1 degree'
-        )
+        assert (
+            np.max(np.abs(np.mean(gcm_temp_biasadj_subset, axis=1) - np.mean(ref_temp, axis=1))) < 1
+        ), 'Error with gcm temperature bias adjustment: mean ref and gcm temps differ by more than 1 degree'
     else:
         if debug:
             print((np.mean(gcm_temp_biasadj_subset, axis=1) - np.mean(ref_temp, axis=1)))

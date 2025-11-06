@@ -291,7 +291,9 @@ def plot_mcmc_chain(
         axes[nparams].plot(mean_resid_primes, '.', ms=ms, c='tab:blue')
         axes[nparams].plot(mean_resid_chain, '.', ms=ms, c='tab:orange')
 
-        axes[nparams].text(0.02, 0.02, key, transform=axes[nparams].transAxes, fontsize=fontsize, va='bottom', ha='left')
+        axes[nparams].text(
+            0.02, 0.02, key, transform=axes[nparams].transAxes, fontsize=fontsize, va='bottom', ha='left'
+        )
         if key == 'elev_change_1d':
             axes[nparams].set_ylabel(r'$\overline{\hat{dh} - dh}$', fontsize=fontsize)
         else:

@@ -349,9 +349,9 @@ def run(reg, option_calibration='emulator', priors_reg_outpath='', debug=False, 
         modelprms_fn = glac_str + '-modelprms_dict.json'
         with open(modelprms_fp + modelprms_fn, 'r') as f:
             modelprms_dict = json.load(f)
-        assert option_calibration in list(modelprms_dict.keys()), (
-            f'{glac_str}: {option_calibration} not in calibration data.'
-        )
+        assert option_calibration in list(
+            modelprms_dict.keys()
+        ), f'{glac_str}: {option_calibration} not in calibration data.'
         modelprms = modelprms_dict[option_calibration]
 
         main_glac_rgi.loc[nglac, 'kp'] = modelprms['kp'][0]
