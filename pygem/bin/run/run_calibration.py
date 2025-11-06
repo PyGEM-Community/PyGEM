@@ -970,7 +970,7 @@ def run(list_packed_vars):
 
                     # apply mask
                     for key in ['z', 'z_min', 'z_max', 'direction', 'date']:
-                        gdir.scaf_1d[key] = np.array(gdir.scaf_1d[key])[mask]   
+                        gdir.snowline_1d[key] = np.array(gdir.snowline_1d[key])[mask]   
 
                     # sort obervations by date and apply the sorting
                     sort_idx = np.argsort(gdir.snowline_1d['date'])
