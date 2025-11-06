@@ -168,9 +168,9 @@ class GCM:
             if self.name == 'ERA5':
                 # Ensure if using daily data, then including leap years
                 if pygem_prms['time']['timestep'] == 'daily':
-                    assert (
-                        pygem_prms['time']['option_leapyear'] == 1
-                    ), 'option_leapyear must be set to 1 if using daily ERA5 data'
+                    assert pygem_prms['time']['option_leapyear'] == 1, (
+                        'option_leapyear must be set to 1 if using daily ERA5 data'
+                    )
 
                 # Variable names
                 self.temp_vn = 't2m'

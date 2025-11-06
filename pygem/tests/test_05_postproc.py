@@ -117,10 +117,10 @@ def test_check_compiled_product(rootdir):
                 compvals = compvar.values[0, :, :]  # 0th index is the glacier index
 
                 # check that compiled product has same shape as original data
-                assert (
-                    simvals.shape == compvals.shape
-                ), f'Compiled product shape {compvals.shape} does not match original data shape {simvals.shape}'
+                assert simvals.shape == compvals.shape, (
+                    f'Compiled product shape {compvals.shape} does not match original data shape {simvals.shape}'
+                )
                 # check that compiled product matches original data
-                assert np.allclose(
-                    simvals, compvals, rtol=1e-8, atol=1e-12, equal_nan=True
-                ), f'Compiled product for {var} does not match original data'
+                assert np.allclose(simvals, compvals, rtol=1e-8, atol=1e-12, equal_nan=True), (
+                    f'Compiled product for {var} does not match original data'
+                )
