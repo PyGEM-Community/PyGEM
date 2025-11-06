@@ -457,8 +457,8 @@ def plot_mcmc_elev_change_1d(
 
         ax[t].fill_between(
             xvals,
-            (obs['dh'][:, t] - obs['dh_sigma'][:, t]) / nyrs[t],
-            (obs['dh'][:, t] + obs['dh_sigma'][:, t]) / nyrs[t],
+            (obs['dh'][:, t] - (obs['dh_sigma'][:, t] / 2)) / nyrs[t],
+            (obs['dh'][:, t] + (obs['dh_sigma'][:, t] / 2)) / nyrs[t],
             color='k',
             alpha=0.125,
         )
