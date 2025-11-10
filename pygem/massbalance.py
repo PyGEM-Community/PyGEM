@@ -141,6 +141,7 @@ class PyGEMMassBalance(MassBalanceModel):
         self.glac_bin_area_annual = np.zeros((nbins, self.nyears + 1))
         self.glac_bin_icethickness_annual = np.zeros((nbins, self.nyears + 1))  # Needed for MassRedistributionCurves
         self.glac_bin_width_annual = np.zeros((nbins, self.nyears + 1))  # Needed for MassRedistributionCurves
+        self.glac_bin_flux_divergence_annual = np.full_like(self.glac_bin_icethickness_annual, np.nan)
         self.offglac_bin_prec = np.zeros((nbins, self.nsteps))
         self.offglac_bin_melt = np.zeros((nbins, self.nsteps))
         self.offglac_bin_refreeze = np.zeros((nbins, self.nsteps))
@@ -763,6 +764,12 @@ class PyGEMMassBalance(MassBalanceModel):
             )
             # Record binned glacier area
             self.glac_bin_area_annual[:, year_idx] = glacier_area_t0
+            # estimate annual flux divergence
+            if year_idx > 0:
+                self.glac_bin_flux_divergence_annual[:, year_idx] = (
+                    self.glac_bin_massbalclim_annual[:, year_idx]
+                    * (pygem_prms['constants']['density_water'] / pygem_prms['constants']['density_ice'])
+                ) - np.diff(self.glac_bin_icethickness_annual[:, year_idx - 1 : year_idx + 1], axis=-1).flatten()
             # Store glacier-wide results
             self._convert_glacwide_results(
                 year_idx,

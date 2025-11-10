@@ -67,7 +67,13 @@ def getparser():
 
 
 def get_binned_subannual(
-    bin_massbalclim, bin_mass_annual, bin_thick_annual, dates_subannual, dates_annual, debug=False
+    bin_massbalclim,
+    bin_mass_annual,
+    bin_thick_annual,
+    bin_flux_divergence_annual,
+    dates_subannual,
+    dates_annual,
+    debug=False,
 ):
     """
     funciton to calculate the subannual binned ice thickness and mass
@@ -79,10 +85,8 @@ def get_binned_subannual(
     thus, subannual thickness and mass is determined assuming
     the flux divergence is constant throughout the year.
 
-    annual flux divergence is first estimated by combining the annual binned change in ice
-    thickness and the annual binned mass balance. then, assume flux divergence is constant
-    throughout the year (divide annual by the number of steps in the binned climatic mass
-    balance to get subannual flux divergence).
+    assumes flux divergence is constant throughout the year, dividing annual by the number of steps
+    in the binned climatic mass balance to get subannual flux divergence).
 
     subannual binned flux divergence can then be combined with
     subannual binned climatic mass balance to get subannual binned change in ice thickness and mass.
@@ -98,6 +102,9 @@ def get_binned_subannual(
         shape : [#glac, #elevbins, #years]
     bin_thick_annual : ndarray
        annual binned glacier thickness [m ice]
+        shape : [#glac, #elevbins, #years]
+    bin_flux_divergence_annual : ndarray
+       annual binned flux divergence [m ice]
         shape : [#glac, #elevbins, #years]
     dates_subannual : array-like of datetime-like
         dates associated with `bin_massbalclim` (subannual)
@@ -130,33 +137,23 @@ def get_binned_subannual(
     rho_i = pygem_prms['constants']['density_ice']
     bin_massbalclim_ice = bin_massbalclim * (rho_w / rho_i)
 
-    # --- Step 2: compute annual cumulative mass balance ---
-    # Initialize annual cumulative mass balance (exclude last year for flux calculation)
-    bin_massbalclim_annual = np.zeros((n_glac, n_bins, nyrs))
-    for i, year in enumerate(yrs):
-        idx = np.where(years_subannual == year)[0]
-        bin_massbalclim_annual[:, :, i] = bin_massbalclim_ice[:, :, idx].sum(axis=-1)
-
-    # --- Step 3: compute annual thickness change ---
-    bin_delta_thick_annual = np.diff(bin_thick_annual, axis=-1)  # [m ice yr^-1]
-
-    # --- Step 4: compute annual flux divergence ---
-    bin_flux_divergence_annual = bin_massbalclim_annual - bin_delta_thick_annual  # [m ice yr^-1]
-
-    # --- Step 5: expand flux divergence to subannual steps ---
+    # --- Step 2: expand flux divergence to subannual steps ---
+    # assume flux divergence is constant throughout the year
+    # (divide annual by the number of steps in the binned climatic mass balance to get subannual flux divergence)
+    bin_flux_divergence_annual = bin_flux_divergence_annual[:, :, 1:]
     bin_flux_divergence_subannual = np.zeros_like(bin_massbalclim_ice)
     for i, year in enumerate(yrs):
         idx = np.where(years_subannual == year)[0]
         bin_flux_divergence_subannual[:, :, idx] = bin_flux_divergence_annual[:, :, i][:, :, np.newaxis] / len(idx)
 
-    # --- Step 6: compute subannual thickness change ---
+    # --- Step 3: compute subannual thickness change ---
     bin_delta_thick_subannual = bin_massbalclim_ice - bin_flux_divergence_subannual
 
-    # --- Step 7: calculate subannual thickness ---
-    running_bin_delta_thick_subannual = np.cumsum(bin_delta_thick_subannual, axis=-1)
+    # --- Step 4: calculate subannual thickness ---
+    running_bin_delta_thick_subannual = np.nancumsum(bin_delta_thick_subannual, axis=-1)
     bin_thick_subannual = running_bin_delta_thick_subannual + bin_thick_annual[:, :, 0][:, :, np.newaxis]
 
-    # --- Step 8: compute glacier volume and area on subannual timestep ---
+    # --- Step 5: compute glacier volume and area on subannual timestep ---
     bin_volume_annual = bin_mass_annual / rho_i  # annual volume [m^3] per bin
     bin_area_annual = np.divide(
         bin_volume_annual[:, :, 1:],  # exclude first year to match flux_div_annual
@@ -165,7 +162,7 @@ def get_binned_subannual(
         where=bin_thick_annual[:, :, 1:] > 0,
     )
 
-    # --- Step 9 : compute subannual glacier mass ---
+    # --- Step 6 : compute subannual glacier mass ---
     # First expand area to subannual steps
     bin_area_subannual = np.full(bin_massbalclim_ice.shape, np.nan)
     for i, year in enumerate(yrs):
@@ -175,7 +172,7 @@ def get_binned_subannual(
     # multiply by ice density to get subannual mass
     bin_mass_subannual = bin_thick_subannual * rho_i * bin_area_subannual
 
-    # --- Step 10: debug check ---
+    # --- Step 7: debug check ---
     if debug:
         for i, year in enumerate(yrs):
             # get last subannual index of that year
@@ -302,6 +299,7 @@ def run(simpath, debug):
             bin_massbalclim=binned_ds.bin_massbalclim.values,
             bin_mass_annual=binned_ds.bin_mass_annual.values,
             bin_thick_annual=binned_ds.bin_thick_annual.values,
+            bin_flux_divergence_annual=binned_ds.bin_flux_divergence_annual.values,
             dates_subannual=dates_subannual,
             dates_annual=dates_annual,
             debug=debug,
