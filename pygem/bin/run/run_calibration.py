@@ -317,6 +317,7 @@ def run_oggm_dynamics(gdir, modelprms, glacier_rgi_table, fls):
                 ev_model.mb_model.glac_wide_massbaltotal = (
                     ev_model.mb_model.glac_wide_massbaltotal + ev_model.mb_model.glac_wide_frontalablation
                 )
+        ev_model.mb_model.ensure_mass_conservation(diag)
     # safely catch any errors with dynamical run
     except Exception:
         ds = None
@@ -324,19 +325,24 @@ def run_oggm_dynamics(gdir, modelprms, glacier_rgi_table, fls):
     return mbmod, ds
 
 
-def calc_thick_change_1d(gdir, mbmod, ds):
+def calc_thick_change_1d(gdir, fls, mbmod, ds):
     """
     calculate binned change in ice thickness assuming constant annual flux divergence.
     sub-annual ice thickness is differenced at timesteps coincident with observations.
     """
     years_subannual = np.array([d.year for d in gdir.dates_table['date']])
     yrs = np.unique(years_subannual)
-    nyrs = len(yrs)
     # grab components of interest
     bin_thick_annual = ds[0].thickness_m.values.T  # glacier thickness [m ice], (nbins, nyears)
-
-    # set any < 0 thickness to nan
-    bin_thick_annual[bin_thick_annual <= 0] = np.nan
+    bin_massbalclim_ice_annual = ds[0].climatic_mb_myr.values.T[
+        :, 1:
+    ]  # annual climatic mass balance [m ice] (nbins, nyears - 1)
+    bin_delta_thick_annual = ds[0].dhdt_myr.values.T[
+        :, 1:
+    ]  # annual change in ice thickness [m ice] (nbins, nyears - 1)
+    bin_flux_divergence_annual = (
+        bin_massbalclim_ice_annual - bin_delta_thick_annual
+    )  # annual flux divergence [m ice] (nbins, nyears - 1)
 
     #  --- Step 1: convert mass balance from m w.e. to m ice  ---
     bin_massbalclim = mbmod.glac_bin_massbalclim  # climatic mass balance [m w.e.] per step
@@ -348,7 +354,6 @@ def calc_thick_change_1d(gdir, mbmod, ds):
     # --- Step 2: expand flux divergence to subannual steps ---
     # assume flux divergence is constant throughout the year
     # (divide annual by the number of steps in the binned climatic mass balance to get subannual flux divergence)
-    bin_flux_divergence_annual = -ds[0].flux_divergence_myr.values.T[:, 1:]
     bin_flux_divergence_subannual = np.zeros_like(bin_massbalclim_ice)
     for i, year in enumerate(yrs):
         idx = np.where(years_subannual == year)[0]
@@ -358,12 +363,16 @@ def calc_thick_change_1d(gdir, mbmod, ds):
     bin_delta_thick_subannual = bin_massbalclim_ice - bin_flux_divergence_subannual
 
     # --- Step 4: calculate subannual thickness = running thickness change + initial thickness---
-    running_bin_delta_thick_subannual = np.cumsum(bin_delta_thick_subannual, axis=-1)
+    running_bin_delta_thick_subannual = np.nancumsum(bin_delta_thick_subannual, axis=-1)
     bin_thick_subannual = running_bin_delta_thick_subannual + bin_thick_annual[:, 0][:, np.newaxis]
 
     # --- Step 5: rebin ---
     # get surface height at the specified reference year
-    ref_surface_height = ds[0].bed_h.values + ds[0].thickness_m.sel(time=gdir.elev_change_1d['ref_dem_year']).values
+    ref_surface_height = (
+        fls[0].surface_h
+        - ds[0].thickness_m.isel(time=0).values
+        + ds[0].thickness_m.sel(time=gdir.elev_change_1d['ref_dem_year']).values
+    )
     # aggregate model bin thicknesses as desired
     with warnings.catch_warnings():
         warnings.filterwarnings('ignore')
@@ -416,7 +425,7 @@ def mcmc_model_eval(
     if calib_elev_change_1d:
         mbmod, ds = run_oggm_dynamics(gdir, modelprms, glacier_rgi_table, fls)
         # note, the binned thickness change is scaled by modeled density in mcmc.mbPosterior.log_likelihood() to calculate modeled surface elevation change
-        results['elev_change_1d'] = calc_thick_change_1d(gdir, mbmod, ds) if ds else float('-inf')
+        results['elev_change_1d'] = calc_thick_change_1d(gdir, fls, mbmod, ds) if ds else float('-inf')
 
     if mbfxn is not None:
         # grab current values from modelprms for the emulator
@@ -859,6 +868,19 @@ def run(list_packed_vars):
                         if not isinstance(gdir.elev_change_1d['dh_sigma'], int)
                         else gdir.elev_change_1d['dh_sigma']
                     )
+
+                    # optionally adjust ref_startyear based on earliest available elevation calibration data (must be <= 2000)
+                    if args.spinup:
+                        args.ref_startyear = min(
+                            2000, *(int(date[:4]) for pair in gdir.elev_change_1d['dates'] for date in pair)
+                        )
+                        # adjust dates table and climate data
+                        mask = gdir.dates_table['year'] >= args.ref_startyear
+                        gdir.dates_table = gdir.dates_table.loc[mask].reset_index(drop=True)
+                        nrows_rm = (~mask).sum()  # number of dropped rows
+                        for key in ('temp', 'tempstd', 'prec', 'lr'):
+                            gdir.historical_climate[key] = gdir.historical_climate[key][nrows_rm:]
+
                     # get observation period indices in model date_table
                     # create lookup dict (timestamp → index)
                     date_to_index = {d: i for i, d in enumerate(gdir.dates_table['date'])}
@@ -869,11 +891,6 @@ def run(list_packed_vars):
                         )
                         for start, end in gdir.elev_change_1d['dates']
                     ]
-                    # optionally adjust ref_startyear based on earliest available elevation calibration data (must be <= 2000)
-                    if args.spinup:
-                        args.ref_startyear = min(
-                            2000, *(int(date[:4]) for pair in gdir.elev_change_1d['dates'] for date in pair)
-                        )
 
                     # load calibrated calving_k values for tidewater glaciers
                     if gdir.is_tidewater and pygem_prms['setup']['include_frontalablation']:
@@ -1884,7 +1901,7 @@ def run(list_packed_vars):
                     ]
                     # Melt
                     # energy available for melt [degC day]
-                    melt_energy_available = T_minelev * dates_table['days_in_step'].values
+                    melt_energy_available = T_minelev * gdir.dates_table['days_in_step'].values
                     melt_energy_available[melt_energy_available < 0] = 0
                     # assume all snow melt because anything more would melt underlying ice in lowermost bin
                     # SNOW MELT [m w.e.]
@@ -2135,6 +2152,8 @@ def run(list_packed_vars):
                 )
                 # prepare export modelprms dictionary
                 modelprms_export = {}
+                # store reference period
+                modelprms_export['ref_period'] = (args.ref_startyear, args.ref_endyear)
                 # store model parameters and priors
                 modelprms_export['precgrad'] = [pygem_prms['sim']['params']['precgrad']]
                 modelprms_export['tsnow_threshold'] = [pygem_prms['sim']['params']['tsnow_threshold']]
