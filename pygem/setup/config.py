@@ -107,6 +107,7 @@ class ConfigManager:
             '*debris*',
             '*h_ref*',
             '*frontalablation*',
+            '*glen_a*',
             '*snowline*',
             '*meltextent*',
             '*dh_1d*',
