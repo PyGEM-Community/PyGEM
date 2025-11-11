@@ -332,9 +332,17 @@ def calc_thick_change_1d(gdir, fls, mbmod, ds):
     """
     years_subannual = np.array([d.year for d in gdir.dates_table['date']])
     yrs = np.unique(years_subannual)
-    nyrs = len(yrs)
     # grab components of interest
     bin_thick_annual = ds[0].thickness_m.values.T  # glacier thickness [m ice], (nbins, nyears)
+    bin_massbalclim_ice_annual = ds[0].climatic_mb_myr.values.T[
+        :, 1:
+    ]  # annual climatic mass balance [m ice] (nbins, nyears - 1)
+    bin_delta_thick_annual = ds[0].dhdt_myr.values.T[
+        :, 1:
+    ]  # annual change in ice thickness [m ice] (nbins, nyears - 1)
+    bin_flux_divergence_annual = (
+        bin_massbalclim_ice_annual - bin_delta_thick_annual
+    )  # annual flux divergence [m ice] (nbins, nyears - 1)
 
     #  --- Step 1: convert mass balance from m w.e. to m ice  ---
     bin_massbalclim = mbmod.glac_bin_massbalclim  # climatic mass balance [m w.e.] per step
@@ -346,7 +354,6 @@ def calc_thick_change_1d(gdir, fls, mbmod, ds):
     # --- Step 2: expand flux divergence to subannual steps ---
     # assume flux divergence is constant throughout the year
     # (divide annual by the number of steps in the binned climatic mass balance to get subannual flux divergence)
-    bin_flux_divergence_annual = -ds[0].flux_divergence_myr.values.T[:, 1:]
     bin_flux_divergence_subannual = np.zeros_like(bin_massbalclim_ice)
     for i, year in enumerate(yrs):
         idx = np.where(years_subannual == year)[0]
