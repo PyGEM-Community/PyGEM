@@ -181,6 +181,7 @@ class mbPosterior:
 
         self.ela = kwargs.get('ela', None)
         self.bin_z = kwargs.get('bin_z', None)
+        self.sar_plotonly = kwargs.get('sar_plotonly', False)
         if self.ela:
             self.abl_mask = self.bin_z < self.ela
 
@@ -261,20 +262,17 @@ class mbPosterior:
             if k == 'glacierwide_mb_mwea' and not self.calib_glacierwide_mb_mwea:
                 continue  # skip this model output if not calibrating glacierwide mass balance
 
-            log_likehood += log_normal_density(
+            if self.sar_plotonly and k in ['meltextent_1d', 'snowline_1d', 'scaf_1d']:
+                continue # skip this model output if not calibrating with SAR data (snowlines and melt extents)
+
+            # add relative weights
+            w = pygem_prms['calib']['MCMC_params']['calib_obs_weights'][k]
+
+            log_likehood += w * log_normal_density(
                 self.obs[k][0],  # observations
                 mu=pred,  # scaled predictions
                 sigma=self.obs[k][1],  # uncertainty
             )
-            # TO DO: ADD WEIGHTS?
-
-            # log_likehood += log_normal_density(
-            #     self.obs[k][0],  # observations
-            #     mu=pred,  # scaled predictions
-            #     sigma=self.obs[k][1],  # uncertainty
-            #     method='weighted', # use weighted observations
-            #     obs_weight=0, # observation weight (0 is mean, 1 is sum)
-            # )
 
         return log_likehood
 

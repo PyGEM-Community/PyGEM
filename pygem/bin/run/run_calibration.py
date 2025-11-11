@@ -208,6 +208,12 @@ def getparser():
         help='Flag to calibrate against 1D melt extent data (default is false)',
     )
     parser.add_argument(
+        '-option_sar_plot_only',
+        action='store_true',
+        default=pygem_prms['calib']['MCMC_params']['option_sar_plot_only'],
+        help='Flag to NOT calibrate against melt extent and snowline data but still plot outputs (default is false)',
+    )
+    parser.add_argument(
         '-spinup',
         action='store_true',
         help='Flag to use spinup flowlines (default is false)',
@@ -486,7 +492,6 @@ def mcmc_model_eval(
                 / mbmod.glac_wide_area_annual[0]
                 / gdir.mbdata['nyears']
             )
-
     results['glacierwide_mb_mwea'] = glacierwide_mb_mwea
 
     if calib_snowlines_1d:
@@ -2368,6 +2373,7 @@ def run(list_packed_vars):
                     potential_fxns=[mb_max, must_melt, rho_constraints],
                     ela=gdir.ela.min() if hasattr(gdir, 'ela') else None,
                     bin_z=gdir.elev_change_1d['bin_centers'] if hasattr(gdir, 'elev_change_1d') else None,
+                    sar_plotonly=args.option_sar_plot_only,
                 )
                 # prepare export modelprms dictionary
                 modelprms_export = {}

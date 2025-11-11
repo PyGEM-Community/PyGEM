@@ -970,7 +970,7 @@ class PyGEMMassBalance(MassBalanceModel):
             try:
                 # index of highest elevation bin (smallest melt bin index with melt)
                 meltextent_idx = np.nanargmax(heights_steps_wmelt, axis=0)
-                self.glac_wide_meltextent[t_start : t_stop + 1] = heights[meltextent_idx]
+                self.glac_wide_meltextent[t_start : t_stop + 1] = heights[meltextent_idx] + heights_change[meltextent_idx] / 2
             except:
                 meltextent_idx = np.zeros((heights_steps_wmelt.shape[1])).astype(int)
                 meltextent_idx_nan = []
@@ -979,7 +979,7 @@ class PyGEMMassBalance(MassBalanceModel):
                         meltextent_idx[ncol] = np.nanargmax(heights_steps_wmelt[:, ncol])
                     else:
                         meltextent_idx_nan.append(ncol)
-                heights_manual = heights[meltextent_idx]
+                heights_manual = heights[meltextent_idx] + heights_change[meltextent_idx] / 2
                 heights_manual[meltextent_idx_nan] = np.nan
                 self.glac_wide_meltextent[t_start : t_stop + 1] = heights_manual
 

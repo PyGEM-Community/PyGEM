@@ -204,6 +204,15 @@ calib:
       date:                                       # filter by date (list start date first, then end date)
         # - 2017-01-01
         # - 2025-01-01
+    # apply relative weights for MCMC calibration
+    calib_obs_weights:
+      glacierwide_mb_mwea: 1
+      elev_change_1d: 1
+      meltextent_1d: 1
+      snowline_1d: 1
+      scaf_1d: 1
+    # option to ONLY plot SAR data outputs compared to model (but not actually calibrate with it) from the `option_calib` set to `true`
+    option_sar_plot_only: true
 
   # calibration datasets
   data:
