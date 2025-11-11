@@ -814,19 +814,6 @@ class binned_stats(single_glacier):
             'temporal_resolution': 'annual',
             'comment': 'binned ice thickness at start of the year',
         }
-        self.output_coords_dict['bin_flux_divergence_annual'] = collections.OrderedDict(
-            [
-                ('glac', self.glac_values),
-                ('bin', self.bin_values),
-                ('year', self.year_values),
-            ]
-        )
-        self.output_attrs_dict['bin_flux_divergence_annual'] = {
-            'long_name': 'binned flux divergence, in meters ice',
-            'units': 'm',
-            'temporal_resolution': 'annual',
-            'comment': 'binned flux divergence over the course of the year. note, index i represents the flux divergence over the entire model year[i]',
-        }
         self.output_coords_dict['bin_massbalclim_annual'] = collections.OrderedDict(
             [
                 ('glac', self.glac_values),
@@ -925,19 +912,6 @@ class binned_stats(single_glacier):
                 'units': 'm',
                 'temporal_resolution': 'annual',
                 'comment': 'thickness of ice at start of the year',
-            }
-            self.output_coords_dict['bin_flux_divergence_annual_mad'] = collections.OrderedDict(
-                [
-                    ('glac', self.glac_values),
-                    ('bin', self.bin_values),
-                    ('year', self.year_values),
-                ]
-            )
-            self.output_attrs_dict['bin_flux_divergence_annual_mad'] = {
-                'long_name': 'binned annual flux divergence median absolute deviation, in meters ice',
-                'units': 'm',
-                'temporal_resolution': 'annual',
-                'comment': 'binned flux divergence over the course of the year. note, index i represents the flux divergence over the entire model year[i]',
             }
             self.output_coords_dict['bin_massbalclim_annual_mad'] = collections.OrderedDict(
                 [

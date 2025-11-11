@@ -1240,9 +1240,6 @@ def run(list_packed_vars):
                             output_glac_bin_mass_annual_sim = (
                                 ds[0].volume_m3.values.T[:, :, np.newaxis] * pygem_prms['constants']['density_ice']
                             )
-                            output_glac_bin_flux_divergence_annual_sim = -ds[0].flux_divergence_myr.values.T[
-                                :, :, np.newaxis
-                            ]
                         else:
                             output_glac_bin_area_annual_sim = mbmod.glac_bin_area_annual[:, :, np.newaxis]
                             output_glac_bin_mass_annual_sim = (
@@ -1251,9 +1248,6 @@ def run(list_packed_vars):
                                 * pygem_prms['constants']['density_ice']
                             )[:, :, np.newaxis]
                             output_glac_bin_icethickness_annual_sim = (mbmod.glac_bin_icethickness_annual)[
-                                :, :, np.newaxis
-                            ]
-                            output_glac_bin_flux_divergence_annual_sim = (mbmod.glac_bin_flux_divergence_annual)[
                                 :, :, np.newaxis
                             ]
                             # Update the latest thickness and volume
@@ -1277,20 +1271,11 @@ def run(list_packed_vars):
                                 output_glac_bin_mass_annual_sim[:, -1, 0] = (
                                     glacier_vol_t0 * pygem_prms['constants']['density_ice']
                                 )
-                                # flux divergence
-                                output_glac_bin_flux_divergence_annual_sim[:, -1, 0] = (
-                                    mbmod.glac_bin_massbalclim_annual[:, -1]
-                                    * (
-                                        pygem_prms['constants']['density_water']
-                                        / pygem_prms['constants']['density_ice']
-                                    )
-                                ) - np.diff(output_glac_bin_icethickness_annual_sim[:, -2:, 0], axis=-1).flatten()
                         # append individual simulation outputs together
                         if output_glac_bin_icethickness_annual is None:
                             output_glac_bin_area_annual = output_glac_bin_area_annual_sim
                             output_glac_bin_mass_annual = output_glac_bin_mass_annual_sim
                             output_glac_bin_icethickness_annual = output_glac_bin_icethickness_annual_sim
-                            output_glac_bin_flux_divergence_annual = output_glac_bin_flux_divergence_annual_sim
                             output_glac_bin_massbalclim_annual_sim = np.zeros(mbmod.glac_bin_icethickness_annual.shape)
                             output_glac_bin_massbalclim_annual_sim[:, :-1] = mbmod.glac_bin_massbalclim_annual
                             output_glac_bin_massbalclim_annual = output_glac_bin_massbalclim_annual_sim[
@@ -1326,11 +1311,6 @@ def run(list_packed_vars):
                             output_glac_bin_icethickness_annual = np.append(
                                 output_glac_bin_icethickness_annual,
                                 output_glac_bin_icethickness_annual_sim,
-                                axis=2,
-                            )
-                            output_glac_bin_flux_divergence_annual = np.append(
-                                output_glac_bin_flux_divergence_annual,
-                                output_glac_bin_flux_divergence_annual_sim,
                                 axis=2,
                             )
                             output_glac_bin_massbalclim_annual_sim = np.zeros(mbmod.glac_bin_icethickness_annual.shape)
@@ -1620,9 +1600,6 @@ def run(list_packed_vars):
                                 output_ds_binned_stats['bin_thick_annual'].values[0, :, :] = (
                                     output_glac_bin_icethickness_annual[:, :, n_iter]
                                 )
-                                output_ds_binned_stats['bin_flux_divergence_annual'].values[0, :, :] = (
-                                    output_glac_bin_flux_divergence_annual[:, :, n_iter]
-                                )
                                 output_ds_binned_stats['bin_massbalclim_annual'].values[0, :, :] = (
                                     output_glac_bin_massbalclim_annual[:, :, n_iter]
                                 )
@@ -1682,9 +1659,6 @@ def run(list_packed_vars):
                         output_ds_binned_stats['bin_thick_annual'].values = np.median(
                             output_glac_bin_icethickness_annual, axis=2
                         )[np.newaxis, :, :]
-                        output_ds_binned_stats['bin_flux_divergence_annual'].values = np.median(
-                            output_glac_bin_flux_divergence_annual, axis=2
-                        )[np.newaxis, :, :]
                         output_ds_binned_stats['bin_massbalclim_annual'].values = np.median(
                             output_glac_bin_massbalclim_annual, axis=2
                         )[np.newaxis, :, :]
@@ -1707,9 +1681,6 @@ def run(list_packed_vars):
                             )[np.newaxis, :, :]
                             output_ds_binned_stats['bin_thick_annual_mad'].values = median_abs_deviation(
                                 output_glac_bin_icethickness_annual, axis=2
-                            )[np.newaxis, :, :]
-                            output_ds_binned_stats['bin_flux_divergence_annual_mad'].values = median_abs_deviation(
-                                output_glac_bin_flux_divergence_annual, axis=2
                             )[np.newaxis, :, :]
                             output_ds_binned_stats['bin_massbalclim_annual_mad'].values = median_abs_deviation(
                                 output_glac_bin_massbalclim_annual, axis=2
