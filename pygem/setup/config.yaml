@@ -159,7 +159,7 @@ calib:
     # Chain options
     mcmc_step: 0.5                                # mcmc step size (in terms of standard deviation)
     n_chains: 1                                   # number of chains (min 1, max 3)
-    mcmc_sample_no: 20000                         # number of steps (10000 was found to be sufficient in HMA)
+    mcmc_sample_no: 10000                         # number of steps (10000 was found to be sufficient in HMA)
     mcmc_burn_pct: 2                              # percentage of steps to burn-in (0 records all steps in chain)
     thin_interval: 10                             # thin interval if need to reduce file size (best to leave at 1 if space allows)
     # Degree-day factor of snow distribution options
