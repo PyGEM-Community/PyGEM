@@ -50,6 +50,7 @@ from pygem import class_climate, output
 from pygem.glacierdynamics import MassRedistributionCurveModel
 from pygem.massbalance import PyGEMMassBalance
 from pygem.oggm_compat import (
+    get_spinup_flowlines,
     single_flowline_glacier_directory,
     single_flowline_glacier_directory_with_calving,
 )
@@ -661,7 +662,8 @@ def run(list_packed_vars):
                         modelprms_fp = (
                             pygem_prms['root'] + '/Output/calibration/' + glacier_str.split('.')[0].zfill(2) + '/'
                         ) + modelprms_fn
-
+                    elif os.path.isdir(modelprms_fp):
+                        modelprms_fp = modelprms_fp + '/' + glacier_str + '-modelprms_dict.json'
                     assert os.path.exists(modelprms_fp), 'Calibrated parameters do not exist.'
                     with open(modelprms_fp, 'r') as f:
                         modelprms_dict = json.load(f)
@@ -804,11 +806,16 @@ def run(list_packed_vars):
                     # spinup
                     if args.spinup:
                         try:
-                            # see if model_flowlines from spinup exist
-                            nfls = gdir.read_pickle(
-                                'model_flowlines',
-                                filesuffix=f'_dynamic_spinup_pygem_mb_{args.sim_startyear}',
-                            )
+                            if f'model_flowlines_dynamic_spinup_pygem_mb_{args.sim_startyear}.pkl' in os.listdir(
+                                gdir.dir
+                            ):
+                                # see if model_flowlines from spinup exist
+                                nfls = gdir.read_pickle(
+                                    'model_flowlines',
+                                    filesuffix=f'_dynamic_spinup_pygem_mb_{args.sim_startyear}',
+                                )
+                            else:
+                                nfls = get_spinup_flowlines(gdir, y0=args.sim_startyear)
                         except:
                             raise
                         glen_a = gdir.get_diagnostics()['inversion_glen_a']

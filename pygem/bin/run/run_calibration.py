@@ -3061,7 +3061,7 @@ def run(list_packed_vars):
 
         else:
             # LOG FAILURE
-            fail_fp = pygem_prms['root'] + '/Outputcal_fail/' + glacier_str.split('.')[0].zfill(2) + '/'
+            fail_fp = pygem_prms['root'] + '/Output/cal_fail/' + glacier_str.split('.')[0].zfill(2) + '/'
             if not os.path.exists(fail_fp):
                 os.makedirs(fail_fp, exist_ok=True)
             txt_fn_fail = glacier_str + '-cal_fail.txt'
