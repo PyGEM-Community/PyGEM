@@ -200,7 +200,12 @@ calib:
     option_calib_scaf_1d: false                   # option to calibrate against 1d snow cover area fraction (SCAF) data (true or false)
     # apply filter for melt extent and snowline data (leave empty to ignore filters)
     sar_data_filt:
-      direction:                                  # filter by satellite pass direction (e.g., ascending or descending)
+      to_apply_filt:                              # which products to apply the filter (melt extent, snowline, and/or SCAF)
+        # - meltextent_1d
+        # - snowline_1d
+        # - scaf_1d
+      error_percentile: 50                        # filter by data accuracy; only keep percentage of obs with lowest uncertainty (e.g., 10)
+      direction:                                  # filter by satellite pass direction (e.g., 'ascending' or 'descending')
       date:                                       # filter by date (list start date first, then end date)
         # - 2017-01-01
         # - 2025-01-01
