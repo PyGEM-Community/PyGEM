@@ -486,7 +486,7 @@ class oib:
 
     def save_elevchange1d(
         self,
-        outdir=f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["elev_change_1d"]["elev_change_1d_relpath"]}',
+        outdir=f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["elev_change"]["dh_1d_relpath"]}',
         csv=False,
     ):
         """
