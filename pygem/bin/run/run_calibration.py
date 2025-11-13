@@ -1847,19 +1847,7 @@ def run(list_packed_vars):
             # distributions, and output these sets of parameters and their corresponding mass balances to be
             # used in the simulations.
             elif args.option_calibration == 'MCMC':
-                if pygem_prms['calib']['MCMC_params']['option_use_emulator']:
-                    # load emulator
-                    em_mod_fn = glacier_str + '-emulator-mb_mwea.pth'
-                    em_mod_fp = (
-                        pygem_prms['root'] + '/Output/emulator/models/' + glacier_str.split('.')[0].zfill(2) + '/'
-                    )
-                    assert os.path.exists(em_mod_fp + em_mod_fn), (
-                        f'emulator output does not exist : {em_mod_fp + em_mod_fn}'
-                    )
-                    mbEmulator = massbalEmulator.load(em_mod_path=em_mod_fp + em_mod_fn)
-                    outpath_sfix = ''  # output file path suffix if using emulator
-                else:
-                    outpath_sfix = '-fullsim'  # output file path suffix if not using emulator
+                outsuffix = ''
 
                 # ---------------------------------
                 # ----- FUNCTION DECLARATIONS -----
@@ -2066,25 +2054,6 @@ def run(list_packed_vars):
                 }
                 # ------------------
 
-                # -----------------------------------
-                # ----- TEMPERATURE BIAS BOUNDS -----
-                # -----------------------------------
-                # note, temperature bias bounds will remain constant across chains if using emulator
-                if pygem_prms['calib']['MCMC_params']['option_use_emulator']:
-                    # Selects from emulator sims dataframe
-                    sims_fp = pygem_prms['root'] + '/Output/emulator/sims/' + glacier_str.split('.')[0].zfill(2) + '/'
-                    sims_fn = (
-                        glacier_str
-                        + '-'
-                        + str(pygem_prms['calib']['MCMC_params']['emulator_sims'])
-                        + '_emulator_sims.csv'
-                    )
-                    sims_df = pd.read_csv(sims_fp + sims_fn)
-                    sims_df_subset = sims_df.loc[sims_df['kp'] == 1, :]
-                    tbias_bndhigh = float(sims_df_subset['tbias'].max())
-                    tbias_bndlow = float(sims_df_subset['tbias'].min())
-                # -----------------------------------
-
                 # -------------------
                 # --- set up MCMC ---
                 # -------------------
@@ -2092,10 +2061,6 @@ def run(list_packed_vars):
                 # where each key corresponds to a variable being calibrated.
                 # each value should be a tuple of the form (observation, variance).
                 obs = {'glacierwide_mb_mwea': (torch.tensor([mb_obs_mwea]), torch.tensor([mb_obs_mwea_err]))}
-                mbfxn = None
-
-                if pygem_prms['calib']['MCMC_params']['option_use_emulator']:
-                    mbfxn = mbEmulator.eval  # returns (mb_mwea)
 
                 # if running full model (no emulator), or calibrating against binned elevation change, several arguments are needed
                 if args.option_calib_elev_change_1d:
@@ -2125,7 +2090,22 @@ def run(list_packed_vars):
                         torch.tensor(gdir.elev_change_1d['dh']),
                         torch.tensor(gdir.elev_change_1d['dh_sigma']),
                     )
-                # if there are more observations to calibrate against, simply add them as a tuple of (obs, variance) to the obs dictionary
+                # note, if there are more observations to calibrate against simply add them as a tuple of (obs, variance) to the obs dictionary
+
+                # if using mass balance emulator, load emulator model and define evalutor function to pass to mcmc.mbPosterior()
+                if pygem_prms['calib']['MCMC_params']['option_use_emulator'] and not args.option_calib_elev_change_1d:
+                    # load emulator
+                    em_mod_fn = glacier_str + '-emulator-mb_mwea.pth'
+                    em_mod_fp = (
+                        pygem_prms['root'] + '/Output/emulator/models/' + glacier_str.split('.')[0].zfill(2) + '/'
+                    )
+                    assert os.path.exists(em_mod_fp + em_mod_fn), (
+                        f'emulator output does not exist : {em_mod_fp + em_mod_fn}'
+                    )
+                    mbEmulator = massbalEmulator.load(em_mod_path=em_mod_fp + em_mod_fn)
+                    mbfxn = mbEmulator.eval  # returns (mb_mwea)
+                else:
+                    mbfxn = None
 
                 # define args to pass to fxn2eval in mcmc sampler
                 fxnargs = (
@@ -2169,6 +2149,7 @@ def run(list_packed_vars):
                         (dt1, dt2) for dt1, dt2 in gdir.elev_change_1d['dates']
                     ]
                     ks += ['rhoabl', 'rhoacc']
+                    outsuffix = 'dh'  # output file path suffix to not overwrite files in Output/calibration/
                 modelprms_export['priors'] = priors
 
                 # create nested dictionary for each mcmc key
@@ -2270,8 +2251,7 @@ def run(list_packed_vars):
                                 + glacier_str.split('.')[0].zfill(2)
                                 + '/fig/'
                             )
-                            if args.option_calib_elev_change_1d:
-                                fp += 'dh/'
+                            fp = os.path.normpath(os.path.join(fp, outsuffix))
                             os.makedirs(fp, exist_ok=True)
                             if ncores > 1:
                                 show = False
@@ -2287,7 +2267,7 @@ def run(list_packed_vars):
                                     ar,
                                     glacier_str,
                                     show=show,
-                                    fpath=f'{fp}/{glacier_str}-chain{n_chain}.png',
+                                    fpath=os.path.join(fp, f'{glacier_str}-chain{n_chain}.png'),
                                 )
                                 for k in pred_chain.keys():
                                     graphics.plot_resid_histogram(
@@ -2295,7 +2275,7 @@ def run(list_packed_vars):
                                         pred_chain[k],
                                         glacier_str,
                                         show=show,
-                                        fpath=f'{fp}/{glacier_str}-chain{n_chain}-residuals-{k}.png',
+                                        fpath=os.path.join(fp, f'{glacier_str}-chain{n_chain}-residuals-{k}.png'),
                                     )
                                     if k == 'elev_change_1d':
                                         graphics.plot_mcmc_elev_change_1d(
@@ -2305,7 +2285,7 @@ def run(list_packed_vars):
                                             gdir.ela.min(),
                                             glacier_str,
                                             show=show,
-                                            fpath=f'{fp}/{glacier_str}-chain{n_chain}-elev_change_1d.png',
+                                            fpath=os.path.join(fp, f'{glacier_str}-chain{n_chain}-elev_change_1d.png'),
                                         )
                             except Exception as e:
                                 if debug:
@@ -2334,39 +2314,23 @@ def run(list_packed_vars):
                     # compute stats on mcmc parameters
                     modelprms_export = mcmc_stats(modelprms_export)
 
-                    modelprms_fn = glacier_str + '-modelprms_dict.json'
-                    modelprms_fp = [
-                        (pygem_prms['root'] + '/Output/calibration/' + glacier_str.split('.')[0].zfill(2) + '/')
-                    ]
-                    if args.option_calib_elev_change_1d:
-                        modelprms_fp[0] += 'dh/'
-                    # if not using emulator (running full model), save output in ./calibration/ and ./calibration-fullsim/
-                    if not pygem_prms['calib']['MCMC_params']['option_use_emulator']:
-                        modelprms_fp.append(
-                            pygem_prms['root']
-                            + f'/Output/calibration{outpath_sfix}/'
-                            + glacier_str.split('.')[0].zfill(2)
-                            + '/'
-                        )
-                    for fp in modelprms_fp:
-                        if not os.path.exists(fp):
-                            os.makedirs(fp, exist_ok=True)
-                        modelprms_fullfn = fp + modelprms_fn
-                        if os.path.exists(modelprms_fullfn):
-                            with open(modelprms_fullfn, 'r') as f:
-                                modelprms_dict = json.load(f)
-                            modelprms_dict[args.option_calibration] = modelprms_export
-                        else:
-                            modelprms_dict = {args.option_calibration: modelprms_export}
-                        with open(modelprms_fullfn, 'w') as f:
-                            json.dump(modelprms_dict, f)
+                    fp = pygem_prms['root'] + '/Output/calibration/' + glacier_str.split('.')[0].zfill(2) + '/'
+                    fp = os.path.normpath(os.path.join(fp, outsuffix))
+                    if not os.path.exists(fp):
+                        os.makedirs(fp, exist_ok=True)
+                    modelprms_fullfn = os.path.join(fp, f'{glacier_str}-modelprms_dict.json')
+                    if os.path.exists(modelprms_fullfn):
+                        with open(modelprms_fullfn, 'r') as f:
+                            modelprms_dict = json.load(f)
+                        modelprms_dict[args.option_calibration] = modelprms_export
+                    else:
+                        modelprms_dict = {args.option_calibration: modelprms_export}
+                    with open(modelprms_fullfn, 'w') as f:
+                        json.dump(modelprms_dict, f)
 
                     # MCMC LOG SUCCESS
                     mcmc_good_fp = (
-                        pygem_prms['root']
-                        + f'/Output/mcmc_success{outpath_sfix}/'
-                        + glacier_str.split('.')[0].zfill(2)
-                        + '/'
+                        pygem_prms['root'] + '/Output/mcmc_success/' + glacier_str.split('.')[0].zfill(2) + '/'
                     )
                     if not os.path.exists(mcmc_good_fp):
                         os.makedirs(mcmc_good_fp, exist_ok=True)
@@ -2376,12 +2340,7 @@ def run(list_packed_vars):
 
                 except Exception as err:
                     # MCMC LOG FAILURE
-                    mcmc_fail_fp = (
-                        pygem_prms['root']
-                        + f'/Output/mcmc_fail{outpath_sfix}/'
-                        + glacier_str.split('.')[0].zfill(2)
-                        + '/'
-                    )
+                    mcmc_fail_fp = pygem_prms['root'] + '/Output/mcmc_fail/' + glacier_str.split('.')[0].zfill(2) + '/'
                     if not os.path.exists(mcmc_fail_fp):
                         os.makedirs(mcmc_fail_fp, exist_ok=True)
                     txt_fn_fail = glacier_str + '-mcmc_fail.txt'

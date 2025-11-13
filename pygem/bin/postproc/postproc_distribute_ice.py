@@ -76,8 +76,7 @@ def pygem_to_oggm(pygem_simpath, oggm_diag=None, debug=False):
     area_m2(time, dis_along_flowline): float64
     thickness_m (time, dis_along_flowline): float64
     """
-    yr0, yr1 = pygem_simpath.split('_')[-3:-1]
-    pygem_ds = xr.open_dataset(pygem_simpath).sel(year=slice(yr0, yr1))
+    pygem_ds = xr.open_dataset(pygem_simpath)
     time = pygem_ds.coords['year'].values.flatten().astype(float)
     distance_along_flowline = pygem_ds['bin_distance'].values.flatten().astype(float)
     area = pygem_ds['bin_area_annual'].values[0].astype(float).T
