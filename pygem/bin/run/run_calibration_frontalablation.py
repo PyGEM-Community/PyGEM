@@ -249,17 +249,22 @@ def reg_calving_flux(
                     pygem_prms['root'] + pygem_prms['sim']['oggm_dynamics']['glen_a_regional_relpath']
                 )
                 glena_idx = np.where(glena_df.O1Region == glacier_rgi_table.O1Region)[0][0]
-                glen_a_multiplier = glena_df.loc[glena_idx, 'glens_a_multiplier']
-                fs = glena_df.loc[glena_idx, 'fs']
+                # Check which columns exist
+                # Rounce et al. (2023) regional glen a calibration file has 'glens_a_multiplier' and 'fs'
+                # output of run_inversion has 'inversion_glen)a' and 'inversion_fs'
+                if {'glens_a_multiplier', 'fs'}.issubset(glena_df.columns):
+                    glen_a = cfg.PARAMS['glen_a'] * glena_df.loc[glena_idx, 'glens_a_multiplier']
+                    fs = glena_df.loc[glena_idx, 'fs']
+                elif {'inversion_glen_a', 'inversion_fs'}.issubset(glena_df.columns):
+                    glen_a = glena_df.loc[glena_idx, 'inversion_glen_a']
+                    fs = glena_df.loc[glena_idx, 'inversion_fs']
             else:
                 fs = pygem_prms['sim']['oggm_dynamics']['fs']
-                glen_a_multiplier = pygem_prms['sim']['oggm_dynamics']['glen_a_multiplier']
+                glen_a = cfg.PARAMS['glen_a'] * pygem_prms['sim']['oggm_dynamics']['glen_a_multiplier']
 
-            # CFL number (may use different values for calving to prevent errors)
-            if glacier_rgi_table['TermType'] not in [1, 5] or not pygem_prms['setup']['include_frontalablation']:
-                cfg.PARAMS['cfl_number'] = pygem_prms['sim']['oggm_dynamics']['cfl_number']
-            else:
-                cfg.PARAMS['cfl_number'] = pygem_prms['sim']['oggm_dynamics']['cfl_number_calving']
+            # CFL params
+            cfg.PARAMS['cfl_number'] = pygem_prms['sim']['oggm_dynamics']['cfl_number']
+            cfg.PARAMS['cfl_min_dt'] = pygem_prms['sim']['oggm_dynamics']['cfl_min_dt']
 
             # ----- Mass balance model for ice thickness inversion using OGGM -----
             mbmod_inv = PyGEMMassBalance(
@@ -284,12 +289,12 @@ def reg_calving_flux(
             if invert_standard:
                 apparent_mb_from_any_mb(gdir, mb_model=mbmod_inv)
                 tasks.prepare_for_inversion(gdir)
-                tasks.mass_conservation_inversion(gdir, glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier, fs=fs)
+                tasks.mass_conservation_inversion(gdir, glen_a=glen_a, fs=fs)
             else:
                 tasks.find_inversion_calving_from_any_mb(
                     gdir,
                     mb_model=mbmod_inv,
-                    glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier,
+                    glen_a=glen_a,
                     fs=fs,
                 )
 
@@ -310,7 +315,7 @@ def reg_calving_flux(
                 nfls,
                 y0=args.ref_startyear,
                 mb_model=mbmod,
-                glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier,
+                glen_a=glen_a,
                 fs=fs,
                 is_tidewater=gdir.is_tidewater,
                 water_level=water_level,
@@ -374,7 +379,7 @@ def reg_calving_flux(
                             'OGGM dynamics, calving_k:',
                             np.round(calving_k, 4),
                             'glen_a:',
-                            np.round(glen_a_multiplier, 2),
+                            np.round(glen_a, 2),
                         )
                         print(
                             '    calving front thickness [m]:',
@@ -394,7 +399,7 @@ def reg_calving_flux(
                         nfls,
                         mb_model=mbmod,
                         y0=args.ref_startyear,
-                        glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier,
+                        glen_a=glen_a,
                         fs=fs,
                         is_tidewater=gdir.is_tidewater,
                         water_level=water_level,
@@ -450,7 +455,7 @@ def reg_calving_flux(
                             'Mass Redistribution curve, calving_k:',
                             np.round(calving_k, 1),
                             'glen_a:',
-                            np.round(glen_a_multiplier, 2),
+                            np.round(glen_a, 2),
                         )
                         print(
                             '    calving front thickness [m]:',
