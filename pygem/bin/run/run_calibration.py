@@ -967,7 +967,7 @@ def run(list_packed_vars):
                         if any(sar_data_filt[k] for k in ['direction', 'date', 'error_percentile']):
                             # apply direction filter, if specified
                             if sar_data_filt['direction']:
-                                mask &= (gdir.snowline_1d['direction'] == sar_data_filt['direction'])
+                                mask &= (np.array(gdir.snowline_1d['direction']) == sar_data_filt['direction'])
                             # apply date range filter, if specified
                             if sar_data_filt['date']:
                                 date_min = np.datetime64(sar_data_filt['date'][0])
@@ -1019,7 +1019,7 @@ def run(list_packed_vars):
                         if any(sar_data_filt[k] for k in ['direction', 'date', 'error_percentile']):
                             # apply direction filter, if specified
                             if sar_data_filt['direction']:
-                                mask &= (gdir.scaf_1d['direction'] == sar_data_filt['direction'])
+                                mask &= (np.array(gdir.scaf_1d['direction']) == sar_data_filt['direction'])
                             # apply date range filter, if specified
                             if sar_data_filt['date']:
                                 date_min = np.datetime64(sar_data_filt['date'][0])
@@ -1067,7 +1067,7 @@ def run(list_packed_vars):
                         if any(sar_data_filt[k] for k in ['direction', 'date', 'error_percentile']):
                             # apply direction filter, if specified
                             if sar_data_filt['direction']:
-                                mask &= (gdir.meltextent_1d['direction'] == sar_data_filt['direction'])
+                                mask &= (np.array(gdir.meltextent_1d['direction']) == sar_data_filt['direction'])
                             # apply date range filter, if specified
                             if sar_data_filt['date']:
                                 date_min = np.datetime64(sar_data_filt['date'][0])
