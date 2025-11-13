@@ -275,7 +275,7 @@ def getparser():
         action='store',
         type=str2bool,
         default=pygem_prms['sim']['oggm_dynamics']['use_regional_glen_a'],
-        help='If True (False) take glacier flow parameterization from regionally calibrated priors (use previously calibrated or user-input).',
+        help='If True (False) take glacier flow parameterization from regionally calibrated priors (configuration file).',
     )
     parser.add_argument(
         '-option_bias_adjustment',
