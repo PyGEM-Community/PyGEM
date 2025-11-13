@@ -963,8 +963,8 @@ def run(list_packed_vars):
                     # --- apply filters if specified ---
                     dates = np.array(gdir.snowline_1d['date'], dtype='datetime64[D]')
                     mask = np.ones(len(dates), dtype=bool)  # start with all True
-                    if sar_data_filt and 'snowline_1d' in sar_data_filt['to_apply_filt']:
-                        if sar_data_filt and any(sar_data_filt[k] for k in ['direction', 'date', 'error_percentile']):
+                    if sar_data_filt and sar_data_filt.get('to_apply_filt') and 'snowline_1d' in sar_data_filt['to_apply_filt']:
+                        if any(sar_data_filt[k] for k in ['direction', 'date', 'error_percentile']):
                             # apply direction filter, if specified
                             if sar_data_filt['direction']:
                                 mask &= (gdir.snowline_1d['direction'] == sar_data_filt['direction'])
@@ -1015,8 +1015,8 @@ def run(list_packed_vars):
                     # --- apply filters if specified ---
                     dates = np.array(gdir.scaf_1d['date'], dtype='datetime64[D]')
                     mask = np.ones(len(dates), dtype=bool)  # start with all True
-                    if sar_data_filt and 'scaf_1d' in sar_data_filt['to_apply_filt']:
-                        if sar_data_filt and any(sar_data_filt[k] for k in ['direction', 'date', 'error_percentile']):
+                    if sar_data_filt and sar_data_filt.get('to_apply_filt') and 'scaf_1d' in sar_data_filt['to_apply_filt']:
+                        if any(sar_data_filt[k] for k in ['direction', 'date', 'error_percentile']):
                             # apply direction filter, if specified
                             if sar_data_filt['direction']:
                                 mask &= (gdir.scaf_1d['direction'] == sar_data_filt['direction'])
@@ -1063,8 +1063,8 @@ def run(list_packed_vars):
                     # --- apply filters if specified ---
                     dates = np.array(gdir.meltextent_1d['date'], dtype='datetime64[D]')
                     mask = np.ones(len(dates), dtype=bool)  # start with all True
-                    if sar_data_filt and 'meltextent_1d' in sar_data_filt['to_apply_filt']:
-                        if sar_data_filt and any(sar_data_filt[k] for k in ['direction', 'date', 'error_percentile']):
+                    if sar_data_filt and sar_data_filt.get('to_apply_filt') and 'meltextent_1d' in sar_data_filt['to_apply_filt']:
+                        if any(sar_data_filt[k] for k in ['direction', 'date', 'error_percentile']):
                             # apply direction filter, if specified
                             if sar_data_filt['direction']:
                                 mask &= (gdir.meltextent_1d['direction'] == sar_data_filt['direction'])
