@@ -352,7 +352,7 @@ class ConfigManager:
         'sim.out.export_binned_area_threshold': (int, float),
         'sim.oggm_dynamics': dict,
         'sim.oggm_dynamics.cfl_number': float,
-        'sim.oggm_dynamics.cfl_min_dt': float,
+        'sim.oggm_dynamics.cfl_min_dt': (int, float),
         'sim.oggm_dynamics.glen_a_regional_relpath': str,
         'sim.oggm_dynamics.use_regional_glen_a': bool,
         'sim.oggm_dynamics.fs': (int, float),
