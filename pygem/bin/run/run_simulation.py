@@ -57,6 +57,7 @@ from pygem.oggm_compat import (
 from pygem.output import calc_stats_array
 from pygem.plot import graphics
 from pygem.shop import debris
+from pygem.utils._funcs import str2bool
 
 cfg.PARAMS['hydro_month_nh'] = 1
 cfg.PARAMS['hydro_month_sh'] = 1
@@ -272,9 +273,9 @@ def getparser():
     parser.add_argument(
         '-use_regional_glen_a',
         action='store',
-        type=bool,
+        type=str2bool,
         default=pygem_prms['sim']['oggm_dynamics']['use_regional_glen_a'],
-        help='Take the glacier flow parameterization from regionally calibrated priors (boolean: `0` or `1`, `True` or `False`)',
+        help='If True (False) take glacier flow parameterization from regionally calibrated priors (use previously calibrated or user-input).',
     )
     parser.add_argument(
         '-option_bias_adjustment',
@@ -774,17 +775,10 @@ def run(list_packed_vars):
                 if debug and gdir.is_tidewater:
                     print('calving_k:', calving_k)
 
-                # Load OGGM glacier dynamics parameters (if necessary)
+                # Load OGGM glacier dynamics parameters
                 if args.option_dynamics in ['OGGM', 'MassRedistributionCurves']:
-                    # CFL number (may use different values for calving to prevent errors)
-                    if (
-                        glacier_rgi_table['TermType'] not in [1, 5]
-                        or not pygem_prms['setup']['include_frontalablation']
-                    ):
-                        cfg.PARAMS['cfl_number'] = pygem_prms['sim']['oggm_dynamics']['cfl_number']
-                    else:
-                        cfg.PARAMS['cfl_number'] = pygem_prms['sim']['oggm_dynamics']['cfl_number_calving']
-
+                    cfg.PARAMS['cfl_number'] = pygem_prms['sim']['oggm_dynamics']['cfl_number']
+                    cfg.PARAMS['cfl_min_dt'] = pygem_prms['sim']['oggm_dynamics']['cfl_min_dt']
                     if debug:
                         print('cfl number:', cfg.PARAMS['cfl_number'])
 
@@ -795,13 +789,18 @@ def run(list_packed_vars):
                         glena_O1regions = [int(x) for x in glena_df.O1Region.values]
                         assert glacier_rgi_table.O1Region in glena_O1regions, glacier_str + ' O1 region not in glena_df'
                         glena_idx = np.where(glena_O1regions == glacier_rgi_table.O1Region)[0][0]
-                        glen_a_multiplier = glena_df.loc[glena_idx, 'glens_a_multiplier']
-                        fs = glena_df.loc[glena_idx, 'fs']
+                        # Check which columns exist
+                        # Rounce et al. (2023) regional glen a calibration file has 'glens_a_multiplier' and 'fs'
+                        # output of run_inversion has 'inversion_glen)a' and 'inversion_fs'
+                        if {'glens_a_multiplier', 'fs'}.issubset(glena_df.columns):
+                            glen_a = cfg.PARAMS['glen_a'] * glena_df.loc[glena_idx, 'glens_a_multiplier']
+                            fs = glena_df.loc[glena_idx, 'fs']
+                        elif {'inversion_glen_a', 'inversion_fs'}.issubset(glena_df.columns):
+                            glen_a = glena_df.loc[glena_idx, 'inversion_glen_a']
+                            fs = glena_df.loc[glena_idx, 'inversion_fs']
                     else:
-                        args.option_dynamics = None
                         fs = pygem_prms['sim']['oggm_dynamics']['fs']
-                        glen_a_multiplier = pygem_prms['sim']['oggm_dynamics']['glen_a_multiplier']
-                    glen_a = cfg.PARAMS['glen_a'] * glen_a_multiplier
+                        glen_a = cfg.PARAMS['glen_a'] * pygem_prms['sim']['oggm_dynamics']['glen_a_multiplier']
 
                     # spinup
                     if args.spinup:
@@ -818,8 +817,6 @@ def run(list_packed_vars):
                                 nfls = get_spinup_flowlines(gdir, y0=args.sim_startyear)
                         except:
                             raise
-                        glen_a = gdir.get_diagnostics()['inversion_glen_a']
-                        fs = gdir.get_diagnostics()['inversion_fs']
 
                 # Time attributes and values
                 if pygem_prms['climate']['sim_wateryear'] == 'hydro':
@@ -914,7 +911,7 @@ def run(list_packed_vars):
                                 tasks.prepare_for_inversion(gdir)
                                 tasks.mass_conservation_inversion(
                                     gdir,
-                                    glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier,
+                                    glen_a=glen_a,
                                     fs=fs,
                                 )
 
@@ -925,7 +922,7 @@ def run(list_packed_vars):
                                 tasks.find_inversion_calving_from_any_mb(
                                     gdir,
                                     mb_model=mbmod_inv,
-                                    glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier,
+                                    glen_a=glen_a,
                                     fs=fs,
                                 )
 
@@ -1065,7 +1062,7 @@ def run(list_packed_vars):
                             nfls,
                             mb_model=mbmod,
                             y0=args.sim_startyear,
-                            glen_a=cfg.PARAMS['glen_a'] * glen_a_multiplier,
+                            glen_a=glen_a,
                             fs=fs,
                             is_tidewater=gdir.is_tidewater,
                             # water_level=gdir.get_diagnostics().get('calving_water_level', None)

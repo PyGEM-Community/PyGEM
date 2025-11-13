@@ -213,7 +213,7 @@ def mb_mwea_calc(
     fls=None,
     t1=None,
     t2=None,
-    option_areaconstant=1,
+    option_areaconstant=True,
     return_tbias_mustmelt=False,
     return_tbias_mustmelt_wmb=False,
 ):
@@ -230,7 +230,7 @@ def mb_mwea_calc(
         mass balance [m w.e. a-1]
     """
     # RUN MASS BALANCE MODEL
-    mbmod = PyGEMMassBalance(gdir, modelprms, glacier_rgi_table, fls=fls, option_areaconstant=True)
+    mbmod = PyGEMMassBalance(gdir, modelprms, glacier_rgi_table, fls=fls, option_areaconstant=option_areaconstant)
     for year in gdir.dates_table.year.unique():
         mbmod.get_annual_mb(fls[0].surface_h, fls=fls, fl_id=0, year=year)
 
@@ -912,8 +912,8 @@ def run(list_packed_vars):
                         # set calving_k in config
                         cfg.PARAMS['use_kcalving_for_run'] = True
                         cfg.PARAMS['calving_k'] = calving_k
-                        # many tidewater glaciers need a timestep << OGGM default of 60 seconds
-                        cfg.PARAMS['cfl_min_dt'] = 0.0001
+                        # some tidewater glaciers require a timestep << OGGM default of 60 seconds
+                        cfg.PARAMS['cfl_min_dt'] = pygem_prms['sim']['oggm_dynamics']['fs']
 
             except Exception as err:
                 gdir.mbdata = None
