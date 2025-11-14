@@ -204,11 +204,11 @@ calib:
         # - meltextent_1d
         # - snowline_1d
         # - scaf_1d
-      error_percentile: 50                        # filter by data accuracy; only keep percentage of obs with lowest uncertainty (e.g., 10)
+      error_percentile:                           # filter by data accuracy; only keep percentage of obs with lowest uncertainty (e.g., 75)
       direction:                                  # filter by satellite pass direction (e.g., 'ascending' or 'descending')
-      date:                                       # filter by date (list start date first, then end date)
-        # - 2017-01-01
-        # - 2025-01-01
+      date:                                       # filter by date
+        start: #2017-01-01
+        end: #2025-01-01
     # apply relative weights for MCMC calibration
     calib_obs_weights:
       glacierwide_mb_mwea: 1

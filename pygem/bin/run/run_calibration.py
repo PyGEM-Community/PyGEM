@@ -969,10 +969,12 @@ def run(list_packed_vars):
                             if sar_data_filt['direction']:
                                 mask &= (np.array(gdir.snowline_1d['direction']) == sar_data_filt['direction'])
                             # apply date range filter, if specified
-                            if sar_data_filt['date']:
-                                date_min = np.datetime64(sar_data_filt['date'][0])
-                                date_max = np.datetime64(sar_data_filt['date'][1])
-                                mask &= (dates >= date_min) & (dates <= date_max)
+                            if sar_data_filt['date']['start']:
+                                date_start = np.datetime64(sar_data_filt['date']['start'])
+                                mask &= (dates >= date_start)
+                            if sar_data_filt['date']['end']:
+                                date_end = np.datetime64(sar_data_filt['date']['end'])
+                                mask &= (dates <= date_end)
                             # apply percentage of smallest error filter, if specified
                             if sar_data_filt['error_percentile']:
                                 z_spread = np.array(gdir.snowline_1d['z_max']) - np.array(gdir.snowline_1d['z_min'])
@@ -1021,10 +1023,12 @@ def run(list_packed_vars):
                             if sar_data_filt['direction']:
                                 mask &= (np.array(gdir.scaf_1d['direction']) == sar_data_filt['direction'])
                             # apply date range filter, if specified
-                            if sar_data_filt['date']:
-                                date_min = np.datetime64(sar_data_filt['date'][0])
-                                date_max = np.datetime64(sar_data_filt['date'][1])
-                                mask &= (dates >= date_min) & (dates <= date_max)
+                            if sar_data_filt['date']['start']:
+                                date_start = np.datetime64(sar_data_filt['date']['start'])
+                                mask &= (dates >= date_start)
+                            if sar_data_filt['date']['end']:
+                                date_end = np.datetime64(sar_data_filt['date']['end'])
+                                mask &= (dates <= date_end)
                             # apply percentage of smallest error filter, if specified
                             if sar_data_filt['error_percentile']:
                                 scaf_spread = np.array(gdir.scaf_1d['scaf_max']) - np.array(gdir.scaf_1d['scaf_min'])
@@ -1069,10 +1073,12 @@ def run(list_packed_vars):
                             if sar_data_filt['direction']:
                                 mask &= (np.array(gdir.meltextent_1d['direction']) == sar_data_filt['direction'])
                             # apply date range filter, if specified
-                            if sar_data_filt['date']:
-                                date_min = np.datetime64(sar_data_filt['date'][0])
-                                date_max = np.datetime64(sar_data_filt['date'][1])
-                                mask &= (dates >= date_min) & (dates <= date_max)
+                            if sar_data_filt['date']['start']:
+                                date_start = np.datetime64(sar_data_filt['date']['start'])
+                                mask &= (dates >= date_start)
+                            if sar_data_filt['date']['end']:
+                                date_end = np.datetime64(sar_data_filt['date']['end'])
+                                mask &= (dates <= date_end)
                             # apply percentage of smallest error filter, if specified
                             if sar_data_filt['error_percentile']:
                                 z_spread = np.array(gdir.meltextent_1d['z_max']) - np.array(gdir.meltextent_1d['z_min'])
