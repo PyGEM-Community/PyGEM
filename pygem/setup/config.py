@@ -230,7 +230,7 @@ class ConfigManager:
         'climate.paths.gfdl_fp_fx_ending': str,
         'calib': dict,
         'calib.option_calibration': str,
-        'calib.priors_reg_fn': str,
+        'calib.priors_reg_fn': (str, type(None)),
         'calib.HH2015_params': dict,
         'calib.HH2015_params.tbias_init': (int, float),
         'calib.HH2015_params.tbias_step': (int, float),
