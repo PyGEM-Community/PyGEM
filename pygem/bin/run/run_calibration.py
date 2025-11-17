@@ -2247,16 +2247,24 @@ def run(list_packed_vars):
                     # Precipitation factor priors
                     kp_gamma_alpha = float(priors_df.loc[priors_idx, 'kp_alpha'])
                     kp_gamma_beta = float(priors_df.loc[priors_idx, 'kp_beta'])
+                    kp_gamma_min = float(priors_df.loc[priors_idx, 'kp_min'])
+                    kp_gamma_max = float(priors_df.loc[priors_idx, 'kp_max'])
                     # Temperature bias priors
                     tbias_mu = float(priors_df.loc[priors_idx, 'tbias_mean'])
                     tbias_sigma = float(priors_df.loc[priors_idx, 'tbias_std'])
+                    tbias_min = float(priors_df.loc[priors_idx, 'tbias_min'])
+                    tbias_max = float(priors_df.loc[priors_idx, 'tbias_max'])
                 else:
                     # Precipitation factor priors
                     kp_gamma_alpha = pygem_prms['calib']['MCMC_params']['kp_gamma_alpha']
                     kp_gamma_beta = pygem_prms['calib']['MCMC_params']['kp_gamma_beta']
+                    kp_gamma_min = pygem_prms['calib']['MCMC_params']['kp_bndlow']
+                    kp_gamma_max = pygem_prms['calib']['MCMC_params']['kp_bndhigh']
                     # Temperature bias priors
                     tbias_mu = pygem_prms['calib']['MCMC_params']['tbias_mu']
                     tbias_sigma = pygem_prms['calib']['MCMC_params']['tbias_sigma']
+                    tbias_min = pygem_prms['calib']['MCMC_params']['tbias_bndlow']
+                    tbias_max = pygem_prms['calib']['MCMC_params']['tbias_bndhigh']
 
                 # put all priors together into a dictionary
                 priors = {
@@ -2264,11 +2272,15 @@ def run(list_packed_vars):
                         'type': pygem_prms['calib']['MCMC_params']['tbias_disttype'],
                         'mu': float(tbias_mu),
                         'sigma': float(tbias_sigma),
+                        'low': float(tbias_min),
+                        'high': float(tbias_max),
                     },
                     'kp': {
                         'type': pygem_prms['calib']['MCMC_params']['kp_disttype'],
                         'alpha': float(kp_gamma_alpha),
                         'beta': float(kp_gamma_beta),
+                        'low': float(kp_gamma_min),
+                        'high': float(kp_gamma_max),
                     },
                     'ddfsnow': {
                         'type': pygem_prms['calib']['MCMC_params']['ddfsnow_disttype'],
