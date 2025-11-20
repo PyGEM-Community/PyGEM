@@ -290,8 +290,8 @@ class mbPosterior:
         # --- Optional arguments(if len(m) > 3) ---
         # rhoabl, rhoacc
         if len(m) > 3:
-            kwargs['rhoabl'] = m[-2]
-            kwargs['rhoacc'] = m[-1]
+            kwargs['rhoabl'] = m[3]
+            kwargs['rhoacc'] = m[4]
 
         # --- Evaluate all potential functions ---
         return sum(pf(**kwargs) for pf in self.potential_functions)

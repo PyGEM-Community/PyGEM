@@ -659,6 +659,7 @@ def run(list_packed_vars):
                     if not modelprms_fp:
                         modelprms_fn = glacier_str + '-modelprms_dict.json'
                         modelprms_fp = (
+                            # pygem_prms['root'] + '/Output/calibration-fullsim/' + glacier_str.split('.')[0].zfill(2) + '/'
                             pygem_prms['root'] + '/Output/calibration/' + glacier_str.split('.')[0].zfill(2) + '/'
                         ) + modelprms_fn
 
