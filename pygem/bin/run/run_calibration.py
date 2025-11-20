@@ -2269,7 +2269,7 @@ def run(list_packed_vars):
                     modelprms_export['ddfice'][chain_str] = (
                         m_chain[:, 2] / pygem_prms['sim']['params']['ddfsnow_iceratio']
                     ).tolist()
-                    modelprms_export['mb_mwea'][chain_str] = m_chain[:, -1].tolist()
+                    modelprms_export['mb_mwea'][chain_str] = torch.stack(pred_chain['glacierwide_mb_mwea']).tolist()
                     modelprms_export['ar'][chain_str] = ar
                     if args.option_calib_elev_change_1d:
                         modelprms_export['elev_change_1d'][chain_str] = [
