@@ -1181,6 +1181,10 @@ def run(list_packed_vars):
                 modelprms['kp'] = kp_init
                 modelprms['ddfsnow'] = ddfsnow_init
                 modelprms['ddfice'] = modelprms['ddfsnow'] / pygem_prms['sim']['params']['ddfsnow_iceratio']
+                if pygem_prms['calib']['emulator_params']['option_use_lrbias']:
+                    lrbias_step = pygem_prms['calib']['emulator_params']['lrbias_step']
+                    lrbias_init = pygem_prms['calib']['emulator_params']['lrbias_init']
+                    modelprms['lrbias'] = lrbias_init
 
                 nsims = pygem_prms['calib']['emulator_params']['emulator_sims']
 
@@ -1191,11 +1195,14 @@ def run(list_packed_vars):
                 if not os.path.exists(sims_fp + sims_fn) or pygem_prms['calib']['emulator_params']['overwrite_em_sims']:
                     # ----- Temperature bias bounds (ensure reasonable values) -----
                     # Tbias lower bound based on some bins having negative climatic mass balance
+                    glacier_gcm_lr = gdir.historical_climate['lr']
+                    if pygem_prms['calib']['emulator_params']['option_use_lrbias']:
+                        glacier_gcm_lr += lrbias_init
                     tbias_maxacc = (
                         -1
                         * (
                             gdir.historical_climate['temp']
-                            + gdir.historical_climate['lr'] * (fls[0].surface_h.min() - gdir.historical_climate['elev'])
+                            + glacier_gcm_lr * (fls[0].surface_h.min() - gdir.historical_climate['elev'])
                         ).max()
                     )
                     modelprms['tbias'] = tbias_maxacc
@@ -1223,6 +1230,9 @@ def run(list_packed_vars):
                                 np.round(modelprms['kp'], 2),
                                 'ddfsnow:',
                                 np.round(modelprms['ddfsnow'], 4),
+                                (f'lrbias: {np.round(modelprms["lrbias"], 4)}'
+                                 if pygem_prms['calib']['emulator_params']['option_use_lrbias']
+                                 else ''),
                                 'mb_mwea:',
                                 np.round(mb_mwea, 3),
                                 'nbinyears_negmbclim:',
@@ -1246,6 +1256,9 @@ def run(list_packed_vars):
                                 np.round(modelprms['kp'], 2),
                                 'ddfsnow:',
                                 np.round(modelprms['ddfsnow'], 4),
+                                (f'lrbias: {np.round(modelprms["lrbias"], 4)}'
+                                 if pygem_prms['calib']['emulator_params']['option_use_lrbias']
+                                 else ''),
                                 'mb_mwea:',
                                 np.round(mb_mwea, 3),
                                 'nbinyears_negmbclim:',
@@ -1270,6 +1283,8 @@ def run(list_packed_vars):
                             nbinyears_negmbclim,
                         ]
                     )
+                    if pygem_prms['calib']['emulator_params']['option_use_lrbias']:
+                        output_all = np.append(output_all, modelprms['lrbias'])
 
                     # Tbias lower bound & high precipitation factor
                     modelprms['kp'] = stats.gamma.ppf(
@@ -1293,6 +1308,8 @@ def run(list_packed_vars):
                             nbinyears_negmbclim,
                         ]
                     )
+                    if pygem_prms['calib']['emulator_params']['option_use_lrbias']:
+                        output_single = np.append(output_single, modelprms['lrbias'])
                     output_all = np.vstack((output_all, output_single))
 
                     if debug:
@@ -1303,6 +1320,9 @@ def run(list_packed_vars):
                             np.round(modelprms['kp'], 2),
                             'ddfsnow:',
                             np.round(modelprms['ddfsnow'], 4),
+                            (f'lrbias: {np.round(modelprms["lrbias"], 4)}'
+                             if pygem_prms['calib']['emulator_params']['option_use_lrbias']
+                             else ''),
                             'mb_mwea:',
                             np.round(mb_mwea, 3),
                         )
@@ -1341,6 +1361,9 @@ def run(list_packed_vars):
                                 'kp:',
                                 np.round(modelprms['kp'], 2),
                                 'ddfsnow:',
+                                (f'lrbias: {np.round(modelprms["lrbias"], 4)}'
+                                 if pygem_prms['calib']['emulator_params']['option_use_lrbias']
+                                 else ''),
                                 np.round(modelprms['ddfsnow'], 4),
                                 'mb_mwea:',
                                 np.round(mb_mwea, 3),
@@ -1365,6 +1388,8 @@ def run(list_packed_vars):
                                 nbinyears_negmbclim,
                             ]
                         )
+                        if pygem_prms['calib']['emulator_params']['option_use_lrbias']:
+                            output_single = np.append(output_single, modelprms['lrbias'])
                         output_all = np.vstack((output_all, output_single))
                         tbias_bndhigh = modelprms['tbias']
                         ncount_tbias -= 1
@@ -1376,6 +1401,9 @@ def run(list_packed_vars):
                                 'kp:',
                                 np.round(modelprms['kp'], 2),
                                 'ddfsnow:',
+                                (f'lrbias: {np.round(modelprms["lrbias"], 4)}'
+                                 if pygem_prms['calib']['emulator_params']['option_use_lrbias']
+                                 else ''),
                                 np.round(modelprms['ddfsnow'], 4),
                                 'mb_mwea:',
                                 np.round(mb_mwea, 3),
@@ -1458,6 +1486,8 @@ def run(list_packed_vars):
                                 nbinyears_negmbclim,
                             ]
                         )
+                        if pygem_prms['calib']['emulator_params']['option_use_lrbias']:
+                            output_single = np.append(output_single, modelprms['lrbias'])
                         output_all = np.vstack((output_all, output_single))
                         if debug and nsim % 500 == 0:
                             print(
@@ -1468,21 +1498,19 @@ def run(list_packed_vars):
                                 np.round(modelprms['kp'], 2),
                                 'ddfsnow:',
                                 np.round(modelprms['ddfsnow'], 4),
+                                (f'lrbias: {np.round(modelprms["lrbias"], 4)}'
+                                 if pygem_prms['calib']['emulator_params']['option_use_lrbias']
+                                 else ''),
                                 'mb_mwea:',
                                 np.round(mb_mwea, 3),
                             )
 
                     # ----- Export results -----
-                    sims_df = pd.DataFrame(
-                        output_all,
-                        columns=[
-                            'tbias',
-                            'kp',
-                            'ddfsnow',
-                            'mb_mwea',
-                            'nbinyrs_negmbclim',
-                        ],
-                    )
+                    cols = ['tbias', 'kp', 'ddfsnow', 'mb_mwea', 'nbinyrs_negmbclim']
+                    if pygem_prms['calib']['emulator_params']['option_use_lrbias']:
+                        cols.append('lrbias')
+                    sims_df = pd.DataFrame(output_all, columns=cols)
+
                     if os.path.exists(sims_fp) == False:
                         os.makedirs(sims_fp, exist_ok=True)
                     sims_df.to_csv(sims_fp + sims_fn, index=False)
@@ -2092,14 +2120,14 @@ def run(list_packed_vars):
                     glacier_gcm_lr = gdir.historical_climate['lr']
                     glacier_gcm_elev = gdir.historical_climate['elev']
                     if 'lrbias' in modelprms:
-                        glacier_gcm_lr += modelprms['lrbias']
+                        glacier_gcm_lrglac = glacier_gcm_lr + modelprms['lrbias']
                     # Temperature using gcm and glacier lapse rates
                     #  T_bin = T_gcm + lr_gcm * (z_ref - z_gcm) + lr_glac * (z_bin - z_ref) + tempchange
                     T_minelev = (
                         glacier_gcm_temp
                         + glacier_gcm_lr
                         * (glacier_rgi_table.loc[pygem_prms['mb']['option_elev_ref_downscale']] - glacier_gcm_elev)
-                        + glacier_gcm_lr
+                        + glacier_gcm_lrglac
                         * (min_elev - glacier_rgi_table.loc[pygem_prms['mb']['option_elev_ref_downscale']])
                         + modelprms['tbias']
                     )
