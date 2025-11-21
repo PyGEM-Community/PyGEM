@@ -248,6 +248,13 @@ def getparser():
         help='Degree-day factor of snow',
     )
     parser.add_argument(
+        '-lrbias',
+        action='store',
+        type=float,
+        default=pygem_prms['sim']['params']['lrbias'],
+        help='Lapse rate bias',
+    )
+    parser.add_argument(
         '-oggm_working_dir',
         action='store',
         type=str,
@@ -682,6 +689,8 @@ def run(list_packed_vars):
                                 'tsnow_threshold': modelprms_all['tsnow_threshold'],
                                 'precgrad': modelprms_all['precgrad'],
                             }
+                            if 'lrbias' in modelprms_all:
+                                modelprms_all['lrbias'] = [np.median(modelprms_all['lrbias']['chain_0'])]
                         else:
                             # Select every kth iteration to use for the ensemble
                             mcmc_sample_no = len(modelprms_all['kp']['chain_0'])
@@ -699,6 +708,8 @@ def run(list_packed_vars):
                                 'tsnow_threshold': modelprms_all['tsnow_threshold'] * nsims,
                                 'precgrad': modelprms_all['precgrad'] * nsims,
                             }
+                            if 'lrbias' in modelprms_all:
+                                modelprms_all['lrbias'] = [modelprms_all['lrbias']['chain_0'][mp_idx] for mp_idx in mp_idx_all]
                     else:
                         nsims = 1
 
@@ -767,6 +778,8 @@ def run(list_packed_vars):
                         'tsnow_threshold': [pygem_prms['sim']['params']['tsnow_threshold']],
                         'precgrad': [pygem_prms['sim']['params']['precgrad']],
                     }
+                    if args.lrbias:
+                        modelprms_all['lrbias'] = [args.lrbias]
                     calving_k = np.zeros(nsims) + pygem_prms['sim']['params']['calving_k']
                     calving_k_values = calving_k
 
@@ -870,6 +883,8 @@ def run(list_packed_vars):
                         'tsnow_threshold': modelprms_all['tsnow_threshold'][n_iter],
                         'precgrad': modelprms_all['precgrad'][n_iter],
                     }
+                    if 'lrbias' in modelprms_all:
+                        modelprms_all['lrbias']: modelprms_all['lrbias'][n_iter]
 
                     if debug:
                         print(
@@ -880,6 +895,11 @@ def run(list_packed_vars):
                             + str(np.round(modelprms['ddfsnow'], 4))
                             + ' tbias: '
                             + str(np.round(modelprms['tbias'], 2))
+                            + (
+                                str(np.round(modelprms['lrbias'], 4))
+                                if 'lrbias' in modelprms_all
+                                else ''
+                            )
                         )
 
                     # ----- ICE THICKNESS INVERSION using OGGM -----

@@ -219,6 +219,8 @@ class mbPosterior:
         for i, k in enumerate(['tbias', 'kp', 'ddfsnow']):
             self.fxnargs[1][k] = float(m[i])
         self.fxnargs[1]['ddfice'] = self.fxnargs[1]['ddfsnow'] / pygem_prms['sim']['params']['ddfsnow_iceratio']
+        if 'lrbias' in self.fxnargs[1]:
+            self.fxnargs[1]['lrbias'] = float(m[3])
 
     # get model predictions
     def get_model_pred(self, m):
@@ -251,8 +253,8 @@ class mbPosterior:
             if k == 'elev_change_1d':
                 # Create density field, separate values for ablation/accumulation zones
                 rho = np.ones_like(self.bin_z)
-                rho[self.abl_mask] = m[3]  # rhoabl
-                rho[~self.abl_mask] = m[4]  # rhoacc
+                rho[self.abl_mask] = m[-2]  # rhoabl
+                rho[~self.abl_mask] = m[-1]  # rhoacc
                 rho = torch.tensor(rho)
                 # scale prediction by model density values (convert from m ice to m surface elevation change considering modeled density)
                 pred *= pygem_prms['constants']['density_ice'] / rho[:, np.newaxis]
@@ -288,10 +290,13 @@ class mbPosterior:
         }
 
         # --- Optional arguments(if len(m) > 3) ---
+        # lrbias
+        if len(m) in (4, 6):
+            kwargs['lrbias'] = m[3]
         # rhoabl, rhoacc
-        if len(m) > 3:
-            kwargs['rhoabl'] = m[3]
-            kwargs['rhoacc'] = m[4]
+        if len(m) > 4: # if len(m) > 3:
+            kwargs['rhoabl'] = m[-2]
+            kwargs['rhoacc'] = m[-1]
 
         # --- Evaluate all potential functions ---
         return sum(pf(**kwargs) for pf in self.potential_functions)

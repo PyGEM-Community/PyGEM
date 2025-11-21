@@ -208,8 +208,8 @@ def plot_mcmc_chain(
     legs.append(l2)
     axes[2].set_ylabel(r'$fsnow$', fontsize=fontsize)
 
-    if nparams > 3:
-        # axes[3] will be rho_ablation if more than 3 model params
+    if nparams in (4,6):
+        # axes[3] will be lapse rate bias if we have 4 or 6 model params
         m_chain[:, 3] = m_chain[:, 3]
         m_primes[:, 3] = m_primes[:, 3]
         axes[3].plot(m_primes[:, 3], '.', ms=ms, c='tab:blue')
@@ -217,25 +217,39 @@ def plot_mcmc_chain(
         axes[3].plot(
             [],
             [],
-            label=f'median={np.median(m_chain[:, 3]):.3f}\niqr={np.subtract(*np.percentile(m_chain[:, 3], [75, 25])):.3f}',
+            label=f'median={np.median(m_chain[:, 3]):.4f}\niqr={np.subtract(*np.percentile(m_chain[:, 3], [75, 25])):.4f}',
         )
         l3 = axes[3].legend(loc='upper right', handlelength=0, borderaxespad=0, fontsize=fontsize)
         legs.append(l3)
-        axes[3].set_ylabel(r'$\rho_{abl}$', fontsize=fontsize)
-
-        # axes[4] will be rho_accumulation if more than 3 model params
-        m_chain[:, 4] = m_chain[:, 4]
-        m_primes[:, 4] = m_primes[:, 4]
-        axes[4].plot(m_primes[:, 4], '.', ms=ms, c='tab:blue')
-        axes[4].plot(m_chain[:, 4], '.', ms=ms, c='tab:orange')
-        axes[4].plot(
+        axes[3].set_ylabel(r'$lr_{bias}$', fontsize=fontsize)
+    if nparams > 4:
+        # second-to-last axis will be rho_ablation if more than 4 model params
+        m_chain[:, -2] = m_chain[:, -2]
+        m_primes[:, -2] = m_primes[:, -2]
+        axes[-2].plot(m_primes[:, -2], '.', ms=ms, c='tab:blue')
+        axes[-2].plot(m_chain[:, -2], '.', ms=ms, c='tab:orange')
+        axes[-2].plot(
             [],
             [],
-            label=f'median={np.median(m_chain[:, 4]):.3f}\niqr={np.subtract(*np.percentile(m_chain[:, 4], [75, 25])):.3f}',
+            label=f'median={np.median(m_chain[:, -2]):.3f}\niqr={np.subtract(*np.percentile(m_chain[:, -2], [75, 25])):.3f}',
         )
-        l4 = axes[4].legend(loc='upper right', handlelength=0, borderaxespad=0, fontsize=fontsize)
+        l4 = axes[-2].legend(loc='upper right', handlelength=0, borderaxespad=0, fontsize=fontsize)
         legs.append(l4)
-        axes[4].set_ylabel(r'$\rho_{acc}$', fontsize=fontsize)
+        axes[-2].set_ylabel(r'$\rho_{abl}$', fontsize=fontsize)
+
+        # final axes will be rho_accumulation if more than 4 model params
+        m_chain[:, 4] = m_chain[:, -1]
+        m_primes[:, 4] = m_primes[:, -1]
+        axes[-1].plot(m_primes[:, -1], '.', ms=ms, c='tab:blue')
+        axes[-1].plot(m_chain[:, -1], '.', ms=ms, c='tab:orange')
+        axes[-1].plot(
+            [],
+            [],
+            label=f'median={np.median(m_chain[:, -1]):.3f}\niqr={np.subtract(*np.percentile(m_chain[:, -1], [75, 25])):.3f}',
+        )
+        l5 = axes[-1].legend(loc='upper right', handlelength=0, borderaxespad=0, fontsize=fontsize)
+        legs.append(l5)
+        axes[-1].set_ylabel(r'$\rho_{acc}$', fontsize=fontsize)
 
     # plot predictions
     if 'glacierwide_mb_mwea' in pred_primes.keys():

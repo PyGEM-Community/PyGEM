@@ -482,6 +482,8 @@ def mcmc_model_eval(
     if mbfxn is not None:
         # grab current values from modelprms for the emulator
         mb_args = [modelprms['tbias'], modelprms['kp'], modelprms['ddfsnow']]
+        if 'lrbias' in modelprms:
+            mb_args += [modelprms['lrbias']]
         glacierwide_mb_mwea = mbfxn(*[mb_args])
     else:
         if mbmod is None:
@@ -1163,6 +1165,8 @@ def run(list_packed_vars):
                 'tsnow_threshold': pygem_prms['sim']['params']['tsnow_threshold'],
                 'precgrad': pygem_prms['sim']['params']['precgrad'],
             }
+            if pygem_prms['calib']['MCMC_params']['option_use_lrbias']:
+                modelprms['lrbias'] = pygem_prms['sim']['params']['lrbias']
 
             # %% ===== EMULATOR TO SETUP MCMC ANALYSIS AND/OR RUN HH2015 WITH EMULATOR =====
             # - precipitation factor, temperature bias, degree-day factor of snow
@@ -2087,6 +2091,8 @@ def run(list_packed_vars):
                     glacier_gcm_prec = gdir.historical_climate['prec']
                     glacier_gcm_lr = gdir.historical_climate['lr']
                     glacier_gcm_elev = gdir.historical_climate['elev']
+                    if 'lrbias' in modelprms:
+                        glacier_gcm_lr += modelprms['lrbias']
                     # Temperature using gcm and glacier lapse rates
                     #  T_bin = T_gcm + lr_gcm * (z_ref - z_gcm) + lr_glac * (z_bin - z_ref) + tempchange
                     T_minelev = (
@@ -2187,6 +2193,9 @@ def run(list_packed_vars):
                     modelprms_copy['ddfice'] = (
                         modelprms_copy['ddfsnow'] / pygem_prms['sim']['params']['ddfsnow_iceratio']
                     )
+                    if 'lrbias' in kwargs:
+                        modelprms_copy['lrbias'] = float(kwargs['lrbias'])
+
                     mb_total_minelev = calc_mb_total_minelev(modelprms_copy)
                     if mb_total_minelev < 0:
                         return 0
@@ -2290,6 +2299,15 @@ def run(list_packed_vars):
                         'high': float(pygem_prms['calib']['MCMC_params']['ddfsnow_bndhigh']),
                     },
                 }
+                # add lapse rate bias parameters, if using
+                if pygem_prms['calib']['MCMC_params']['option_use_lrbias']:
+                    priors['lrbias'] = {
+                        'type': pygem_prms['calib']['MCMC_params']['lrbias_disttype'],
+                        'mu': float(pygem_prms['calib']['MCMC_params']['lrbias_mu']),
+                        'sigma': float(pygem_prms['calib']['MCMC_params']['lrbias_sigma']),
+                        'low': float(pygem_prms['calib']['MCMC_params']['lrbias_bndlow']),
+                        'high': float(pygem_prms['calib']['MCMC_params']['lrbias_bndhigh']),
+                    }
                 # ------------------
 
                 # -----------------------------------
@@ -2399,7 +2417,7 @@ def run(list_packed_vars):
 
                 # instantiate mbPosterior given priors, and observed values
                 # note, mbEmulator.eval expects the modelprms to be ordered like so: [tbias, kp, ddfsnow], so priors and initial guesses must also be ordered as such)
-                priors = {key: priors[key] for key in ['tbias', 'kp', 'ddfsnow', 'rhoabl', 'rhoacc'] if key in priors}
+                priors = {key: priors[key] for key in ['tbias', 'kp', 'ddfsnow', 'lrbias', 'rhoabl', 'rhoacc'] if key in priors}
                 mb = mcmc.mbPosterior(
                     obs,
                     priors,
@@ -2420,6 +2438,8 @@ def run(list_packed_vars):
                 modelprms_export['mb_obs_mwea_err'] = [float(mb_obs_mwea_err)]
                 # mcmc keys
                 ks = ['tbias', 'kp', 'ddfsnow', 'ddfice', 'mb_mwea', 'ar']
+                if pygem_prms['calib']['MCMC_params']['option_use_lrbias']:
+                     ks += ['lrbias']
                 if args.option_calib_elev_change_1d:
                     modelprms_export['elev_change_1d'] = {}
                     modelprms_export['elev_change_1d']['bin_edges'] = gdir.elev_change_1d['bin_edges']
@@ -2438,7 +2458,8 @@ def run(list_packed_vars):
                 # --------------------
                 # ----- run MCMC -----
                 # --------------------
-                try:
+                # try:
+                if 1 == 1:
                     ### loop over chains, adjust initial guesses accordingly. done in a while loop as to repeat a chain up to one time if it remained stuck throughout ###
                     attempts_per_chain = 2  # number of repeats per chain (each with different initial guesses)
                     n_chain = 0
@@ -2455,6 +2476,15 @@ def run(list_packed_vars):
                                         pygem_prms['calib']['MCMC_params']['ddfsnow_mu'],
                                     )
                                 )
+                                if pygem_prms['calib']['MCMC_params']['option_use_lrbias']:
+                                    initial_guesses = torch.cat(
+                                        (
+                                            initial_guesses,
+                                            torch.tensor(
+                                                [pygem_prms['calib']['MCMC_params']['lrbias_mu']]
+                                            ),
+                                        )
+                                    )
                                 if args.option_calib_elev_change_1d:
                                     initial_guesses = torch.cat(
                                         (
@@ -2475,7 +2505,12 @@ def run(list_packed_vars):
                                     f'{glacier_str} chain {n_chain} attempt {n_attempts} initials:\n'
                                     f'tbias: {initial_guesses[0]:.2f}, kp: {initial_guesses[1]:.2f}, ddfsnow: {initial_guesses[2]:.4f}'
                                     + (
-                                        f', rhoabl: {initial_guesses[3]:.1f}, rhoacc: {initial_guesses[4]:.1f}'
+                                        f', lrbias: {initial_guesses[3]:.4f}'
+                                        if pygem_prms['calib']['MCMC_params']['option_use_lrbias']
+                                        else ''
+                                    )
+                                    + (
+                                        f', rhoabl: {initial_guesses[-2]:.1f}, rhoacc: {initial_guesses[-1]:.1f}'
                                         if args.option_calib_elev_change_1d
                                         else ''
                                     )
@@ -2542,7 +2577,8 @@ def run(list_packed_vars):
                                 show = False
                             else:
                                 show = True
-                            try:
+                            # try:
+                            if 1 == 1:
                                 graphics.plot_mcmc_chain(
                                     m_primes,
                                     m_chain,
@@ -2636,9 +2672,9 @@ def run(list_packed_vars):
                                             fpath=f'{fp}/{glacier_str}-chain{n_chain}-meltextent_1v1_1d.png',
                                             param='melt extent',
                                         )
-                            except Exception as e:
-                                if debug:
-                                    print(f'Error plotting chain {n_chain}: {e}')
+                            # except Exception as e:
+                            #     if debug:
+                            #         print(f'Error plotting chain {n_chain}: {e}')
 
                         # Store data from model to be exported
                         chain_str = 'chain_' + str(n_chain)
@@ -2648,14 +2684,16 @@ def run(list_packed_vars):
                         modelprms_export['ddfice'][chain_str] = (
                             m_chain[:, 2] / pygem_prms['sim']['params']['ddfsnow_iceratio']
                         ).tolist()
-                        modelprms_export['mb_mwea'][chain_str] = m_chain[:, -1].tolist()
+                        modelprms_export['mb_mwea'][chain_str] = torch.stack(pred_chain['glacierwide_mb_mwea']).tolist()
                         modelprms_export['ar'][chain_str] = ar
+                        if pygem_prms['calib']['MCMC_params']['option_use_lrbias']:
+                            modelprms_export['lrbias'][chain_str] = m_chain[:, 3].tolist() # TO DO: FIX AND CHECK
                         if args.option_calib_elev_change_1d:
                             modelprms_export['elev_change_1d'][chain_str] = [
                                 preds.flatten().tolist() for preds in pred_chain['elev_change_1d']
                             ]
-                            modelprms_export['rhoabl'][chain_str] = m_chain[:, 3].tolist()
-                            modelprms_export['rhoacc'][chain_str] = m_chain[:, 4].tolist()
+                            modelprms_export['rhoabl'][chain_str] = m_chain[:, -2].tolist()
+                            modelprms_export['rhoacc'][chain_str] = m_chain[:, -1].tolist()
 
                         # increment n_chain only if the current iteration was a repeat
                         n_chain += 1
@@ -2709,20 +2747,20 @@ def run(list_packed_vars):
                     with open(mcmc_good_fp + txt_fn_good, 'w') as text_file:
                         text_file.write(glacier_str + ' successfully exported mcmc results')
 
-                except Exception as err:
-                    # MCMC LOG FAILURE
-                    mcmc_fail_fp = (
-                        pygem_prms['root']
-                        + f'/Output/mcmc_fail{outpath_sfix}/'
-                        + glacier_str.split('.')[0].zfill(2)
-                        + '/'
-                    )
-                    if not os.path.exists(mcmc_fail_fp):
-                        os.makedirs(mcmc_fail_fp, exist_ok=True)
-                    txt_fn_fail = glacier_str + '-mcmc_fail.txt'
-                    with open(mcmc_fail_fp + txt_fn_fail, 'w') as text_file:
-                        text_file.write(glacier_str + f' failed to complete MCMC: {err}')
-                # --------------------
+                # except Exception as err:
+                #     # MCMC LOG FAILURE
+                #     mcmc_fail_fp = (
+                #         pygem_prms['root']
+                #         + f'/Output/mcmc_fail{outpath_sfix}/'
+                #         + glacier_str.split('.')[0].zfill(2)
+                #         + '/'
+                #     )
+                #     if not os.path.exists(mcmc_fail_fp):
+                #         os.makedirs(mcmc_fail_fp, exist_ok=True)
+                #     txt_fn_fail = glacier_str + '-mcmc_fail.txt'
+                #     with open(mcmc_fail_fp + txt_fn_fail, 'w') as text_file:
+                #         text_file.write(glacier_str + f' failed to complete MCMC: {err}')
+                # # --------------------
 
             # ===== HUSS AND HOCK (2015) CALIBRATION =====
             elif args.option_calibration == 'HH2015':
