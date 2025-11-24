@@ -147,6 +147,11 @@ calib:
       - kp      
     ftol_opt: 1e-6                                # tolerance for SciPy optimization scheme
     eps_opt: 0.01                                 # epsilon (adjust variables for jacobian) for SciPy optimization scheme
+    option_use_lrbias: false                      # option to use lapse rate bias as a model parameter 
+    lrbias_step: 0.0005                           # lapse rate bias step size
+    lrbias_init: 0                                # lapse rate bias initial value
+    lrbias_disttype: truncnormal                  # lapse rate bias distribution ('truncnormal', 'uniform')
+    lrbias_sigma: 0.001                           # lapse rate bias standard deviation for truncnormal distribution
   
   # MCMC params
   MCMC_params:
@@ -184,6 +189,13 @@ calib:
     kp_sigma: 1.5                                 # precipitation factor standard deviation of normal distribution
     kp_bndlow: 0.5                                # precipitation factor lower bound
     kp_bndhigh: 1.5                               # precipitation factor upper bound
+    # additional calibration option
+    option_use_lrbias: false                      # option to use lapse rate bias as a model parameter 
+    lrbias_disttype: normal                       # distribution type ('normal' (recommended), 'truncnormal', 'uniform')
+    lrbias_mu: 0                                  # lapse rate bias mean of normal distribution
+    lrbias_sigma: 0.001                           # lapse rate bias mean of standard deviation
+    lrbias_bndlow: -0.005                         # lapse rate bias lower bound
+    lrbias_bndhigh: 0.005                         # lapse rate bias upper bound
     # options for calibrating against 1d elevation change
     option_calib_elev_change_1d: false            # option to calibrate against 1d elevation change data (true or false)
     rhoabl_disttype: normal                       # ablation area density prior distribution type (currently only 'normal' option)
@@ -298,6 +310,7 @@ sim:
     ddfsnow_iceratio: 0.7                         # Ratio degree-day factor snow snow to ice (Note, ddfice = ddfsnow / ddfsnow_iceratio)
     precgrad: 0.0001                              # precipitation gradient on glacier [m-1]
     lapserate: -0.0065                            # temperature lapse rate for both gcm to glacier and on glacier between elevation bins [K m-1]
+    lrbias: 0                                     # temperature lapse rate bias [K m-1]
     tsnow_threshold: 1                            # temperature threshold for snow [deg C] (HH2015 used 1.5 degC +/- 1 degC)
     calving_k: 0.7                                # frontal ablation rate [yr-1]
 
