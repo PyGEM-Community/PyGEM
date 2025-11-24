@@ -139,10 +139,7 @@ class single_glacier:
                 self.outfn += (
                     f'kp{self.modelprms["kp"]}_ddfsnow{self.modelprms["ddfsnow"]}_tbias{self.modelprms["tbias"]}_'
                 )
-                print('adding suffix...')
-                print(self.modelprms.keys())
                 if 'lrbias' in self.modelprms:
-                    print('lrbias here?')
                     self.outfn += f'lrbias{self.modelprms["lrbias"]}_'
             if self.sim_climate_name not in ['ERA-Interim', 'ERA5', 'COAWST']:
                 self.outfn += f'ba{self.option_bias_adjustment}_'
