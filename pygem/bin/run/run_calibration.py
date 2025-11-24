@@ -2118,9 +2118,10 @@ def run(list_packed_vars):
                     glacier_gcm_temp = gdir.historical_climate['temp']
                     glacier_gcm_prec = gdir.historical_climate['prec']
                     glacier_gcm_lr = gdir.historical_climate['lr']
+                    glacier_gcm_lrglac = gdir.historical_climate['lr']
                     glacier_gcm_elev = gdir.historical_climate['elev']
                     if 'lrbias' in modelprms:
-                        glacier_gcm_lrglac = glacier_gcm_lr + modelprms['lrbias']
+                        glacier_gcm_lrglac += modelprms['lrbias']
                     # Temperature using gcm and glacier lapse rates
                     #  T_bin = T_gcm + lr_gcm * (z_ref - z_gcm) + lr_glac * (z_bin - z_ref) + tempchange
                     T_minelev = (

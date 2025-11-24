@@ -113,7 +113,10 @@ class PyGEMMassBalance(MassBalanceModel):
         self.glacier_gcm_lrglac = gdir.historical_climate['lr']
         if 'lrbias' in self.modelprms:
             # self.glacier_gcm_lrgcm += self.modelprms['lrbias']
+            print(type(self.glacier_gcm_lrglac))
+            print(self.glacier_gcm_lrglac)
             self.glacier_gcm_lrglac += self.modelprms['lrbias']
+            print(self.glacier_gcm_lrglac)
 
         # Variables to store (consider storing in xarray)
         nbins = self.glacier_area_initial.shape[0]

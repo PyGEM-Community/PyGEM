@@ -666,8 +666,10 @@ def run(list_packed_vars):
                     if not modelprms_fp:
                         modelprms_fn = glacier_str + '-modelprms_dict.json'
                         modelprms_fp = (
+                            pygem_prms['root'] + '/Output/calibration-fullsim-w_lrbias/' + glacier_str.split('.')[0].zfill(2) + '/'
+                            # pygem_prms['root'] + '/Output/calibration-fullsim-w_me_sl/' + glacier_str.split('.')[0].zfill(2) + '/'
                             # pygem_prms['root'] + '/Output/calibration-fullsim/' + glacier_str.split('.')[0].zfill(2) + '/'
-                            pygem_prms['root'] + '/Output/calibration/' + glacier_str.split('.')[0].zfill(2) + '/'
+                            # pygem_prms['root'] + '/Output/calibration/' + glacier_str.split('.')[0].zfill(2) + '/'
                         ) + modelprms_fn
 
                     assert os.path.exists(modelprms_fp), 'Calibrated parameters do not exist.'
@@ -884,7 +886,7 @@ def run(list_packed_vars):
                         'precgrad': modelprms_all['precgrad'][n_iter],
                     }
                     if 'lrbias' in modelprms_all:
-                        modelprms_all['lrbias']: modelprms_all['lrbias'][n_iter]
+                        modelprms['lrbias'] = modelprms_all['lrbias'][n_iter]
 
                     if debug:
                         print(
@@ -897,7 +899,7 @@ def run(list_packed_vars):
                             + str(np.round(modelprms['tbias'], 2))
                             + (
                                 str(np.round(modelprms['lrbias'], 4))
-                                if 'lrbias' in modelprms_all
+                                if 'lrbias' in modelprms
                                 else ''
                             )
                         )
