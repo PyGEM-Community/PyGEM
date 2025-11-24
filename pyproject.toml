@@ -32,7 +32,7 @@ scikit-learn = "^1.5.2"
 tqdm = "^4.66.6"
 jupyter = "^1.1.1"
 arviz = "^0.20.0"
-oggm = "^1.6.2"
+oggm = { git = "https://github.com/OGGM/oggm.git"}
 ruamel-yaml = "^0.18.10"
 ruff = ">=0.9.6"
 pytest = ">=8.3.4"
