@@ -19,7 +19,8 @@ from pygem.setup.config import ConfigManager
 config_manager = ConfigManager()
 # read the config
 pygem_prms = config_manager.read_config()
-from oggm import tasks, workflow
+from oggm import cfg, tasks, workflow
+from oggm.core.flowline import FluxBasedModel
 
 import pygem.pygem_modelsetup as modelsetup
 from pygem import class_climate
@@ -34,10 +35,10 @@ from pygem.oggm_compat import (
 from pygem.utils._funcs import interp1d_fill_gaps
 
 
-def calculate_elev_change_1d(gdir):
+def calc_thick_change_1d(gdir):
     """
-    calculate the 1d elevation change from dynamical spinup.
-    assumes constant flux divergence througohut each model year.
+    calculate binned change in ice thickness assuming constant annual flux divergence.
+    sub-annual ice thickness is differenced at timesteps coincident with observations.
     """
     # load flowline_diagnostics from spinup
     f = gdir.get_filepath('fl_diagnostics', filesuffix='_dynamic_spinup_pygem_mb')
@@ -53,35 +54,34 @@ def calculate_elev_change_1d(gdir):
             0,
         )
 
-    ### get monthly elevation change ###
-    # note, transpose and [:, 1:] indexing to access desired OGGM dataset outputs
-    # OGGM stores data following (nsteps, nbins) - while PyGEM follows (nbins, nsteps), hence .T operator
-    # OGGM also stores the 0th model year with np.nan values, hence [:,1:] indexing. Time index 1 corresponds to the output from model year 0-1
-    #  --- Step 1: convert mass balance from m w.e. to m ice ---
-    rho_w = pygem_prms['constants']['density_water']
-    rho_i = pygem_prms['constants']['density_ice']
-    bin_massbalclim_ice = ds_spn.climatic_mb_myr.values.T[:, 1:] * (
-        rho_w / rho_i
-    )  # binned climatic mass balance (nbins, nsteps)
+    yrs = np.unique(ds_spn.time.values)[:-1]
+    # grab components of interest
+    bin_massbalclim_ice_annual = ds_spn.climatic_mb.values.T[
+        :, 1:
+    ]  # annual climatic mass balance [m ice] (nbins, nyears - 1)
+    bin_delta_thick_annual = ds_spn.dhdt.values.T[:, 1:]  # annual change in ice thickness [m ice] (nbins, nyears - 1)
+    bin_flux_divergence_annual = (
+        bin_massbalclim_ice_annual - bin_delta_thick_annual
+    )  # annual flux divergence [m ice] (nbins, nyears - 1)
 
-    # --- Step 2: expand annual climatic mass balance and flux divergence to monthly steps ---
+    # --- Step 1: expand annual climatic mass balance and flux divergence to monthly steps ---
     # assume the climatic mass balance and flux divergence are constant througohut the year
     # ie. take annual values and divide spread uniformly throughout model year
-    bin_massbalclim_ice_monthly = np.repeat(bin_massbalclim_ice / 12, 12, axis=-1)  # [m ice]
+    bin_massbalclim_ice_monthly = np.repeat(bin_massbalclim_ice_annual / 12, 12, axis=-1)  # [m ice]
     bin_flux_divergence_monthly = np.repeat(
-        -ds_spn.flux_divergence_myr.values.T[:, 1:] / 12, 12, axis=-1
+        bin_flux_divergence_annual / 12, 12, axis=-1
     )  # [m ice] note, oggm flux_divergence_myr is opposite sign of convention, hence negative
 
-    # --- Step 3: compute monthly thickness change ---
+    # --- Step 2: compute monthly thickness change ---
     bin_delta_thick_monthly = bin_massbalclim_ice_monthly - bin_flux_divergence_monthly  # [m ice]
 
-    # --- Step 4: calculate monthly thickness ---
+    # --- Step 3: calculate monthly thickness ---
     # calculate binned monthly thickness = running thickness change + initial thickness
     bin_thick_initial = ds_spn.thickness_m.isel(time=0).values  # initial glacier thickness [m ice], (nbins)
     running_bin_delta_thick_monthly = np.cumsum(bin_delta_thick_monthly, axis=-1)
     bin_thick_monthly = running_bin_delta_thick_monthly + bin_thick_initial[:, np.newaxis]
 
-    # --- Step 5: rebin monthly thickness ---
+    # --- Step 4: rebin monthly thickness ---
     # get surface height at the specified reference year
     ref_surface_height = ds_spn.bed_h.values + ds_spn.thickness_m.sel(time=gdir.elev_change_1d['ref_dem_year']).values
     # aggregate model bin thicknesses
@@ -101,8 +101,8 @@ def calculate_elev_change_1d(gdir):
     # interpolate over any empty bins
     bin_thick_monthly = np.column_stack([interp1d_fill_gaps(x.copy()) for x in bin_thick_monthly.T])
 
-    # --- Step 6: calculate elevation change ---
-    elev_change_1d = np.column_stack(
+    # --- Step 5: calculate thickness change ---
+    bin_thick_change = np.column_stack(
         [
             bin_thick_monthly[:, tup[1]] - bin_thick_monthly[:, tup[0]]
             if tup[0] is not None and tup[1] is not None
@@ -111,7 +111,7 @@ def calculate_elev_change_1d(gdir):
         ]
     )
 
-    return elev_change_1d, ds_spn.dis_along_flowline.values, area
+    return bin_thick_change, ds_spn.dis_along_flowline.values, area
 
 
 def loss_with_penalty(x, obs, mod, threshold=100, weight=1.0):
@@ -191,9 +191,38 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
             if glacier_rgi_table['TermType'] not in [1, 5] or not pygem_prms['setup']['include_frontalablation']:
                 gd = single_flowline_glacier_directory(glacier_str, reset=False)
                 gd.is_tidewater = False
+                kwargs['evolution_model'] = None  # use default (SemiImplicitModel)
             else:
                 gd = single_flowline_glacier_directory_with_calving(glacier_str, reset=False)
                 gd.is_tidewater = True
+                kwargs['evolution_model'] = FluxBasedModel  # use FluxBasedModel to allow for calving
+                kwargs['allow_calving'] = True
+                cfg.PARAMS['use_kcalving_for_inversion'] = True
+                cfg.PARAMS['use_kcalving_for_run'] = True
+                # Load quality controlled frontal ablation data
+                fp = f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["frontalablation"]["frontalablation_relpath"]}/analysis/{pygem_prms["calib"]["data"]["frontalablation"]["frontalablation_cal_fn"]}'
+                assert os.path.exists(fp), 'Calibrated calving dataset does not exist'
+                calving_df = pd.read_csv(fp)
+                calving_rgiids = list(calving_df.RGIId)
+
+                # Use calibrated value if individual data available
+                if gd.rgi_id in calving_rgiids:
+                    calving_idx = calving_rgiids.index(gd.rgi_id)
+                    calving_k = calving_df.loc[calving_idx, 'calving_k']
+                # Otherwise, use region's median value
+                else:
+                    calving_df['O1Region'] = [int(x.split('-')[1].split('.')[0]) for x in calving_df.RGIId.values]
+                    calving_df_reg = calving_df.loc[calving_df['O1Region'] == int(gd.rgi_id[6:8]), :]
+                    calving_k = np.median(calving_df_reg.calving_k)
+
+                # set calving_k
+                cfg.PARAMS['calving_k'] = calving_k
+                cfg.PARAMS['inversion_calving_k'] = calving_k
+                if debug:
+                    print(f'calving_k = {calving_k}')
+            # ensure inversion params are used for run
+            cfg.PARAMS['use_inversion_params_for_run'] = True
+            kwargs['is_tidewater'] = gd.is_tidewater
 
             # Select subsets of data
             gd.glacier_rgi_table = glacier_rgi_table
@@ -303,7 +332,7 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
                         for start, end in gd.elev_change_1d['dates']
                     ]
 
-                    dh_hat, dist, bin_area = calculate_elev_change_1d(gd)
+                    dh_hat, dist, bin_area = calc_thick_change_1d(gd)
                     dhdt_hat = dh_hat / gd.elev_change_1d['nyrs']
 
                     # plot binned surface area
