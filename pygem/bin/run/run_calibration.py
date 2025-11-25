@@ -256,7 +256,7 @@ def mb_mwea_calc(
         return mb_mwea
 
 
-def run_oggm_dynamics(gdir, modelprms, glacier_rgi_table, fls):
+def run_oggm_dynamics(gdir, modelprms, glacier_rgi_table, fls, debug=False):
     """run the dynamical evolution model with a given set of model parameters"""
 
     y0 = gdir.dates_table.year.min()
@@ -292,7 +292,9 @@ def run_oggm_dynamics(gdir, modelprms, glacier_rgi_table, fls):
             is_tidewater=gdir.is_tidewater,
             water_level=water_level,
         )
-
+    if debug:
+        fig, ax = plt.subplots(1)
+        graphics.plot_modeloutput_section(ev_model, ax=ax, lnlabel=f'Glacier year {y0}')
     try:
         # run glacier dynamics model forward
         diag, ds = ev_model.run_until_and_store(y1 + 1, fl_diag_path=True)
@@ -308,16 +310,20 @@ def run_oggm_dynamics(gdir, modelprms, glacier_rgi_table, fls):
                 )
                 # record each year's frontal ablation in m3 w.e.
                 if pygem_prms['time']['timestep'] == 'monthly':
-                    for n in np.arange(calving_m3we_annual.shape[0]):
-                        ev_model.mb_model.glac_wide_frontalablation[12 * n + 11] = calving_m3we_annual[n]
+                    for n, year in enumerate(np.arange(y0, y1 + 1)):
+                        tstart, tstop = ev_model.mb_model.get_step_inds(year)
+                        ev_model.mb_model.glac_wide_frontalablation[tstop] = calving_m3we_annual[n]
                 else:
                     raise ValueError('Need to add functionality for daily timestep')
 
                 # add mass lost from frontal ablation to Glacier-wide total mass balance (m3 w.e.)
                 ev_model.mb_model.glac_wide_massbaltotal = (
-                    ev_model.mb_model.glac_wide_massbaltotal + ev_model.mb_model.glac_wide_frontalablation
+                    ev_model.mb_model.glac_wide_massbaltotal - ev_model.mb_model.glac_wide_frontalablation
                 )
         ev_model.mb_model.ensure_mass_conservation(diag)
+        if debug:
+            graphics.plot_modeloutput_section(ev_model, ax=ax, srfls='--', lnlabel=f'Glacier year {y1}')
+            plt.show()
     # safely catch any errors with dynamical run
     except Exception:
         ds = None
