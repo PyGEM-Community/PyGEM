@@ -46,6 +46,7 @@ class PyGEMMassBalance(MassBalanceModel):
         heights=None,
         inversion_filter=False,
         ignore_debris=False,
+        compute_full_smb=True,
     ):
         """Initialize.
 
@@ -76,6 +77,8 @@ class PyGEMMassBalance(MassBalanceModel):
             the same or more positive with increasing elevation
         ignore_debris : Boolean
             option to ignore the sub-debris melt enhancement factors
+        compute_full_smb : Boolean
+            whether to compute full mass balance. If False, only the melt extent is calculated
         """
         if debug:
             print('\n\nDEBUGGING MASS BALANCE FUNCTION\n\n')
@@ -86,6 +89,7 @@ class PyGEMMassBalance(MassBalanceModel):
         self.valid_bounds = [-1e4, 2e4]  # in m
         self.hemisphere = gdir.hemisphere
         self.inversion_filter = int(inversion_filter)
+        self.compute_full_smb = compute_full_smb
 
         # Glacier data
         self.modelprms = modelprms
@@ -246,7 +250,6 @@ class PyGEMMassBalance(MassBalanceModel):
         mb : np.array
             mass balance for each bin [m ice per second]
         """
-
         # assertion to only run with calendar years
         assert pygem_prms['climate']['sim_wateryear'] == 'calendar', (
             'This function is not set up yet to handle non-calendar years'
@@ -495,6 +498,11 @@ class PyGEMMassBalance(MassBalanceModel):
                 #  off-glacier need to include melt of refreeze because there are no glacier dynamics,
                 #  but on-glacier do not need to account for this (simply assume refreeze has same surface type)
                 self.bin_melt[:, step] = self.bin_meltglac[:, step] + self.bin_meltsnow[:, step]
+
+                # If we just want melt extent, we can stop here
+                if not self.compute_full_smb:
+                    self.glac_bin_melt[glac_idx_t0, step] = self.bin_melt[glac_idx_t0, step]
+                    continue
 
                 # REFREEZING
                 if pygem_prms['mb']['option_refreezing'] == 'HH2015':
@@ -756,6 +764,16 @@ class PyGEMMassBalance(MassBalanceModel):
                         self.bin_meltsnow[offglac_idx, step] + self.offglac_meltrefreeze[offglac_idx]
                     )
 
+            # If just obtaining the melt extent, run this and exit
+            if not self.compute_full_smb:
+                # Obtain melt extent values
+                self._convert_glacwide_results_meltextent_only(
+                    t_start,
+                    t_stop,
+                    heights,
+                )
+                return
+            
             # ===== RETURN TO ANNUAL LOOP =====
             # SURFACE TYPE (-)
             # Annual climatic mass balance [m w.e.] used to determine the surface type
@@ -1023,6 +1041,46 @@ class PyGEMMassBalance(MassBalanceModel):
             self.offglac_wide_snowpack[t_start : t_stop + 1] = (
                 self.offglac_bin_snowpack[:, t_start : t_stop + 1][offglac_idx] * offglacier_area_steps[offglac_idx]
             ).sum(0)
+    
+    def _convert_glacwide_results_meltextent_only(
+        self,
+        t_start,
+        t_stop,
+        heights,
+        debug=False,
+    ):
+        """
+        Convert raw runmassbalance function output to melt extent elevation
+
+        Parameters
+        ----------
+        heights : np.array
+            surface elevation of each elevation bin
+        """
+        heights_steps = heights[:, np.newaxis].repeat((t_stop + 1) - t_start, axis=1)
+        heights_change = np.zeros(heights.shape)
+        heights_change[0:-1] = heights[0:-1] - heights[1:]
+        
+        # Melt extent altitude (m a.s.l.)
+        melt_mask = np.zeros(heights_steps.shape)
+        melt_mask[self.glac_bin_melt[:, t_start : t_stop + 1] > 0] = 1
+        heights_steps_wmelt = heights_steps * melt_mask
+        heights_steps_wmelt[heights_steps_wmelt == 0] = np.nan
+        try:
+            # index of highest elevation bin (smallest melt bin index with melt)
+            meltextent_idx = np.nanargmax(heights_steps_wmelt, axis=0)
+            self.glac_wide_meltextent[t_start : t_stop + 1] = heights[meltextent_idx] + heights_change[meltextent_idx] / 2
+        except:
+            meltextent_idx = np.zeros((heights_steps_wmelt.shape[1])).astype(int)
+            meltextent_idx_nan = []
+            for ncol in range(heights_steps_wmelt.shape[1]):
+                if ~np.isnan(heights_steps_wmelt[:, ncol]).all():
+                    meltextent_idx[ncol] = np.nanargmax(heights_steps_wmelt[:, ncol])
+                else:
+                    meltextent_idx_nan.append(ncol)
+            heights_manual = heights[meltextent_idx] + heights_change[meltextent_idx] / 2
+            heights_manual[meltextent_idx_nan] = np.nan
+            self.glac_wide_meltextent[t_start : t_stop + 1] = heights_manual
 
     def ensure_mass_conservation(self, diag):
         """

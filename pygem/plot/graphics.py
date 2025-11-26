@@ -15,7 +15,8 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import numpy as np
 import torch
-from scipy.stats import binned_statistic, linregress
+from scipy.stats import binned_statistic, linregress, gaussian_kde
+from scipy.stats import norm, truncnorm, gamma, lognorm, uniform
 
 from pygem.utils.stats import effective_n
 
@@ -153,12 +154,14 @@ def plot_modeloutput_section(
 
 
 def plot_mcmc_chain(
-    m_primes, m_chain, pred_primes, pred_chain, obs, ar, title, ms=1, fontsize=8, show=False, fpath=None
+    m_primes, m_chain, pred_primes, pred_chain, obs, ar, title, ms=1, fontsize=8, show=False, fpath=None, plot_mb=True,
 ):
     # Plot the trace of the parameters
     nparams = m_primes.shape[1]
     npreds = len(pred_chain.keys())
     N = nparams + npreds + 1
+    if not plot_mb:
+        N -= 1
     fig, axes = plt.subplots(N, 1, figsize=(6, N * 1), sharex=True)
     # convert torch objects to numpy
     m_chain = m_chain.detach().numpy()
@@ -238,36 +241,37 @@ def plot_mcmc_chain(
         axes[4].set_ylabel(r'$\rho_{acc}$', fontsize=fontsize)
 
     # plot predictions
-    if 'glacierwide_mb_mwea' in pred_primes.keys():
-        mb_obs = obs['glacierwide_mb_mwea']
-        axes[nparams].fill_between(
-            np.arange(len(ar)),
-            mb_obs[0] - (2 * mb_obs[1]),
-            mb_obs[0] + (2 * mb_obs[1]),
-            color='grey',
-            alpha=0.3,
-        )
-        axes[nparams].fill_between(
-            np.arange(len(ar)),
-            mb_obs[0] - mb_obs[1],
-            mb_obs[0] + mb_obs[1],
-            color='grey',
-            alpha=0.3,
-        )
+    if plot_mb:
+        if 'glacierwide_mb_mwea' in pred_primes.keys():
+            mb_obs = obs['glacierwide_mb_mwea']
+            axes[nparams].fill_between(
+                np.arange(len(ar)),
+                mb_obs[0] - (2 * mb_obs[1]),
+                mb_obs[0] + (2 * mb_obs[1]),
+                color='grey',
+                alpha=0.3,
+            )
+            axes[nparams].fill_between(
+                np.arange(len(ar)),
+                mb_obs[0] - mb_obs[1],
+                mb_obs[0] + mb_obs[1],
+                color='grey',
+                alpha=0.3,
+            )
 
-        mb_primes = torch.stack(pred_primes['glacierwide_mb_mwea']).numpy()
-        mb_chain = torch.stack(pred_chain['glacierwide_mb_mwea']).numpy()
-        axes[nparams].plot(mb_primes, '.', ms=ms, c='tab:blue')
-        axes[nparams].plot(mb_chain, '.', ms=ms, c='tab:orange')
-        axes[nparams].plot(
-            [],
-            [],
-            label=f'median={np.median(mb_chain):.3f}\niqr={np.subtract(*np.percentile(mb_chain, [75, 25])):.3f}',
-        )
-        ln2 = axes[nparams].legend(loc='upper right', handlelength=0, borderaxespad=0, fontsize=fontsize)
-        legs.append(ln2)
-        axes[nparams].set_ylabel(r'$\dot{{b}}$', fontsize=fontsize)
-        nparams += 1
+            mb_primes = torch.stack(pred_primes['glacierwide_mb_mwea']).numpy()
+            mb_chain = torch.stack(pred_chain['glacierwide_mb_mwea']).numpy()
+            axes[nparams].plot(mb_primes, '.', ms=ms, c='tab:blue')
+            axes[nparams].plot(mb_chain, '.', ms=ms, c='tab:orange')
+            axes[nparams].plot(
+                [],
+                [],
+                label=f'median={np.median(mb_chain):.3f}\niqr={np.subtract(*np.percentile(mb_chain, [75, 25])):.3f}',
+            )
+            ln2 = axes[nparams].legend(loc='upper right', handlelength=0, borderaxespad=0, fontsize=fontsize)
+            legs.append(ln2)
+            axes[nparams].set_ylabel(r'$\dot{{b}}$', fontsize=fontsize)
+            nparams += 1
 
     # plot along-chain mean residual for all other prediction keys
     for key in pred_primes.keys():
@@ -377,6 +381,110 @@ def plot_resid_histogram(obs, preds, title, fontsize=8, show=False, fpath=None):
     axes.set_title(title, fontsize=fontsize)
     plt.tight_layout()
     plt.subplots_adjust(hspace=0.1, wspace=0)
+    if fpath:
+        fig.savefig(fpath, dpi=400)
+    if show:
+        plt.show(block=True)  # wait until the figure is closed
+    plt.close(fig)
+
+
+def plot_param_distribution(m_chain, priors, title, fontsize=8, show=False, fpath=None):
+    fig, axes = plt.subplots(1, 3, figsize=(9, 2.75), sharey=True)
+    # convert torch objects to numpy
+    m_chain = m_chain.detach().numpy()
+
+    # helpers to plot various distributions
+    def _get_plot_dist(pdict):
+        # ----- normal -----
+        if pdict['type'].lower() == 'normal':
+            x = np.linspace(pdict['mu'] - 4*pdict['sigma'], pdict['mu'] + 4*pdict['sigma'], 400)
+            y = norm.pdf(x, loc=pdict['mu'], scale=pdict['sigma'])
+        # ----- truncated normal -----
+        elif pdict['type'].lower() == 'truncnormal':
+            if np.isinf(pdict['high']):
+                pdict['high'] = pdict['mu'] + 10*pdict['sigma']
+            if np.isinf(pdict['low']):
+                pdict['low'] = pdict['mu'] - 10*pdict['sigma']
+            a = (pdict['low'] - pdict['mu']) / pdict['sigma']
+            b = (pdict['high'] - pdict['mu']) / pdict['sigma']
+            dist = truncnorm(a, b, loc=pdict['mu'], scale=pdict['sigma'])
+            x = np.linspace(pdict['low'], pdict['high'], 400)
+            y = dist.pdf(x)
+        # ----- gamma -----
+        elif pdict['type'].lower() == 'gamma':
+            shape = pdict['alpha']
+            scale = 1 / pdict['beta']   # rate -> scale
+            mu = shape * scale
+            sigma = np.sqrt(shape) * scale
+            xmin = max(0, mu - 4*sigma)
+            xmax = mu + 4*sigma
+            x = np.linspace(xmin, xmax, 400)
+            y = gamma.pdf(x, a=shape, scale=scale)
+        # ----- lognormal -----
+        elif pdict['type'].lower() == 'lognormal':
+            s = pdict['sigma']
+            scale = np.exp(pdict['mu'])
+            xmin = np.exp(pdict['mu'] - 4*pdict['sigma'])
+            xmax = np.exp(pdict['mu'] + 4*pdict['sigma'])
+            x = np.linspace(xmin, xmax, 400)
+            y = lognorm.pdf(x, s=s, scale=scale)
+        # ----- uniform -----
+        elif pdict['type'].lower() == 'uniform':
+            low, high = pdict['low'], pdict['high']
+            dist = uniform(loc=low, scale=high - low)
+            x = np.linspace(low, high, 400)
+            y = dist.pdf(x)
+        y_norm = y / np.max(y) # return normalized probability
+        return x, y_norm
+
+    # get prior distributions
+    prior_tbias_x, prior_tbias_y = _get_plot_dist(priors['tbias'])
+    prior_kp_x, prior_kp_y = _get_plot_dist(priors['kp'])
+    prior_ddfsnow_x, prior_ddfsnow_y = _get_plot_dist(priors['ddfsnow'])
+
+    # axes[0] will always be tbias
+    tbias_kde = gaussian_kde(m_chain[:, 0])
+    prms_tbias_x = np.linspace(min(m_chain[:, 0]), max(m_chain[:, 0]), 1000) 
+    prms_tbias_y_norm = tbias_kde(prms_tbias_x) / np.max(tbias_kde(prms_tbias_x))
+
+    axes[0].plot(prior_tbias_x, prior_tbias_y, color='b')
+    axes[0].fill_between(prior_tbias_x, prior_tbias_y, color='b', alpha=0.2)
+    axes[0].plot(prms_tbias_x, prms_tbias_y_norm, color='r')
+    axes[0].fill_between(prms_tbias_x, prms_tbias_y_norm, color='r', alpha=0.2)
+
+    # axes[1] will always be kp
+    kp_kde = gaussian_kde(m_chain[:, 1])
+    prms_kp_x = np.linspace(min(m_chain[:, 1]), max(m_chain[:, 1]), 1000) 
+    prms_kp_y_norm = kp_kde(prms_kp_x) / np.max(kp_kde(prms_kp_x))
+
+    axes[1].plot(prior_kp_x, prior_kp_y, color='b')
+    axes[1].fill_between(prior_kp_x, prior_kp_y, color='b', alpha=0.2)
+    axes[1].plot(prms_kp_x, prms_kp_y_norm, color='r')
+    axes[1].fill_between(prms_kp_x, prms_kp_y_norm, color='r', alpha=0.2)
+
+    # axes[2] will always be ddfsnow
+    ddfsnow_kde = gaussian_kde(m_chain[:, 2])
+    prms_ddfsnow_x = np.linspace(min(m_chain[:, 2]), max(m_chain[:, 2]), 1000) 
+    prms_ddfsnow_y_norm = ddfsnow_kde(prms_ddfsnow_x) / np.max(ddfsnow_kde(prms_ddfsnow_x))
+
+    axes[2].plot(prior_ddfsnow_x, prior_ddfsnow_y, color='b')
+    axes[2].fill_between(prior_ddfsnow_x, prior_ddfsnow_y, color='b', alpha=0.2)
+    axes[2].plot(prms_ddfsnow_x, prms_ddfsnow_y_norm, color='r')
+    axes[2].fill_between(prms_ddfsnow_x, prms_ddfsnow_y_norm, color='r', alpha=0.2)
+
+    # legend
+    axes[2].plot([], [], ls='-', color='b', label='Prior')
+    axes[2].plot([], [], ls='-', color='r', label='Posterior')
+    axes[2].legend()
+
+    # formatting
+    axes[0].set_ylim(bottom=0)
+    axes[0].set_ylabel('Normalized probability', fontsize=fontsize)
+    axes[0].set_xlabel('$T_{bias}$', fontsize=fontsize)
+    axes[1].set_xlabel('$k_p$', fontsize=fontsize)
+    axes[2].set_xlabel('$f_{snow}$', fontsize=fontsize)
+    fig.suptitle(title, fontsize=fontsize)
+    plt.tight_layout()
     if fpath:
         fig.savefig(fpath, dpi=400)
     if show:

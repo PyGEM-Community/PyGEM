@@ -91,7 +91,7 @@ climate:
 
 # ===== CALIBRATION OPTIONS =====
 calib:
-  option_calibration: MCMC                        # calibration option ('emulator', 'MCMC' 'HH2015', 'HH2015mod', 'null')
+  option_calibration: MCMC                        # calibration option ('emulator', 'MCMC', 'MCMC-TBIAS', 'HH2015', 'HH2015mod', 'null')
   priors_reg_fn: priors_region.csv                # Prior distribution (specify filename, relative to `path`/Output/calibration/, or set to null)
 
   # HH2015 params
@@ -218,6 +218,10 @@ calib:
       scaf_1d: 1
     # option to ONLY plot SAR data outputs compared to model (but not actually calibrate with it) from the `option_calib` set to `true`
     option_sar_plot_only: true
+  MCMC-TBIAS_params:
+    option_run_full_massbalance: false            # option to run the full mass balance module instead of only obtaining melt extent
+    option_calib_glacierwide_mb_mwea: false       # option to calibrate against average glacierwide mass balance data in addition to melt extent (true or false). Must set `option_run_full_massbalance` to `true`
+
 
   # calibration datasets
   data:
