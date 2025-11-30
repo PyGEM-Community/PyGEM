@@ -914,7 +914,7 @@ def run(list_packed_vars):
                     cfg.PARAMS['use_kcalving_for_run'] = True
                     cfg.PARAMS['calving_k'] = calving_k
                     # some tidewater glaciers require a timestep << OGGM default of 60 seconds
-                    cfg.PARAMS['cfl_min_dt'] = pygem_prms['sim']['oggm_dynamics']['fs']
+                    cfg.PARAMS['cfl_min_dt'] = pygem_prms['sim']['oggm_dynamics']['cfl_min_dt']
 
             # if `args.spinup`, grab appropriate model flowlines
             if args.spinup:
