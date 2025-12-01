@@ -406,7 +406,7 @@ def main():
         type=str,
         default=None,
         help='Filepath containing list of rgi_glac_number, helpful for running batches on spc',
-    ),
+    )
     parser.add_argument(
         '-calibrate_regional_glen_a',
         type=str2bool,
