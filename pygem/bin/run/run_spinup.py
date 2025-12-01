@@ -32,7 +32,7 @@ from pygem.oggm_compat import (
     single_flowline_glacier_directory_with_calving,
     update_cfg,
 )
-from pygem.utils._funcs import interp1d_fill_gaps
+from pygem.utils._funcs import interp1d_fill_gaps, str2bool
 
 
 def calc_thick_change_1d(gdir):
@@ -191,37 +191,38 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
             if glacier_rgi_table['TermType'] not in [1, 5] or not pygem_prms['setup']['include_frontalablation']:
                 gd = single_flowline_glacier_directory(glacier_str, reset=False)
                 gd.is_tidewater = False
-                kwargs['evolution_model'] = None  # use default (SemiImplicitModel)
             else:
                 gd = single_flowline_glacier_directory_with_calving(glacier_str, reset=False)
                 gd.is_tidewater = True
-                kwargs['evolution_model'] = FluxBasedModel  # use FluxBasedModel to allow for calving
-                kwargs['allow_calving'] = True
-                cfg.PARAMS['use_kcalving_for_inversion'] = True
-                cfg.PARAMS['use_kcalving_for_run'] = True
-                # Load quality controlled frontal ablation data
-                fp = f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["frontalablation"]["frontalablation_relpath"]}/analysis/{pygem_prms["calib"]["data"]["frontalablation"]["frontalablation_cal_fn"]}'
-                assert os.path.exists(fp), 'Calibrated calving dataset does not exist'
-                calving_df = pd.read_csv(fp)
-                calving_rgiids = list(calving_df.RGIId)
+                if kwargs['allow_calving']:
+                    kwargs['evolution_model'] = FluxBasedModel  # use FluxBasedModel to allow for calving
+                    cfg.PARAMS['use_kcalving_for_inversion'] = True
+                    cfg.PARAMS['use_kcalving_for_run'] = True
+                    # Load quality controlled frontal ablation data
+                    fp = f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["frontalablation"]["frontalablation_relpath"]}/analysis/{pygem_prms["calib"]["data"]["frontalablation"]["frontalablation_cal_fn"]}'
+                    assert os.path.exists(fp), 'Calibrated calving dataset does not exist'
+                    calving_df = pd.read_csv(fp)
+                    calving_rgiids = list(calving_df.RGIId)
 
-                # Use calibrated value if individual data available
-                if gd.rgi_id in calving_rgiids:
-                    calving_idx = calving_rgiids.index(gd.rgi_id)
-                    calving_k = calving_df.loc[calving_idx, 'calving_k']
-                # Otherwise, use region's median value
-                else:
-                    calving_df['O1Region'] = [int(x.split('-')[1].split('.')[0]) for x in calving_df.RGIId.values]
-                    calving_df_reg = calving_df.loc[calving_df['O1Region'] == int(gd.rgi_id[6:8]), :]
-                    calving_k = np.median(calving_df_reg.calving_k)
+                    # Use calibrated value if individual data available
+                    if gd.rgi_id in calving_rgiids:
+                        calving_idx = calving_rgiids.index(gd.rgi_id)
+                        calving_k = calving_df.loc[calving_idx, 'calving_k']
+                    # Otherwise, use region's median value
+                    else:
+                        calving_df['O1Region'] = [int(x.split('-')[1].split('.')[0]) for x in calving_df.RGIId.values]
+                        calving_df_reg = calving_df.loc[calving_df['O1Region'] == int(gd.rgi_id[6:8]), :]
+                        calving_k = np.median(calving_df_reg.calving_k)
 
-                # set calving_k
-                cfg.PARAMS['calving_k'] = calving_k
-                cfg.PARAMS['inversion_calving_k'] = calving_k
-                if debug:
-                    print(f'calving_k = {calving_k}')
+                    # set calving_k
+                    cfg.PARAMS['calving_k'] = calving_k
+                    cfg.PARAMS['inversion_calving_k'] = calving_k
+                    if debug:
+                        print(f'calving_k = {calving_k}')
             # ensure inversion params are used for run
             cfg.PARAMS['use_inversion_params_for_run'] = True
+            cfg.PARAMS['cfl_number'] = pygem_prms['sim']['oggm_dynamics']['cfl_number']
+            cfg.PARAMS['cfl_min_dt'] = pygem_prms['sim']['oggm_dynamics']['cfl_min_dt']
             kwargs['is_tidewater'] = gd.is_tidewater
 
             # Select subsets of data
@@ -495,15 +496,13 @@ def main():
         nargs='+',
         help='Randoph Glacier Inventory glacier number (can take multiple)',
     )
-    (
-        parser.add_argument(
-            '-rgi_glac_number_fn',
-            action='store',
-            type=str,
-            default=None,
-            help='Filepath containing list of rgi_glac_number, helpful for running batches on spc',
-        ),
-    )
+    parser.add_argument(
+        '-rgi_glac_number_fn',
+        action='store',
+        type=str,
+        default=None,
+        help='Filepath containing list of rgi_glac_number, helpful for running batches on spc',
+    ),
     parser.add_argument('-target_yr', type=int, default=None)
     parser.add_argument('-ye', type=int, default=None)
     parser.add_argument(
@@ -548,6 +547,12 @@ def main():
     )
     parser.add_argument(
         '-outdir', type=str, default=None, help='Directory to store any ouputs (diagnostic figures, etc.)'
+    )
+    parser.add_argument(
+        '-allow_calving',
+        type=str2bool,
+        default=pygem_prms['setup']['include_frontalablation'],
+        help="If True (False) include (don't include) calving for tidewater glaciers.",
     )
     parser.add_argument('-v', '--debug', action='store_true', help='Flag for debugging')
     args = parser.parse_args()
@@ -601,6 +606,7 @@ def main():
         target_yr=args.target_yr,
         spinup_period=args.spinup_period,
         ye=args.ye,
+        allow_calving=args.allow_calving,
     )
 
     # parallel processing
