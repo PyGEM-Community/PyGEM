@@ -195,7 +195,9 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
                 gd = single_flowline_glacier_directory_with_calving(glacier_str, reset=False)
                 gd.is_tidewater = True
                 if kwargs['allow_calving']:
-                    kwargs['evolution_model'] = FluxBasedModel  # use FluxBasedModel to allow for calving
+                    kwargs['evolution_model'] = partial(
+                        FluxBasedModel, water_level=gd.get_diagnostics().get('calving_water_level', None)
+                    )  # use FluxBasedModel to allow for calving
                     cfg.PARAMS['use_kcalving_for_inversion'] = True
                     cfg.PARAMS['use_kcalving_for_run'] = True
                     # Load quality controlled frontal ablation data
@@ -369,96 +371,105 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
                     print('All results:', {k: v[0] for k, v in results.items()})
                     print(f'Best spinup_period = {best_period}, mismatch = {best_value}')
 
+                if all(v[1] is None for v in results.values()):
+                    raise ValueError('Spinup failed for all tested periods')
+
                 # find worst - ignore failed runs
-                worst_period = max((k for k in results if results[k][0] != float('inf')), key=lambda k: results[k][0])
+                worst_period = max(
+                    (k for k in results if results[k][0] != float('inf')),
+                    key=lambda k: results[k][0],
+                    default=best_period,
+                )
                 worst_value, worst_model = results[worst_period]
 
                 ############################
                 ### diagnostics plotting ###
                 ############################
-                # binned area
-                ax.legend()
-                ax.set_title(gd.rgi_id)
-                ax.set_xlabel('distance along flowline (m)')
-                ax.set_ylabel('surface area (m$^2$)')
-                ax.set_xlim([0, ax.get_xlim()[1]])
-                ax.set_ylim([0, ax.get_ylim()[1]])
-                fig.tight_layout()
-                if debug and ncores == 1:
-                    plt.show()
-                if outdir:
-                    fig.savefig(f'{outdir}/{glac_no}-spinup_binned_area.png', dpi=300)
+                if best_model is not None and worst_model is not None:
+                    # binned area
+                    ax.legend()
+                    ax.set_title(gd.rgi_id)
+                    ax.set_xlabel('distance along flowline (m)')
+                    ax.set_ylabel('surface area (m$^2$)')
+                    ax.set_xlim([0, ax.get_xlim()[1]])
+                    ax.set_ylim([0, ax.get_ylim()[1]])
+                    fig.tight_layout()
+                    if debug and ncores == 1:
+                        plt.show()
+                    if outdir:
+                        fig.savefig(f'{outdir}/{glac_no}-spinup_binned_area.png', dpi=300)
                 plt.close()
 
-                # 1d elevation change
-                labels = [
-                    (f'{start[:-2].replace("-", "")}:{end[:-3].replace("-", "")}')
-                    for start, end in gd.elev_change_1d['dates']
-                ]
-                fig, ax = plt.subplots(figsize=(8, 5))
+                if best_model is not None and worst_model is not None:
+                    # 1d elevation change
+                    labels = [
+                        (f'{start[:-2].replace("-", "")}:{end[:-3].replace("-", "")}')
+                        for start, end in gd.elev_change_1d['dates']
+                    ]
+                    fig, ax = plt.subplots(figsize=(8, 5))
 
-                for t in range(gd.elev_change_1d['dhdt'].shape[1]):
-                    # plot Obs first, grab the color
-                    (line,) = ax.plot(
-                        gd.elev_change_1d['bin_centers'],
-                        gd.elev_change_1d['dhdt'][:, t],
-                        linestyle='-',
-                        marker='.',
-                        label=labels[t],
-                    )
-                    color = line.get_color()
+                    for t in range(gd.elev_change_1d['dhdt'].shape[1]):
+                        # plot Obs first, grab the color
+                        (line,) = ax.plot(
+                            gd.elev_change_1d['bin_centers'],
+                            gd.elev_change_1d['dhdt'][:, t],
+                            linestyle='-',
+                            marker='.',
+                            label=labels[t],
+                        )
+                        color = line.get_color()
 
-                    # plot Best model with same color
-                    ax.plot(
-                        gd.elev_change_1d['bin_centers'],
-                        best_model[:, t],
-                        linestyle='--',
-                        marker='.',
-                        color=color,
-                    )
+                        # plot Best model with same color
+                        ax.plot(
+                            gd.elev_change_1d['bin_centers'],
+                            best_model[:, t],
+                            linestyle='--',
+                            marker='.',
+                            color=color,
+                        )
 
-                    # plot Worst model with same color
-                    ax.plot(
-                        gd.elev_change_1d['bin_centers'],
-                        worst_model[:, t],
-                        linestyle=':',
-                        marker='.',
-                        color=color,
+                        # plot Worst model with same color
+                        ax.plot(
+                            gd.elev_change_1d['bin_centers'],
+                            worst_model[:, t],
+                            linestyle=':',
+                            marker='.',
+                            color=color,
+                        )
+                    ax.axvline(gd.ela, c='grey', ls=':')
+                    ax.axhline(0, c='grey', ls='-')
+                    ax.plot([], [], 'k--', label=r'$\hat{best}$')
+                    ax.plot([], [], 'k:', label=r'$\hat{worst}$')
+                    ax.set_xlabel('elevation (m)')
+                    ax.set_ylabel(r'elevation change (m yr$^{-1}$)')
+                    ax.set_title(
+                        f'{glac_no}\nBest={best_period} (mismatch={best_value:.3f}), '
+                        f'Worst={worst_period} (mismatch={worst_value:.3f})'
                     )
-                ax.axvline(gd.ela, c='grey', ls=':')
-                ax.axhline(0, c='grey', ls='-')
-                ax.plot([], [], 'k--', label=r'$\hat{best}$')
-                ax.plot([], [], 'k:', label=r'$\hat{worst}$')
-                ax.set_xlabel('elevation (m)')
-                ax.set_ylabel(r'elevation change (m yr$^{-1}$)')
-                ax.set_title(
-                    f'{glac_no}\nBest={best_period} (mismatch={best_value:.3f}), '
-                    f'Worst={worst_period} (mismatch={worst_value:.3f})'
-                )
-                ax.legend(handlelength=1, borderaxespad=0, fancybox=False)
-                # plot area
-                if 'bin_area' in gd.elev_change_1d:
-                    area = np.array(gd.elev_change_1d['bin_area'])
-                    area_mask = area > 0
-                    ax2 = ax.twinx()  # shares x-axis
-                    ax2.fill_between(
-                        np.array(gd.elev_change_1d['bin_centers'])[area_mask],
-                        0,
-                        area[area_mask],
-                        color='gray',
-                        alpha=0.1,
-                    )
-                    ax2.set_ylim([0, ax2.get_ylim()[1]])
-                    ax2.set_ylabel(r'area (m $^{2}$)', color='gray')
-                    ax2.tick_params(axis='y', colors='gray')
-                    ax2.spines['right'].set_color('gray')
-                    ax2.yaxis.label.set_color('gray')
-                fig.tight_layout()
-                if debug and ncores == 1:
-                    plt.show()
-                if outdir:
-                    fig.savefig(f'{outdir}/{glac_no}-spinup_optimization.png', dpi=300)
-                plt.close()
+                    ax.legend(handlelength=1, borderaxespad=0, fancybox=False)
+                    # plot area
+                    if 'bin_area' in gd.elev_change_1d:
+                        area = np.array(gd.elev_change_1d['bin_area'])
+                        area_mask = area > 0
+                        ax2 = ax.twinx()  # shares x-axis
+                        ax2.fill_between(
+                            np.array(gd.elev_change_1d['bin_centers'])[area_mask],
+                            0,
+                            area[area_mask],
+                            color='gray',
+                            alpha=0.1,
+                        )
+                        ax2.set_ylim([0, ax2.get_ylim()[1]])
+                        ax2.set_ylabel(r'area (m $^{2}$)', color='gray')
+                        ax2.tick_params(axis='y', colors='gray')
+                        ax2.spines['right'].set_color('gray')
+                        ax2.yaxis.label.set_color('gray')
+                    fig.tight_layout()
+                    if debug and ncores == 1:
+                        plt.show()
+                    if outdir:
+                        fig.savefig(f'{outdir}/{glac_no}-spinup_optimization.png', dpi=300)
+                    plt.close()
                 ############################
 
             # update spinup_period if optimized or specified as CLI argument, else remove kwarg and use OGGM default
@@ -502,7 +513,7 @@ def main():
         type=str,
         default=None,
         help='Filepath containing list of rgi_glac_number, helpful for running batches on spc',
-    ),
+    )
     parser.add_argument('-target_yr', type=int, default=None)
     parser.add_argument('-ye', type=int, default=None)
     parser.add_argument(
