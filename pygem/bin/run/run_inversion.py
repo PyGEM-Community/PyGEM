@@ -352,10 +352,10 @@ def run(
         {
             'O1Region': reg,
             'count': len(glac_no),
-            'inversion_glen_a': gdirs[0].get_diagnostics()['inversion_glen_a'],
-            'inversion_fs': gdirs[0].get_diagnostics()['inversion_fs'],
-            'vol_itmix_m3': itmix_vol,
-            'vol_model_m3': model_vol,
+            'inversion_glen_a': float(gdirs[0].get_diagnostics()['inversion_glen_a']),
+            'inversion_fs': float(gdirs[0].get_diagnostics()['inversion_fs']),
+            'vol_itmix_m3': float(itmix_vol),
+            'vol_model_m3': float(model_vol),
         }
     )
 

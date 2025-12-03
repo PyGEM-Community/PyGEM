@@ -801,6 +801,9 @@ def run(list_packed_vars):
                     else:
                         fs = pygem_prms['sim']['oggm_dynamics']['fs']
                         glen_a = cfg.PARAMS['glen_a'] * pygem_prms['sim']['oggm_dynamics']['glen_a_multiplier']
+                    # ensure float
+                    fs = float(fs)
+                    glen_a = float(glen_a)
 
                     # spinup
                     if args.spinup:
