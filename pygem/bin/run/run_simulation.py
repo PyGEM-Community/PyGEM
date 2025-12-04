@@ -787,7 +787,9 @@ def run(list_packed_vars):
                             f'{pygem_prms["root"]}/{pygem_prms["sim"]["oggm_dynamics"]["glen_a_regional_relpath"]}'
                         )
                         glen_a_O1regions = [int(x) for x in glen_a_df.O1Region.values]
-                        assert glacier_rgi_table.O1Region in glen_a_O1regions, glacier_str + ' O1 region not in glen_a_df'
+                        assert glacier_rgi_table.O1Region in glen_a_O1regions, (
+                            glacier_str + ' O1 region not in glen_a_df'
+                        )
                         glen_a_idx = np.where(glen_a_O1regions == glacier_rgi_table.O1Region)[0][0]
                         # Check which columns exist
                         # Rounce et al. (2023) regional glen a calibration file has 'glens_a_multiplier' and 'fs'
