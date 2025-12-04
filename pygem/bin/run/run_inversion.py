@@ -266,12 +266,21 @@ def run(
                         '{0:0.5f}'.format(gd.glacier_rgi_table['RGIId_float']) + ' O1 region not in glen_a_df'
                     )
                     glen_a_idx = np.where(glen_a_O1regions == gdir.glacier_rgi_table.O1Region)[0][0]
-                    glen_a_multiplier = glen_a_df.loc[glen_a_idx, 'glens_a_multiplier']
-                    fs = glen_a_df.loc[glen_a_idx, 'fs']
+                    # Check which columns exist
+                    # Rounce et al. (2023) regional glen a calibration file has 'glens_a_multiplier' and 'fs'
+                    # output of run_inversion has 'inversion_glen_a' and 'inversion_fs'
+                    if {'glens_a_multiplier', 'fs'}.issubset(glen_a_df.columns):
+                        glen_a = cfg.PARAMS['glen_a'] * glen_a_df.loc[glen_a_idx, 'glens_a_multiplier']
+                        fs = glen_a_df.loc[glen_a_idx, 'fs']
+                    elif {'inversion_glen_a', 'inversion_fs'}.issubset(glen_a_df.columns):
+                        glen_a = glen_a_df.loc[glen_a_idx, 'inversion_glen_a']
+                        fs = glen_a_df.loc[glen_a_idx, 'inversion_fs']
                 else:
-                    glen_a_multiplier = pygem_prms['sim']['oggm_dynamics']['glen_a_multiplier']
+                    glen_a = cfg.PARAMS['glen_a'] * pygem_prms['sim']['oggm_dynamics']['glen_a_multiplier']
                     fs = pygem_prms['sim']['oggm_dynamics']['fs']
-                glen_a = cfg.PARAMS['glen_a'] * glen_a_multiplier
+                # ensure float
+                glen_a = float(glen_a)
+                fs = float(fs)
 
         # non-tidewater
         if gdir.glacier_rgi_table['TermType'] not in [1, 5] or not pygem_prms['setup']['include_frontalablation']:

@@ -783,27 +783,27 @@ def run(list_packed_vars):
                         print('cfl number:', cfg.PARAMS['cfl_number'])
 
                     if args.use_regional_glen_a:
-                        glena_df = pd.read_csv(
+                        glen_a_df = pd.read_csv(
                             f'{pygem_prms["root"]}/{pygem_prms["sim"]["oggm_dynamics"]["glen_a_regional_relpath"]}'
                         )
-                        glena_O1regions = [int(x) for x in glena_df.O1Region.values]
-                        assert glacier_rgi_table.O1Region in glena_O1regions, glacier_str + ' O1 region not in glena_df'
-                        glena_idx = np.where(glena_O1regions == glacier_rgi_table.O1Region)[0][0]
+                        glen_a_O1regions = [int(x) for x in glen_a_df.O1Region.values]
+                        assert glacier_rgi_table.O1Region in glen_a_O1regions, glacier_str + ' O1 region not in glen_a_df'
+                        glen_a_idx = np.where(glen_a_O1regions == glacier_rgi_table.O1Region)[0][0]
                         # Check which columns exist
                         # Rounce et al. (2023) regional glen a calibration file has 'glens_a_multiplier' and 'fs'
                         # output of run_inversion has 'inversion_glen)a' and 'inversion_fs'
-                        if {'glens_a_multiplier', 'fs'}.issubset(glena_df.columns):
-                            glen_a = cfg.PARAMS['glen_a'] * glena_df.loc[glena_idx, 'glens_a_multiplier']
-                            fs = glena_df.loc[glena_idx, 'fs']
-                        elif {'inversion_glen_a', 'inversion_fs'}.issubset(glena_df.columns):
-                            glen_a = glena_df.loc[glena_idx, 'inversion_glen_a']
-                            fs = glena_df.loc[glena_idx, 'inversion_fs']
+                        if {'glens_a_multiplier', 'fs'}.issubset(glen_a_df.columns):
+                            glen_a = cfg.PARAMS['glen_a'] * glen_a_df.loc[glen_a_idx, 'glens_a_multiplier']
+                            fs = glen_a_df.loc[glen_a_idx, 'fs']
+                        elif {'inversion_glen_a', 'inversion_fs'}.issubset(glen_a_df.columns):
+                            glen_a = glen_a_df.loc[glen_a_idx, 'inversion_glen_a']
+                            fs = glen_a_df.loc[glen_a_idx, 'inversion_fs']
                     else:
-                        fs = pygem_prms['sim']['oggm_dynamics']['fs']
                         glen_a = cfg.PARAMS['glen_a'] * pygem_prms['sim']['oggm_dynamics']['glen_a_multiplier']
+                        fs = pygem_prms['sim']['oggm_dynamics']['fs']
                     # ensure float
-                    fs = float(fs)
                     glen_a = float(glen_a)
+                    fs = float(fs)
 
                     # spinup
                     if args.spinup:
