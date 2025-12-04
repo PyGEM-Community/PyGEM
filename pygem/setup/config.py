@@ -321,6 +321,7 @@ class ConfigManager:
         'calib.MCMC_params.option_sar_plot_only': bool,
         'calib.MCMC-TBIAS_params.option_run_full_massbalance': bool,
         'calib.MCMC-TBIAS_params.option_calib_glacierwide_mb_mwea': bool,
+        'calib.MCMC-TBIAS_params.overwrite_calib': bool,
         'calib.data': dict,
         'calib.data.massbalance': dict,
         'calib.data.massbalance.massbalance_relpath': str,

@@ -221,7 +221,7 @@ calib:
   MCMC-TBIAS_params:
     option_run_full_massbalance: false            # option to run the full mass balance module instead of only obtaining melt extent
     option_calib_glacierwide_mb_mwea: false       # option to calibrate against average glacierwide mass balance data in addition to melt extent (true or false). Must set `option_run_full_massbalance` to `true`
-
+    overwrite_calib: true                         # option whether to overwrite existing MCMC-TBIAS calibration file (true or false)
 
   # calibration datasets
   data:

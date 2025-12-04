@@ -2738,11 +2738,9 @@ def run(list_packed_vars):
                 outpath_sfix = '-fullsim'  # output file path suffix
 
                 # don't overwrite existing runs (skip them instead)
-                fp_exists = (
-                    '/Users/albinwells/Desktop/PyGEM-files/PyGEM_data/full_data/Output/' + 
-                    f'calibration-tbias-fullsim/01/{glacier_str}-modelprms_dict.json'
-                )
-                if os.path.exists(fp_exists):
+                fp_exists = f'{pygem_prms["root"]}/Output/calibration-tbias-fullsim/01/{glacier_str}-modelprms_dict.json'
+                if os.path.exists(fp_exists) and not pygem_prms['calib']['MCMC-TBIAS_params']['overwrite_calib']:
+                    print(f'Skipping glacier {glacier_str}: calibration file already exists')
                     continue
 
                 try:
@@ -3063,6 +3061,12 @@ def run(list_packed_vars):
                                 )
                             else:
                                 initial_guesses = torch.tensor(get_initials(get_priors(priors)))
+                                # if n_chain == 1: # get 5th and 95th percentile
+                                #     initial_guesses = torch.tensor(get_initials(get_priors(priors), pctl=0.05))
+                                # if n_chain == 2:
+                                #     initial_guesses = torch.tensor(get_initials(get_priors(priors), pctl=0.95))
+                                # else:
+                                #     initial_guesses = torch.tensor(get_initials(get_priors(priors)))
 
                             if debug:
                                 print(
