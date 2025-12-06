@@ -51,7 +51,7 @@ from pygem.plot import graphics
 from pygem.shop import debris
 from pygem.utils._funcs import interp1d_fill_gaps
 from pygem.utils.stats import mcmc_stats
-from pygem.shop import debris
+
 
 # %% FUNCTIONS
 def getparser():
@@ -296,13 +296,11 @@ def run_inversion(gdir, modelprms, glacier_rgi_table, inversion_filter=pygem_prm
 
     tasks.init_present_time_glacier(gdir)  # adds bins below
     if pygem_prms['mb']['include_debris']:
-        debris.debris_binned(
-            gdir, fl_str='model_flowlines'
-        )  # add debris enhancement factors to flowlines
-    
+        debris.debris_binned(gdir, fl_str='model_flowlines')  # add debris enhancement factors to flowlines
+
     return gdir.read_pickle('model_flowlines')
 
-    
+
 def run_oggm_dynamics(gdir, modelprms, glacier_rgi_table, fls, debug=False):
     """run the dynamical evolution model with a given set of model parameters"""
 
@@ -2112,14 +2110,15 @@ def run(list_packed_vars):
                 mbfxn = None
 
             # define args to pass to fxn2eval in mcmc sampler
-            fxn2eval = partial(mcmc_model_eval,
-                                gdir=gdir,
-                                glacier_rgi_table=glacier_rgi_table,
-                                fls=fls,
-                                mbfxn=mbfxn,
-                                calib_elev_change_1d=args.option_calib_elev_change_1d,
-                                do_inversion=args.option_calib_elev_change_1d and not args.spinup
-                                )
+            fxn2eval = partial(
+                mcmc_model_eval,
+                gdir=gdir,
+                glacier_rgi_table=glacier_rgi_table,
+                fls=fls,
+                mbfxn=mbfxn,
+                calib_elev_change_1d=args.option_calib_elev_change_1d,
+                do_inversion=args.option_calib_elev_change_1d and not args.spinup,
+            )
 
             # instantiate mbPosterior given priors, and observed values
             # note, mbEmulator.eval expects the modelprms to be ordered like so: [tbias, kp, ddfsnow], so priors and initial guesses must also be ordered as such)
