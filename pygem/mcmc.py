@@ -151,13 +151,13 @@ log_prob_fxn_map = {
 # mass balance posterior class
 class mbPosterior:
     def __init__(
-        self, obs, priors, fxn2eval, fxnargs=None, calib_glacierwide_mb_mwea=True, potential_fxns=None, **kwargs
+        self, obs, priors, fxn2eval, modelprms_dict, calib_glacierwide_mb_mwea=True, potential_fxns=None, **kwargs
     ):
         # obs will be passed as a list, where each item is a tuple with the first element being the mean observation, and the second being the variance
         self.obs = obs
         self.priors = copy.deepcopy(priors)
         self.fxn2eval = fxn2eval
-        self.fxnargs = fxnargs
+        self.modelprms_dict = modelprms_dict
         self.calib_glacierwide_mb_mwea = calib_glacierwide_mb_mwea
         self.potential_functions = potential_fxns if potential_fxns is not None else []
         self.preds = None
@@ -200,13 +200,13 @@ class mbPosterior:
     # update modelprms for evaluation
     def update_modelprms(self, m):
         for i, k in enumerate(['tbias', 'kp', 'ddfsnow']):
-            self.fxnargs[1][k] = float(m[i])
-        self.fxnargs[1]['ddfice'] = self.fxnargs[1]['ddfsnow'] / pygem_prms['sim']['params']['ddfsnow_iceratio']
+            self.modelprms_dict[k] = float(m[i])
+        self.modelprms_dict['ddfice'] = self.modelprms_dict['ddfsnow'] / pygem_prms['sim']['params']['ddfsnow_iceratio']
 
     # get model predictions
     def get_model_pred(self, m):
         self.update_modelprms(m)  # update modelprms with current step
-        self.preds = self.fxn2eval(*self.fxnargs)
+        self.preds = self.fxn2eval(self.modelprms_dict)
         # convert all values to torch tensors
         self.preds = {k: torch.tensor(v, dtype=torch.float) for k, v in self.preds.items()}
 
@@ -256,10 +256,10 @@ class mbPosterior:
     # compute the log-potential, summing over all declared potential functions.
     def log_potential(self, m):
         # --- Base arguments ---
-        # kp, tbias, ddfsnow, massbal
+        # tbias, kp, ddfsnow, massbal
         kwargs = {
-            'kp': m[0],
-            'tbias': m[1],
+            'tbias': m[0],
+            'kp': m[1],
             'ddfsnow': m[2],
             'massbal': self.preds['glacierwide_mb_mwea'],
         }
@@ -267,8 +267,8 @@ class mbPosterior:
         # --- Optional arguments(if len(m) > 3) ---
         # rhoabl, rhoacc
         if len(m) > 3:
-            kwargs['rhoabl'] = m[-2]
-            kwargs['rhoacc'] = m[-1]
+            kwargs['rhoabl'] = m[3]
+            kwargs['rhoacc'] = m[4]
 
         # --- Evaluate all potential functions ---
         return sum(pf(**kwargs) for pf in self.potential_functions)

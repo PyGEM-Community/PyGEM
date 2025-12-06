@@ -18,6 +18,7 @@ import pickle
 import time
 import warnings
 from datetime import timedelta
+from functools import partial
 
 import gpytorch
 import matplotlib.pyplot as plt
@@ -38,14 +39,16 @@ config_manager = ConfigManager()
 # read the config
 pygem_prms = config_manager.read_config()
 
-from oggm import cfg, tasks, utils
+from oggm import cfg, tasks
 from oggm.core import flowline
+from oggm.core.massbalance import apparent_mb_from_any_mb
 
 import pygem.oggm_compat as oggm_compat
 import pygem.pygem_modelsetup as modelsetup
 from pygem import class_climate, mcmc
 from pygem.massbalance import PyGEMMassBalance
 from pygem.plot import graphics
+from pygem.shop import debris
 from pygem.utils._funcs import interp1d_fill_gaps
 from pygem.utils.stats import mcmc_stats
 
@@ -256,6 +259,48 @@ def mb_mwea_calc(
         return mb_mwea
 
 
+def run_inversion(gdir, modelprms, glacier_rgi_table, inversion_filter=pygem_prms['mb']['include_debris']):
+    """run inversion steps with a given set of model parameters"""
+
+    # Perform inversion based on PyGEM MB using reference directory
+    mbmod_inv = PyGEMMassBalance(
+        gdir,
+        modelprms,
+        glacier_rgi_table,
+        fls=gdir.read_pickle('inversion_flowlines'),
+        option_areaconstant=True,
+        inversion_filter=inversion_filter,
+    )
+    # Arbitrariliy shift the MB profile up (or down) until mass balance is zero (equilibrium for inversion)
+    apparent_mb_from_any_mb(gdir, mb_model=mbmod_inv)
+
+    # Non-tidewater glaciers
+    if not gdir.is_tidewater or not pygem_prms['setup']['include_frontalablation']:
+        tasks.prepare_for_inversion(gdir)
+        tasks.mass_conservation_inversion(
+            gdir,
+            glen_a=gdir.get_diagnostics()['inversion_glen_a'],
+            fs=gdir.get_diagnostics()['inversion_fs'],
+        )
+
+    # Tidewater glaciers
+    else:
+        cfg.PARAMS['use_kcalving_for_inversion'] = True
+        cfg.PARAMS['use_kcalving_for_run'] = True
+        tasks.find_inversion_calving_from_any_mb(
+            gdir,
+            mb_model=mbmod_inv,
+            glen_a=gdir.get_diagnostics()['inversion_glen_a'],
+            fs=gdir.get_diagnostics()['inversion_fs'],
+        )
+
+    tasks.init_present_time_glacier(gdir)  # adds bins below
+    if pygem_prms['mb']['include_debris']:
+        debris.debris_binned(gdir, fl_str='model_flowlines')  # add debris enhancement factors to flowlines
+
+    return gdir.read_pickle('model_flowlines')
+
+
 def run_oggm_dynamics(gdir, modelprms, glacier_rgi_table, fls, debug=False):
     """run the dynamical evolution model with a given set of model parameters"""
 
@@ -265,11 +310,6 @@ def run_oggm_dynamics(gdir, modelprms, glacier_rgi_table, fls, debug=False):
     # mass balance model with evolving area
     mbmod = PyGEMMassBalance(gdir, modelprms, glacier_rgi_table, fls=fls)
 
-    # Check that water level is within given bounds
-    cls = gdir.read_pickle('inversion_input')[-1]
-    th = cls['hgt'][-1]
-    vmin, vmax = cfg.PARAMS['free_board_marine_terminating']
-    water_level = utils.clip_scalar(0, th - vmax, th - vmin)
     # glacier dynamics model
     if gdir.is_tidewater and pygem_prms['setup']['include_frontalablation']:
         ev_model = flowline.FluxBasedModel(
@@ -279,7 +319,7 @@ def run_oggm_dynamics(gdir, modelprms, glacier_rgi_table, fls, debug=False):
             glen_a=gdir.get_diagnostics()['inversion_glen_a'],
             fs=gdir.get_diagnostics()['inversion_fs'],
             is_tidewater=gdir.is_tidewater,
-            water_level=water_level,
+            water_level=gdir.get_diagnostics().get('calving_water_level', None),
             do_kcalving=pygem_prms['setup']['include_frontalablation'],
         )
     else:
@@ -289,8 +329,6 @@ def run_oggm_dynamics(gdir, modelprms, glacier_rgi_table, fls, debug=False):
             mb_model=mbmod,
             glen_a=gdir.get_diagnostics()['inversion_glen_a'],
             fs=gdir.get_diagnostics()['inversion_fs'],
-            is_tidewater=gdir.is_tidewater,
-            water_level=water_level,
         )
     if debug:
         fig, ax = plt.subplots(1)
@@ -298,29 +336,6 @@ def run_oggm_dynamics(gdir, modelprms, glacier_rgi_table, fls, debug=False):
     try:
         # run glacier dynamics model forward
         diag, ds = ev_model.run_until_and_store(y1 + 1, fl_diag_path=True)
-        with np.errstate(invalid='ignore'):
-            # record frontal ablation for tidewater glaciers and update total mass balance
-            if gdir.is_tidewater and pygem_prms['setup']['include_frontalablation']:
-                # glacier-wide frontal ablation (m3 w.e.)
-                # - note: diag.calving_m3 is cumulative calving, convert to annual calving
-                calving_m3we_annual = (
-                    (diag.calving_m3.values[1:] - diag.calving_m3.values[0:-1])
-                    * pygem_prms['constants']['density_ice']
-                    / pygem_prms['constants']['density_water']
-                )
-                # record each year's frontal ablation in m3 w.e.
-                if pygem_prms['time']['timestep'] == 'monthly':
-                    for n, year in enumerate(np.arange(y0, y1 + 1)):
-                        tstart, tstop = ev_model.mb_model.get_step_inds(year)
-                        ev_model.mb_model.glac_wide_frontalablation[tstop] = calving_m3we_annual[n]
-                else:
-                    raise ValueError('Need to add functionality for daily timestep')
-
-                # add mass lost from frontal ablation to Glacier-wide total mass balance (m3 w.e.)
-                ev_model.mb_model.glac_wide_massbaltotal = (
-                    ev_model.mb_model.glac_wide_massbaltotal - ev_model.mb_model.glac_wide_frontalablation
-                )
-        ev_model.mb_model.ensure_mass_conservation(diag)
         if debug:
             graphics.plot_modeloutput_section(ev_model, ax=ax, srfls='--', lnlabel=f'Glacier year {y1}')
             plt.show()
@@ -410,14 +425,15 @@ def calc_thick_change_1d(gdir, fls, mbmod, ds):
 
 
 def mcmc_model_eval(
-    gdir,
     modelprms,
+    gdir,
     glacier_rgi_table,
     fls,
     mbfxn=None,
     calib_elev_change_1d=False,
     calib_snowlines_1d=False,
     calib_meltextent_1d=False,
+    do_inversion=False,
     debug=False,
 ):
     """
@@ -427,6 +443,9 @@ def mcmc_model_eval(
     """
     results = {}
     mbmod = None
+
+    if do_inversion:
+        fls = run_inversion(gdir, modelprms, glacier_rgi_table)
 
     if calib_elev_change_1d:
         mbmod, ds = run_oggm_dynamics(gdir, modelprms, glacier_rgi_table, fls)
@@ -910,9 +929,10 @@ def run(list_packed_vars):
                         calving_df['O1Region'] = [int(x.split('-')[1].split('.')[0]) for x in calving_df.RGIId.values]
                         calving_df_reg = calving_df.loc[calving_df['O1Region'] == int(gdir.rgi_id[6:8]), :]
                         calving_k = np.median(calving_df_reg.calving_k)
-                    # set calving_k in config
-                    cfg.PARAMS['use_kcalving_for_run'] = True
+                    # set calving_k
                     cfg.PARAMS['calving_k'] = calving_k
+                    cfg.PARAMS['use_kcalving_for_inversion'] = True
+                    cfg.PARAMS['use_kcalving_for_run'] = True
                 # note, some tidewater glaciers require a timestep << OGGM default of 60 seconds
                 cfg.PARAMS['cfl_number'] = pygem_prms['sim']['oggm_dynamics']['cfl_number']
                 cfg.PARAMS['cfl_min_dt'] = pygem_prms['sim']['oggm_dynamics']['cfl_min_dt']
@@ -2092,13 +2112,14 @@ def run(list_packed_vars):
                 mbfxn = None
 
             # define args to pass to fxn2eval in mcmc sampler
-            fxnargs = (
-                gdir,
-                modelprms,
-                glacier_rgi_table,
-                fls,
-                mbfxn,
-                args.option_calib_elev_change_1d,
+            fxn2eval = partial(
+                mcmc_model_eval,
+                gdir=gdir,
+                glacier_rgi_table=glacier_rgi_table,
+                fls=fls,
+                mbfxn=mbfxn,
+                calib_elev_change_1d=args.option_calib_elev_change_1d,
+                do_inversion=args.option_calib_elev_change_1d and not args.spinup,
             )
 
             # instantiate mbPosterior given priors, and observed values
@@ -2107,8 +2128,8 @@ def run(list_packed_vars):
             mb = mcmc.mbPosterior(
                 obs,
                 priors,
-                fxn2eval=mcmc_model_eval,
-                fxnargs=fxnargs,
+                fxn2eval=fxn2eval,
+                modelprms_dict=modelprms,
                 calib_glacierwide_mb_mwea=args.option_calib_glacierwide_mb_mwea,
                 potential_fxns=[mb_max, must_melt, rho_constraints],
                 ela=gdir.ela.min() if hasattr(gdir, 'ela') else None,
