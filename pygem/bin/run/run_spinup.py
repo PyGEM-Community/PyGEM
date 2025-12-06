@@ -19,7 +19,8 @@ from pygem.setup.config import ConfigManager
 config_manager = ConfigManager()
 # read the config
 pygem_prms = config_manager.read_config()
-from oggm import tasks, workflow
+from oggm import cfg, tasks, workflow
+from oggm.core.flowline import FluxBasedModel
 
 import pygem.pygem_modelsetup as modelsetup
 from pygem import class_climate
@@ -31,13 +32,13 @@ from pygem.oggm_compat import (
     single_flowline_glacier_directory_with_calving,
     update_cfg,
 )
-from pygem.utils._funcs import interp1d_fill_gaps
+from pygem.utils._funcs import interp1d_fill_gaps, str2bool
 
 
-def calculate_elev_change_1d(gdir):
+def calc_thick_change_1d(gdir):
     """
-    calculate the 1d elevation change from dynamical spinup.
-    assumes constant flux divergence througohut each model year.
+    calculate binned change in ice thickness assuming constant annual flux divergence.
+    sub-annual ice thickness is differenced at timesteps coincident with observations.
     """
     # load flowline_diagnostics from spinup
     f = gdir.get_filepath('fl_diagnostics', filesuffix='_dynamic_spinup_pygem_mb')
@@ -53,35 +54,34 @@ def calculate_elev_change_1d(gdir):
             0,
         )
 
-    ### get monthly elevation change ###
-    # note, transpose and [:, 1:] indexing to access desired OGGM dataset outputs
-    # OGGM stores data following (nsteps, nbins) - while PyGEM follows (nbins, nsteps), hence .T operator
-    # OGGM also stores the 0th model year with np.nan values, hence [:,1:] indexing. Time index 1 corresponds to the output from model year 0-1
-    #  --- Step 1: convert mass balance from m w.e. to m ice ---
-    rho_w = pygem_prms['constants']['density_water']
-    rho_i = pygem_prms['constants']['density_ice']
-    bin_massbalclim_ice = ds_spn.climatic_mb_myr.values.T[:, 1:] * (
-        rho_w / rho_i
-    )  # binned climatic mass balance (nbins, nsteps)
+    yrs = np.unique(ds_spn.time.values)[:-1]
+    # grab components of interest
+    bin_massbalclim_ice_annual = ds_spn.climatic_mb.values.T[
+        :, 1:
+    ]  # annual climatic mass balance [m ice] (nbins, nyears - 1)
+    bin_delta_thick_annual = ds_spn.dhdt.values.T[:, 1:]  # annual change in ice thickness [m ice] (nbins, nyears - 1)
+    bin_flux_divergence_annual = (
+        bin_massbalclim_ice_annual - bin_delta_thick_annual
+    )  # annual flux divergence [m ice] (nbins, nyears - 1)
 
-    # --- Step 2: expand annual climatic mass balance and flux divergence to monthly steps ---
+    # --- Step 1: expand annual climatic mass balance and flux divergence to monthly steps ---
     # assume the climatic mass balance and flux divergence are constant througohut the year
     # ie. take annual values and divide spread uniformly throughout model year
-    bin_massbalclim_ice_monthly = np.repeat(bin_massbalclim_ice / 12, 12, axis=-1)  # [m ice]
+    bin_massbalclim_ice_monthly = np.repeat(bin_massbalclim_ice_annual / 12, 12, axis=-1)  # [m ice]
     bin_flux_divergence_monthly = np.repeat(
-        -ds_spn.flux_divergence_myr.values.T[:, 1:] / 12, 12, axis=-1
+        bin_flux_divergence_annual / 12, 12, axis=-1
     )  # [m ice] note, oggm flux_divergence_myr is opposite sign of convention, hence negative
 
-    # --- Step 3: compute monthly thickness change ---
+    # --- Step 2: compute monthly thickness change ---
     bin_delta_thick_monthly = bin_massbalclim_ice_monthly - bin_flux_divergence_monthly  # [m ice]
 
-    # --- Step 4: calculate monthly thickness ---
+    # --- Step 3: calculate monthly thickness ---
     # calculate binned monthly thickness = running thickness change + initial thickness
     bin_thick_initial = ds_spn.thickness_m.isel(time=0).values  # initial glacier thickness [m ice], (nbins)
     running_bin_delta_thick_monthly = np.cumsum(bin_delta_thick_monthly, axis=-1)
     bin_thick_monthly = running_bin_delta_thick_monthly + bin_thick_initial[:, np.newaxis]
 
-    # --- Step 5: rebin monthly thickness ---
+    # --- Step 4: rebin monthly thickness ---
     # get surface height at the specified reference year
     ref_surface_height = ds_spn.bed_h.values + ds_spn.thickness_m.sel(time=gdir.elev_change_1d['ref_dem_year']).values
     # aggregate model bin thicknesses
@@ -101,8 +101,8 @@ def calculate_elev_change_1d(gdir):
     # interpolate over any empty bins
     bin_thick_monthly = np.column_stack([interp1d_fill_gaps(x.copy()) for x in bin_thick_monthly.T])
 
-    # --- Step 6: calculate elevation change ---
-    elev_change_1d = np.column_stack(
+    # --- Step 5: calculate thickness change ---
+    bin_thick_change = np.column_stack(
         [
             bin_thick_monthly[:, tup[1]] - bin_thick_monthly[:, tup[0]]
             if tup[0] is not None and tup[1] is not None
@@ -111,7 +111,7 @@ def calculate_elev_change_1d(gdir):
         ]
     )
 
-    return elev_change_1d, ds_spn.dis_along_flowline.values, area
+    return bin_thick_change, ds_spn.dis_along_flowline.values, area
 
 
 def loss_with_penalty(x, obs, mod, threshold=100, weight=1.0):
@@ -194,6 +194,38 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
             else:
                 gd = single_flowline_glacier_directory_with_calving(glacier_str, reset=False)
                 gd.is_tidewater = True
+                if kwargs['allow_calving']:
+                    kwargs['evolution_model'] = partial(
+                        FluxBasedModel, water_level=gd.get_diagnostics().get('calving_water_level', None)
+                    )  # use FluxBasedModel to allow for calving
+                    cfg.PARAMS['use_kcalving_for_inversion'] = True
+                    cfg.PARAMS['use_kcalving_for_run'] = True
+                    # Load quality controlled frontal ablation data
+                    fp = f'{pygem_prms["root"]}/{pygem_prms["calib"]["data"]["frontalablation"]["frontalablation_relpath"]}/analysis/{pygem_prms["calib"]["data"]["frontalablation"]["frontalablation_cal_fn"]}'
+                    assert os.path.exists(fp), 'Calibrated calving dataset does not exist'
+                    calving_df = pd.read_csv(fp)
+                    calving_rgiids = list(calving_df.RGIId)
+
+                    # Use calibrated value if individual data available
+                    if gd.rgi_id in calving_rgiids:
+                        calving_idx = calving_rgiids.index(gd.rgi_id)
+                        calving_k = calving_df.loc[calving_idx, 'calving_k']
+                    # Otherwise, use region's median value
+                    else:
+                        calving_df['O1Region'] = [int(x.split('-')[1].split('.')[0]) for x in calving_df.RGIId.values]
+                        calving_df_reg = calving_df.loc[calving_df['O1Region'] == int(gd.rgi_id[6:8]), :]
+                        calving_k = np.median(calving_df_reg.calving_k)
+
+                    # set calving_k
+                    cfg.PARAMS['calving_k'] = calving_k
+                    cfg.PARAMS['inversion_calving_k'] = calving_k
+                    if debug:
+                        print(f'calving_k = {calving_k}')
+            # ensure inversion params are used for run
+            cfg.PARAMS['use_inversion_params_for_run'] = True
+            cfg.PARAMS['cfl_number'] = pygem_prms['sim']['oggm_dynamics']['cfl_number']
+            cfg.PARAMS['cfl_min_dt'] = pygem_prms['sim']['oggm_dynamics']['cfl_min_dt']
+            kwargs['is_tidewater'] = gd.is_tidewater
 
             # Select subsets of data
             gd.glacier_rgi_table = glacier_rgi_table
@@ -303,7 +335,7 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
                         for start, end in gd.elev_change_1d['dates']
                     ]
 
-                    dh_hat, dist, bin_area = calculate_elev_change_1d(gd)
+                    dh_hat, dist, bin_area = calc_thick_change_1d(gd)
                     dhdt_hat = dh_hat / gd.elev_change_1d['nyrs']
 
                     # plot binned surface area
@@ -339,96 +371,105 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
                     print('All results:', {k: v[0] for k, v in results.items()})
                     print(f'Best spinup_period = {best_period}, mismatch = {best_value}')
 
+                if all(v[1] is None for v in results.values()):
+                    raise ValueError('Spinup failed for all tested periods')
+
                 # find worst - ignore failed runs
-                worst_period = max((k for k in results if results[k][0] != float('inf')), key=lambda k: results[k][0])
+                worst_period = max(
+                    (k for k in results if results[k][0] != float('inf')),
+                    key=lambda k: results[k][0],
+                    default=best_period,
+                )
                 worst_value, worst_model = results[worst_period]
 
                 ############################
                 ### diagnostics plotting ###
                 ############################
-                # binned area
-                ax.legend()
-                ax.set_title(gd.rgi_id)
-                ax.set_xlabel('distance along flowline (m)')
-                ax.set_ylabel('surface area (m$^2$)')
-                ax.set_xlim([0, ax.get_xlim()[1]])
-                ax.set_ylim([0, ax.get_ylim()[1]])
-                fig.tight_layout()
-                if debug and ncores == 1:
-                    plt.show()
-                if outdir:
-                    fig.savefig(f'{outdir}/{glac_no}-spinup_binned_area.png', dpi=300)
+                if best_model is not None and worst_model is not None:
+                    # binned area
+                    ax.legend()
+                    ax.set_title(gd.rgi_id)
+                    ax.set_xlabel('distance along flowline (m)')
+                    ax.set_ylabel('surface area (m$^2$)')
+                    ax.set_xlim([0, ax.get_xlim()[1]])
+                    ax.set_ylim([0, ax.get_ylim()[1]])
+                    fig.tight_layout()
+                    if debug and ncores == 1:
+                        plt.show()
+                    if outdir:
+                        fig.savefig(f'{outdir}/{glac_no}-spinup_binned_area.png', dpi=300)
                 plt.close()
 
-                # 1d elevation change
-                labels = [
-                    (f'{start[:-2].replace("-", "")}:{end[:-3].replace("-", "")}')
-                    for start, end in gd.elev_change_1d['dates']
-                ]
-                fig, ax = plt.subplots(figsize=(8, 5))
+                if best_model is not None and worst_model is not None:
+                    # 1d elevation change
+                    labels = [
+                        (f'{start[:-2].replace("-", "")}:{end[:-3].replace("-", "")}')
+                        for start, end in gd.elev_change_1d['dates']
+                    ]
+                    fig, ax = plt.subplots(figsize=(8, 5))
 
-                for t in range(gd.elev_change_1d['dhdt'].shape[1]):
-                    # plot Obs first, grab the color
-                    (line,) = ax.plot(
-                        gd.elev_change_1d['bin_centers'],
-                        gd.elev_change_1d['dhdt'][:, t],
-                        linestyle='-',
-                        marker='.',
-                        label=labels[t],
-                    )
-                    color = line.get_color()
+                    for t in range(gd.elev_change_1d['dhdt'].shape[1]):
+                        # plot Obs first, grab the color
+                        (line,) = ax.plot(
+                            gd.elev_change_1d['bin_centers'],
+                            gd.elev_change_1d['dhdt'][:, t],
+                            linestyle='-',
+                            marker='.',
+                            label=labels[t],
+                        )
+                        color = line.get_color()
 
-                    # plot Best model with same color
-                    ax.plot(
-                        gd.elev_change_1d['bin_centers'],
-                        best_model[:, t],
-                        linestyle='--',
-                        marker='.',
-                        color=color,
-                    )
+                        # plot Best model with same color
+                        ax.plot(
+                            gd.elev_change_1d['bin_centers'],
+                            best_model[:, t],
+                            linestyle='--',
+                            marker='.',
+                            color=color,
+                        )
 
-                    # plot Worst model with same color
-                    ax.plot(
-                        gd.elev_change_1d['bin_centers'],
-                        worst_model[:, t],
-                        linestyle=':',
-                        marker='.',
-                        color=color,
+                        # plot Worst model with same color
+                        ax.plot(
+                            gd.elev_change_1d['bin_centers'],
+                            worst_model[:, t],
+                            linestyle=':',
+                            marker='.',
+                            color=color,
+                        )
+                    ax.axvline(gd.ela, c='grey', ls=':')
+                    ax.axhline(0, c='grey', ls='-')
+                    ax.plot([], [], 'k--', label=r'$\hat{best}$')
+                    ax.plot([], [], 'k:', label=r'$\hat{worst}$')
+                    ax.set_xlabel('elevation (m)')
+                    ax.set_ylabel(r'elevation change (m yr$^{-1}$)')
+                    ax.set_title(
+                        f'{glac_no}\nBest={best_period} (mismatch={best_value:.3f}), '
+                        f'Worst={worst_period} (mismatch={worst_value:.3f})'
                     )
-                ax.axvline(gd.ela, c='grey', ls=':')
-                ax.axhline(0, c='grey', ls='-')
-                ax.plot([], [], 'k--', label=r'$\hat{best}$')
-                ax.plot([], [], 'k:', label=r'$\hat{worst}$')
-                ax.set_xlabel('elevation (m)')
-                ax.set_ylabel(r'elevation change (m yr$^{-1}$)')
-                ax.set_title(
-                    f'{glac_no}\nBest={best_period} (mismatch={best_value:.3f}), '
-                    f'Worst={worst_period} (mismatch={worst_value:.3f})'
-                )
-                ax.legend(handlelength=1, borderaxespad=0, fancybox=False)
-                # plot area
-                if 'bin_area' in gd.elev_change_1d:
-                    area = np.array(gd.elev_change_1d['bin_area'])
-                    area_mask = area > 0
-                    ax2 = ax.twinx()  # shares x-axis
-                    ax2.fill_between(
-                        np.array(gd.elev_change_1d['bin_centers'])[area_mask],
-                        0,
-                        area[area_mask],
-                        color='gray',
-                        alpha=0.1,
-                    )
-                    ax2.set_ylim([0, ax2.get_ylim()[1]])
-                    ax2.set_ylabel(r'area (m $^{2}$)', color='gray')
-                    ax2.tick_params(axis='y', colors='gray')
-                    ax2.spines['right'].set_color('gray')
-                    ax2.yaxis.label.set_color('gray')
-                fig.tight_layout()
-                if debug and ncores == 1:
-                    plt.show()
-                if outdir:
-                    fig.savefig(f'{outdir}/{glac_no}-spinup_optimization.png', dpi=300)
-                plt.close()
+                    ax.legend(handlelength=1, borderaxespad=0, fancybox=False)
+                    # plot area
+                    if 'bin_area' in gd.elev_change_1d:
+                        area = np.array(gd.elev_change_1d['bin_area'])
+                        area_mask = area > 0
+                        ax2 = ax.twinx()  # shares x-axis
+                        ax2.fill_between(
+                            np.array(gd.elev_change_1d['bin_centers'])[area_mask],
+                            0,
+                            area[area_mask],
+                            color='gray',
+                            alpha=0.1,
+                        )
+                        ax2.set_ylim([0, ax2.get_ylim()[1]])
+                        ax2.set_ylabel(r'area (m $^{2}$)', color='gray')
+                        ax2.tick_params(axis='y', colors='gray')
+                        ax2.spines['right'].set_color('gray')
+                        ax2.yaxis.label.set_color('gray')
+                    fig.tight_layout()
+                    if debug and ncores == 1:
+                        plt.show()
+                    if outdir:
+                        fig.savefig(f'{outdir}/{glac_no}-spinup_optimization.png', dpi=300)
+                    plt.close()
                 ############################
 
             # update spinup_period if optimized or specified as CLI argument, else remove kwarg and use OGGM default
@@ -466,14 +507,12 @@ def main():
         nargs='+',
         help='Randoph Glacier Inventory glacier number (can take multiple)',
     )
-    (
-        parser.add_argument(
-            '-rgi_glac_number_fn',
-            action='store',
-            type=str,
-            default=None,
-            help='Filepath containing list of rgi_glac_number, helpful for running batches on spc',
-        ),
+    parser.add_argument(
+        '-rgi_glac_number_fn',
+        action='store',
+        type=str,
+        default=None,
+        help='Filepath containing list of rgi_glac_number, helpful for running batches on spc',
     )
     parser.add_argument('-target_yr', type=int, default=None)
     parser.add_argument('-ye', type=int, default=None)
@@ -519,6 +558,12 @@ def main():
     )
     parser.add_argument(
         '-outdir', type=str, default=None, help='Directory to store any ouputs (diagnostic figures, etc.)'
+    )
+    parser.add_argument(
+        '-allow_calving',
+        type=str2bool,
+        default=pygem_prms['setup']['include_frontalablation'],
+        help="If True (False) include (don't include) calving for tidewater glaciers.",
     )
     parser.add_argument('-v', '--debug', action='store_true', help='Flag for debugging')
     args = parser.parse_args()
@@ -572,6 +617,7 @@ def main():
         target_yr=args.target_yr,
         spinup_period=args.spinup_period,
         ye=args.ye,
+        allow_calving=args.allow_calving,
     )
 
     # parallel processing
