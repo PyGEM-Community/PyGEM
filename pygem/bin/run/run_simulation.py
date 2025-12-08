@@ -659,8 +659,8 @@ def run(list_packed_vars):
                     if not modelprms_fp:
                         modelprms_fn = glacier_str + '-modelprms_dict.json'
                         modelprms_fp = (
-                            # pygem_prms['root'] + '/Output/calibration-fullsim/' + glacier_str.split('.')[0].zfill(2) + '/'
-                            pygem_prms['root'] + '/Output/calibration/' + glacier_str.split('.')[0].zfill(2) + '/'
+                            # pygem_prms['root_out'] + '/Output/calibration-fullsim/' + glacier_str.split('.')[0].zfill(2) + '/'
+                            pygem_prms['root_out'] + '/Output/calibration/' + glacier_str.split('.')[0].zfill(2) + '/'
                         ) + modelprms_fn
 
                     assert os.path.exists(modelprms_fp), 'Calibrated parameters do not exist.'
@@ -1735,7 +1735,7 @@ def run(list_packed_vars):
 
         except Exception as err:
             # LOG FAILURE
-            fail_fp = pygem_prms['root'] + '/Output/simulations/failed/' + reg_str + '/' + sim_climate_name + '/'
+            fail_fp = pygem_prms['root_out'] + '/Output/simulations/failed/' + reg_str + '/' + sim_climate_name + '/'
             if sim_climate_name not in ['ERA5', 'COAWST']:
                 fail_fp += sim_climate_scenario + '/'
             if not os.path.exists(fail_fp):

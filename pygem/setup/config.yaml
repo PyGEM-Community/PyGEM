@@ -15,6 +15,9 @@
 # ===== ROOT PATH =====
 root: /path/to/pygem/data/                        # note, this parameter must be modfied as to point to the appropriate location. all other paths are assumed relative to this (inputs and outputs).
 
+# ===== OUTPUT PATH =====
+root_out:                     # note, data will be stored within the `Output` directory of this folder. `None` defaults to `root` folder
+
 # ===== USER INFO =====
 user:
   name: David Rounce
@@ -172,6 +175,7 @@ calib:
     kp_disttype: gamma                            # distribution type ('gamma' (recommended), 'lognormal', 'uniform')
     tbias_disttype: normal                        # distribution type ('normal' (recommended), 'truncnormal', 'uniform')
     # tbias and kp priors - won't be used unless priors_reg_fn is null
+    tbias_prior_from_mcmc: true                   # use tbias prior from MCMC-TBIAS calibration (this will overwrite priors_reg_fn)
     tbias_mu: 0                                   # temperature bias mean of normal distribution
     tbias_sigma: 1                                # temperature bias mean of standard deviation
     tbias_bndlow: -10                             # temperature bias lower bound

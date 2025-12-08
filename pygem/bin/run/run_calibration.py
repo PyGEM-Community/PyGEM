@@ -600,7 +600,7 @@ def create_emulator(
     sims_df,
     y_cn,
     X_cns=['tbias', 'kp', 'ddfsnow'],
-    em_fp=pygem_prms['root'] + '/Output/emulator/',
+    em_fp=pygem_prms['root_out'] + '/Output/emulator/',
     debug=False,
 ):
     """
@@ -1061,7 +1061,7 @@ def run(list_packed_vars):
                     ]
 
                 # load melt extent data
-                if args.option_calib_meltextent_1d:
+                if args.option_calib_meltextent_1d or args.option_calibration == 'MCMC-TBIAS':
                     if pygem_prms['time']['timestep'] != 'daily':
                         print(f"Invalid timestep: {pygem_prms['time']['timestep']}. ",
                               "Transient melt extent calibration requires 'daily' timesteps.")
@@ -1137,7 +1137,7 @@ def run(list_packed_vars):
             except Exception as err:
                 gdir.mbdata = None
                 # LOG FAILURE
-                fail_fp = pygem_prms['root'] + '/Output/cal_fail/' + glacier_str.split('.')[0].zfill(2) + '/'
+                fail_fp = pygem_prms['root_out'] + '/Output/cal_fail/' + glacier_str.split('.')[0].zfill(2) + '/'
                 if not os.path.exists(fail_fp):
                     os.makedirs(fail_fp, exist_ok=True)
                 txt_fn_fail = glacier_str + '-cal_fail.txt'
@@ -1186,7 +1186,7 @@ def run(list_packed_vars):
                 nsims = pygem_prms['calib']['emulator_params']['emulator_sims']
 
                 # Load sims df
-                sims_fp = pygem_prms['root'] + '/Output/emulator/sims/' + glacier_str.split('.')[0].zfill(2) + '/'
+                sims_fp = pygem_prms['root_out'] + '/Output/emulator/sims/' + glacier_str.split('.')[0].zfill(2) + '/'
                 sims_fn = glacier_str + '-' + str(nsims) + '_emulator_sims.csv'
 
                 if not os.path.exists(sims_fp + sims_fn) or pygem_prms['calib']['emulator_params']['overwrite_em_sims']:
@@ -1494,7 +1494,7 @@ def run(list_packed_vars):
 
                 # ----- EMULATOR: Mass balance -----
                 em_mod_fn = glacier_str + '-emulator-mb_mwea.pth'
-                em_mod_fp = pygem_prms['root'] + '/Output/emulator/models/' + glacier_str.split('.')[0].zfill(2) + '/'
+                em_mod_fp = pygem_prms['root_out'] + '/Output/emulator/models/' + glacier_str.split('.')[0].zfill(2) + '/'
                 if (
                     not os.path.exists(em_mod_fp + em_mod_fn)
                     or pygem_prms['calib']['emulator_params']['overwrite_em_sims']
@@ -1753,7 +1753,7 @@ def run(list_packed_vars):
                         tbias_opt = tbias_bndlow
                         kp_opt = kp_bndhigh
                         troubleshoot_fp = (
-                            pygem_prms['root']
+                            pygem_prms['root_out']
                             + '/Output/errors/'
                             + args.option_calibration
                             + '/'
@@ -1777,7 +1777,7 @@ def run(list_packed_vars):
                         tbias_opt = tbias_bndhigh
                         kp_opt = kp_bndlow
                         troubleshoot_fp = (
-                            pygem_prms['root']
+                            pygem_prms['root_out']
                             + '/Output/errors/'
                             + args.option_calibration
                             + '/'
@@ -2046,7 +2046,7 @@ def run(list_packed_vars):
 
                     modelprms_fn = glacier_str + '-modelprms_dict.json'
                     modelprms_fp = (
-                        pygem_prms['root'] + '/Output/calibration/' + glacier_str.split('.')[0].zfill(2) + '/'
+                        pygem_prms['root_out'] + '/Output/calibration/' + glacier_str.split('.')[0].zfill(2) + '/'
                     )
                     if not os.path.exists(modelprms_fp):
                         os.makedirs(modelprms_fp, exist_ok=True)
@@ -2070,7 +2070,7 @@ def run(list_packed_vars):
                     # load emulator
                     em_mod_fn = glacier_str + '-emulator-mb_mwea.pth'
                     em_mod_fp = (
-                        pygem_prms['root'] + '/Output/emulator/models/' + glacier_str.split('.')[0].zfill(2) + '/'
+                        pygem_prms['root_out'] + '/Output/emulator/models/' + glacier_str.split('.')[0].zfill(2) + '/'
                     )
                     assert os.path.exists(em_mod_fp + em_mod_fn), (
                         f'emulator output does not exist : {em_mod_fp + em_mod_fn}'
@@ -2243,7 +2243,7 @@ def run(list_packed_vars):
                 if pygem_prms['calib']['priors_reg_fn'] is not None:
                     # Load priors
                     priors_df = pd.read_csv(
-                        pygem_prms['root'] + '/Output/calibration/' + pygem_prms['calib']['priors_reg_fn']
+                        pygem_prms['root_out'] + '/Output/calibration/' + pygem_prms['calib']['priors_reg_fn']
                     )
                     priors_idx = np.where(
                         (priors_df.O1Region == glacier_rgi_table['O1Region'])
@@ -2270,7 +2270,19 @@ def run(list_packed_vars):
                     tbias_sigma = pygem_prms['calib']['MCMC_params']['tbias_sigma']
                     tbias_min = pygem_prms['calib']['MCMC_params']['tbias_bndlow']
                     tbias_max = pygem_prms['calib']['MCMC_params']['tbias_bndhigh']
-
+                # Use temperature bias priors from MCMC-TBIAS calibration
+                if pygem_prms['calib']['MCMC_params']['tbias_prior_from_mcmc']:
+                    fp_mcmc_tb = f'{pygem_prms["root_out"]}/Output/calibration-tbias-fullsim/01/{glacier_str}-modelprms_dict.json'
+                    if os.path.exists(fp_mcmc_tb):
+                        with open(fp_mcmc_tb,'r') as f:
+                            prior_prms = json.load(f)
+                        data = prior_prms['MCMC-TBIAS']['tbias']['chain_0']
+                        tbias_mu = np.mean(data)
+                        tbias_sigma = np.std(data, ddof=1) # sample std (not population)
+                        tbias_min, tbias_max = np.percentile(data, [2.5, 97.5])
+                    else:
+                        print(f'No MCMC-TBIAS calibration file found for {glacier_str}. Using default priors')
+                    
                 # put all priors together into a dictionary
                 priors = {
                     'tbias': {
@@ -2303,7 +2315,7 @@ def run(list_packed_vars):
                 # note, temperature bias bounds will remain constant across chains if using emulator
                 if pygem_prms['calib']['MCMC_params']['option_use_emulator']:
                     # Selects from emulator sims dataframe
-                    sims_fp = pygem_prms['root'] + '/Output/emulator/sims/' + glacier_str.split('.')[0].zfill(2) + '/'
+                    sims_fp = pygem_prms['root_out'] + '/Output/emulator/sims/' + glacier_str.split('.')[0].zfill(2) + '/'
                     sims_fn = (
                         glacier_str
                         + '-'
@@ -2529,7 +2541,7 @@ def run(list_packed_vars):
                             )
                             # plot chain
                             fp = (
-                                pygem_prms['root']
+                                pygem_prms['root_out']
                                 + '/Output/calibration/'
                                 + glacier_str.split('.')[0].zfill(2)
                                 + '/fig/'
@@ -2670,7 +2682,7 @@ def run(list_packed_vars):
 
                     modelprms_fn = glacier_str + '-modelprms_dict.json'
                     modelprms_fp = [
-                        (pygem_prms['root'] + '/Output/calibration/' + glacier_str.split('.')[0].zfill(2) + '/')
+                        (pygem_prms['root_out'] + '/Output/calibration/' + glacier_str.split('.')[0].zfill(2) + '/')
                     ]
                     if args.option_calib_elev_change_1d:
                         modelprms_fp[0] += 'dh/'
@@ -2683,7 +2695,7 @@ def run(list_packed_vars):
                     # if not using emulator (running full model), save output in ./calibration/ and ./calibration-fullsim/
                     if not pygem_prms['calib']['MCMC_params']['option_use_emulator']:
                         modelprms_fp.append(
-                            pygem_prms['root']
+                            pygem_prms['root_out']
                             + f'/Output/calibration{outpath_sfix}/'
                             + glacier_str.split('.')[0].zfill(2)
                             + '/'
@@ -2703,7 +2715,7 @@ def run(list_packed_vars):
 
                     # MCMC LOG SUCCESS
                     mcmc_good_fp = (
-                        pygem_prms['root']
+                        pygem_prms['root_out']
                         + f'/Output/mcmc_success{outpath_sfix}/'
                         + glacier_str.split('.')[0].zfill(2)
                         + '/'
@@ -2717,7 +2729,7 @@ def run(list_packed_vars):
                 except Exception as err:
                     # MCMC LOG FAILURE
                     mcmc_fail_fp = (
-                        pygem_prms['root']
+                        pygem_prms['root_out']
                         + f'/Output/mcmc_fail{outpath_sfix}/'
                         + glacier_str.split('.')[0].zfill(2)
                         + '/'
@@ -2738,7 +2750,7 @@ def run(list_packed_vars):
                 outpath_sfix = '-fullsim'  # output file path suffix
 
                 # don't overwrite existing runs (skip them instead)
-                fp_exists = f'{pygem_prms["root"]}/Output/calibration-tbias-fullsim/01/{glacier_str}-modelprms_dict.json'
+                fp_exists = f'{pygem_prms["root_out"]}/Output/calibration-tbias-fullsim/01/{glacier_str}-modelprms_dict.json'
                 if os.path.exists(fp_exists) and not pygem_prms['calib']['MCMC-TBIAS_params']['overwrite_calib']:
                     print(f'Skipping glacier {glacier_str}: calibration file already exists')
                     continue
@@ -2749,7 +2761,7 @@ def run(list_packed_vars):
                 except ValueError:
                     # CHECK FOR MELT EXTENT DATA
                     mcmc_fail_fp = (
-                        pygem_prms['root']
+                        pygem_prms['root_out']
                         + f'/Output/mcmc_tbias_fail{outpath_sfix}/'
                         + glacier_str.split('.')[0].zfill(2)
                         + '/'
@@ -2923,7 +2935,7 @@ def run(list_packed_vars):
                 if pygem_prms['calib']['priors_reg_fn'] is not None:
                     # Load priors
                     priors_df = pd.read_csv(
-                        pygem_prms['root'] + '/Output/calibration/' + pygem_prms['calib']['priors_reg_fn']
+                        pygem_prms['root_out'] + '/Output/calibration/' + pygem_prms['calib']['priors_reg_fn']
                     )
                     priors_idx = np.where(
                         (priors_df.O1Region == glacier_rgi_table['O1Region'])
@@ -3120,7 +3132,7 @@ def run(list_packed_vars):
                                 )
                             # plot chain
                             fp = (
-                                pygem_prms['root']
+                                pygem_prms['root_out']
                                 + '/Output/calibration/'
                                 + glacier_str.split('.')[0].zfill(2)
                                 + '/fig/'
@@ -3209,7 +3221,7 @@ def run(list_packed_vars):
 
                     modelprms_fn = glacier_str + '-modelprms_dict.json'
                     modelprms_fp = [
-                        (pygem_prms['root'] + '/Output/calibration/' + glacier_str.split('.')[0].zfill(2) + '/')
+                        (pygem_prms['root_out'] + '/Output/calibration/' + glacier_str.split('.')[0].zfill(2) + '/')
                     ]
                     if args.option_calib_elev_change_1d:
                         modelprms_fp[0] += 'dh/'
@@ -3222,7 +3234,7 @@ def run(list_packed_vars):
                     # if not using emulator (running full model), save output in ./calibration/ and ./calibration-fullsim/
                     if not pygem_prms['calib']['MCMC_params']['option_use_emulator']:
                         modelprms_fp.append(
-                            pygem_prms['root']
+                            pygem_prms['root_out']
                             + f'/Output/calibration-tbias{outpath_sfix}/'
                             + glacier_str.split('.')[0].zfill(2)
                             + '/'
@@ -3242,7 +3254,7 @@ def run(list_packed_vars):
 
                     # MCMC LOG SUCCESS
                     mcmc_good_fp = (
-                        pygem_prms['root']
+                        pygem_prms['root_out']
                         + f'/Output/mcmc_success{outpath_sfix}/'
                         + glacier_str.split('.')[0].zfill(2)
                         + '/'
@@ -3256,7 +3268,7 @@ def run(list_packed_vars):
                 except Exception as err:
                     # MCMC LOG FAILURE
                     mcmc_fail_fp = (
-                        pygem_prms['root']
+                        pygem_prms['root_out']
                         + f'/Output/mcmc_tbias_fail{outpath_sfix}/'
                         + glacier_str.split('.')[0].zfill(2)
                         + '/'
@@ -3644,7 +3656,7 @@ def run(list_packed_vars):
                 modelprms['mb_obs_mwea_err'] = [mb_obs_mwea_err]
 
                 modelprms_fn = glacier_str + '-modelprms_dict.json'
-                modelprms_fp = pygem_prms['root'] + '/Output/calibration/' + glacier_str.split('.')[0].zfill(2) + '/'
+                modelprms_fp = pygem_prms['root_out'] + '/Output/calibration/' + glacier_str.split('.')[0].zfill(2) + '/'
                 if not os.path.exists(modelprms_fp):
                     os.makedirs(modelprms_fp, exist_ok=True)
                 modelprms_fullfn = modelprms_fp + modelprms_fn
@@ -3925,7 +3937,7 @@ def run(list_packed_vars):
                 modelprms['mb_obs_mwea_err'] = [mb_obs_mwea_err]
 
                 modelprms_fn = glacier_str + '-modelprms_dict.json'
-                modelprms_fp = pygem_prms['root'] + '/Output/calibration/' + glacier_str.split('.')[0].zfill(2) + '/'
+                modelprms_fp = pygem_prms['root_out'] + '/Output/calibration/' + glacier_str.split('.')[0].zfill(2) + '/'
                 if not os.path.exists(modelprms_fp):
                     os.makedirs(modelprms_fp, exist_ok=True)
                 modelprms_fullfn = modelprms_fp + modelprms_fn
@@ -3940,7 +3952,7 @@ def run(list_packed_vars):
 
         else:
             # LOG FAILURE
-            fail_fp = pygem_prms['root'] + '/Outputcal_fail/' + glacier_str.split('.')[0].zfill(2) + '/'
+            fail_fp = pygem_prms['root_out'] + '/Outputcal_fail/' + glacier_str.split('.')[0].zfill(2) + '/'
             if not os.path.exists(fail_fp):
                 os.makedirs(fail_fp, exist_ok=True)
             txt_fn_fail = glacier_str + '-cal_fail.txt'

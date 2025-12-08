@@ -157,6 +157,14 @@ class ConfigManager:
             raise KeyError("Missing required 'root' key for path validation.")
         root = os.path.abspath(root)
 
+        # root output -> set to `root` if none
+        root_out = config.get('root_out')
+        if not root_out:
+            root_out = root
+        else:
+            root_out = os.path.abspath(root_out)
+        config['root_out'] = root_out
+
         for key, value in flat.items():
             if not key.endswith('_relpath') or not isinstance(value, str):
                 continue
@@ -178,6 +186,7 @@ class ConfigManager:
     # expected config types
     EXPECTED_TYPES = {
         'root': str,
+        'root_out': (str, type(None)),
         'user': dict,
         'user.name': (str, type(None)),
         'user.institution': (str, type(None)),
@@ -294,6 +303,7 @@ class ConfigManager:
         'calib.MCMC_params.ddfsnow_bndhigh': (int, float),
         'calib.MCMC_params.kp_disttype': str,
         'calib.MCMC_params.tbias_disttype': str,
+        'calib.MCMC_params.tbias_prior_from_mcmc': bool,
         'calib.MCMC_params.tbias_mu': (int, float),
         'calib.MCMC_params.tbias_sigma': (int, float),
         'calib.MCMC_params.tbias_bndlow': (int, float),
