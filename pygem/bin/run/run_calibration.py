@@ -3046,8 +3046,7 @@ def run(list_packed_vars):
                 # --------------------
                 # ----- run MCMC -----
                 # --------------------
-                # try:
-                if 1==1:
+                try:
                     ### loop over chains, adjust initial guesses accordingly. done in a while loop as to repeat a chain up to one time if it remained stuck throughout ###
                     attempts_per_chain = 2  # number of repeats per chain (each with different initial guesses)
                     n_chain = 0
@@ -3258,20 +3257,20 @@ def run(list_packed_vars):
                     with open(mcmc_good_fp + txt_fn_good, 'w') as text_file:
                         text_file.write(glacier_str + ' successfully exported mcmc results')
 
-                # except Exception as err:
-                #     # MCMC LOG FAILURE
-                #     mcmc_fail_fp = (
-                #         pygem_prms['root_out']
-                #         + f'/Output/mcmc_tbias_fail{outpath_sfix}/'
-                #         + glacier_str.split('.')[0].zfill(2)
-                #         + '/'
-                #     )
-                #     if not os.path.exists(mcmc_fail_fp):
-                #         os.makedirs(mcmc_fail_fp, exist_ok=True)
-                #     txt_fn_fail = glacier_str + '-mcmc-tbias_fail.txt'
-                #     with open(mcmc_fail_fp + txt_fn_fail, 'w') as text_file:
-                #         text_file.write(glacier_str + f' failed to complete MCMC: {err}')
-                # --------------------
+                except Exception as err:
+                    # MCMC LOG FAILURE
+                    mcmc_fail_fp = (
+                        pygem_prms['root_out']
+                        + f'/Output/mcmc_tbias_fail{outpath_sfix}/'
+                        + glacier_str.split('.')[0].zfill(2)
+                        + '/'
+                    )
+                    if not os.path.exists(mcmc_fail_fp):
+                        os.makedirs(mcmc_fail_fp, exist_ok=True)
+                    txt_fn_fail = glacier_str + '-mcmc-tbias_fail.txt'
+                    with open(mcmc_fail_fp + txt_fn_fail, 'w') as text_file:
+                        text_file.write(glacier_str + f' failed to complete MCMC: {err}')
+
 
             # ===== HUSS AND HOCK (2015) CALIBRATION =====
             elif args.option_calibration == 'HH2015':
