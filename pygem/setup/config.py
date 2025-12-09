@@ -173,7 +173,11 @@ class ConfigManager:
             if any(fnmatch.fnmatch(key, pat) for pat in skip_patterns):
                 continue
 
-            path = os.path.join(root, value.strip(os.sep))
+            # Locate output folder, if data is stored there (e.g., Glen's a)
+            if 'Output' not in value:
+                path = os.path.join(root, value.strip(os.sep))
+            else:
+                path = os.path.join(root_out, value.strip(os.sep))
 
             # Determine whether to check as file or directory
             if os.path.splitext(path)[1]:  # has an extension → treat as file
