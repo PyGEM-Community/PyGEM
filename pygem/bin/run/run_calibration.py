@@ -1096,7 +1096,6 @@ def run(list_packed_vars):
                     gdir.meltextent_1d['z_sigma_max'] = gdir.meltextent_1d['z'] - gdir.meltextent_1d['z_min']
                     # get observation period indices in model date_table
                     # create lookup dict (timestamp → index)
-                    print(gdir.dates_table['date'])
                     date_to_index = {d: i for i, d in enumerate(gdir.dates_table['date'])}
                     gdir.meltextent_1d['model2obs_inds_map'] = [
                         date_to_index.get(pd.to_datetime(d)) for d in gdir.meltextent_1d['date']
