@@ -421,11 +421,8 @@ def calc_thick_change_1d(gdir, mbmod, ds):
     return bin_thick_change
 
 def calc_snowline_1d(gdir, mbmod):
-    t1_idx = gdir.mbdata['t1_idx']
-    t2_idx = gdir.mbdata['t2_idx']
-
     # Get snowline for dates aligning with observations
-    snowline_1d_full = mbmod.glac_wide_snowline[t1_idx : t2_idx + 1]
+    snowline_1d_full = mbmod.glac_wide_snowline
     snowline_1d = np.array([
         snowline_1d_full[d] if d is not None else np.nan 
         for d in gdir.snowline_1d['model2obs_inds_map']
@@ -433,11 +430,8 @@ def calc_snowline_1d(gdir, mbmod):
     return snowline_1d
 
 def calc_scaf_1d(gdir, mbmod):
-    t1_idx = gdir.mbdata['t1_idx']
-    t2_idx = gdir.mbdata['t2_idx']
-
     # Get snowline for dates aligning with observations
-    scaf_1d_full = mbmod.glac_wide_snowline_scaf[t1_idx : t2_idx + 1]
+    scaf_1d_full = mbmod.glac_wide_snowline_scaf
     scaf_1d = np.array([
         scaf_1d_full[d] if d is not None else np.nan 
         for d in gdir.scaf_1d['model2obs_inds_map']
@@ -445,11 +439,8 @@ def calc_scaf_1d(gdir, mbmod):
     return scaf_1d
 
 def calc_meltextent_1d(gdir, mbmod):
-    t1_idx = gdir.mbdata['t1_idx']
-    t2_idx = gdir.mbdata['t2_idx']
-
     # Get melt extent for dates aligning with observations
-    meltextent_1d_full = mbmod.glac_wide_meltextent[t1_idx : t2_idx + 1]
+    meltextent_1d_full = mbmod.glac_wide_meltextent
     meltextent_1d = np.array([
         meltextent_1d_full[d] if d is not None else np.nan 
         for d in gdir.meltextent_1d['model2obs_inds_map']
@@ -1105,6 +1096,7 @@ def run(list_packed_vars):
                     gdir.meltextent_1d['z_sigma_max'] = gdir.meltextent_1d['z'] - gdir.meltextent_1d['z_min']
                     # get observation period indices in model date_table
                     # create lookup dict (timestamp → index)
+                    print(gdir.dates_table['date'])
                     date_to_index = {d: i for i, d in enumerate(gdir.dates_table['date'])}
                     gdir.meltextent_1d['model2obs_inds_map'] = [
                         date_to_index.get(pd.to_datetime(d)) for d in gdir.meltextent_1d['date']
@@ -3054,7 +3046,8 @@ def run(list_packed_vars):
                 # --------------------
                 # ----- run MCMC -----
                 # --------------------
-                try:
+                # try:
+                if 1==1:
                     ### loop over chains, adjust initial guesses accordingly. done in a while loop as to repeat a chain up to one time if it remained stuck throughout ###
                     attempts_per_chain = 2  # number of repeats per chain (each with different initial guesses)
                     n_chain = 0
@@ -3265,19 +3258,19 @@ def run(list_packed_vars):
                     with open(mcmc_good_fp + txt_fn_good, 'w') as text_file:
                         text_file.write(glacier_str + ' successfully exported mcmc results')
 
-                except Exception as err:
-                    # MCMC LOG FAILURE
-                    mcmc_fail_fp = (
-                        pygem_prms['root_out']
-                        + f'/Output/mcmc_tbias_fail{outpath_sfix}/'
-                        + glacier_str.split('.')[0].zfill(2)
-                        + '/'
-                    )
-                    if not os.path.exists(mcmc_fail_fp):
-                        os.makedirs(mcmc_fail_fp, exist_ok=True)
-                    txt_fn_fail = glacier_str + '-mcmc-tbias_fail.txt'
-                    with open(mcmc_fail_fp + txt_fn_fail, 'w') as text_file:
-                        text_file.write(glacier_str + f' failed to complete MCMC: {err}')
+                # except Exception as err:
+                #     # MCMC LOG FAILURE
+                #     mcmc_fail_fp = (
+                #         pygem_prms['root_out']
+                #         + f'/Output/mcmc_tbias_fail{outpath_sfix}/'
+                #         + glacier_str.split('.')[0].zfill(2)
+                #         + '/'
+                #     )
+                #     if not os.path.exists(mcmc_fail_fp):
+                #         os.makedirs(mcmc_fail_fp, exist_ok=True)
+                #     txt_fn_fail = glacier_str + '-mcmc-tbias_fail.txt'
+                #     with open(mcmc_fail_fp + txt_fn_fail, 'w') as text_file:
+                #         text_file.write(glacier_str + f' failed to complete MCMC: {err}')
                 # --------------------
 
             # ===== HUSS AND HOCK (2015) CALIBRATION =====

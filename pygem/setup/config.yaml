@@ -379,7 +379,7 @@ rgi:
 time:
   # Models require complete data for each year such that refreezing, scaling, etc. can be calculated
   # Leap year option
-  option_leapyear: 0         # 1: include leap year days, 0: exclude leap years so February always has 28 days
+  option_leapyear: 1         # 1: include leap year days, 0: exclude leap years so February always has 28 days
   # User specified start/end dates
   #  note: start and end dates must refer to whole years
   startmonthday: 06-01                            # Only used with custom calendars
