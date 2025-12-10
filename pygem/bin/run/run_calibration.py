@@ -2438,11 +2438,11 @@ def run(list_packed_vars):
                     ks += ['rhoabl', 'rhoacc']
                 modelprms_export['priors'] = priors
                 if args.option_calib_meltextent_1d:
-                    ks += ['meltextent_1d']
+                    ks += ['meltextent_err']
                 if args.option_calib_snowline_1d:
-                    ks += ['snowline_1d']
+                    ks += ['snowline_err']
                 if args.option_calib_scaf_1d:
-                    ks += ['scaf_1d']
+                    ks += ['scaf_err']
 
                 # create nested dictionary for each mcmc key
                 for k in ks:
@@ -2671,18 +2671,17 @@ def run(list_packed_vars):
                             modelprms_export['rhoabl'][chain_str] = m_chain[:, 3].tolist()
                             modelprms_export['rhoacc'][chain_str] = m_chain[:, 4].tolist()
                         if args.option_calib_meltextent_1d:
-                            modelprms_export['meltextent_1d'][chain_str] = [
-                                preds.flatten().tolist() for preds in pred_chain['meltextent_1d']
-                            ]
+                            pred_chain_np = torch.stack(pred_chain['meltextent_1d']).numpy()
+                            pred_chain_flat = pred_chain_np.reshape(pred_chain_np.shape[0], -1)
+                            modelprms_export['meltextent_err'][chain_str] = np.nanmean(pred_chain_flat - np.ravel(np.array(obs['meltextent_1d'][0])), axis=1).tolist()
                         if args.option_calib_snowline_1d:
-                            modelprms_export['snowline_1d'][chain_str] = [
-                                preds.flatten().tolist() for preds in pred_chain['snowline_1d']
-                            ]
+                            pred_chain_np = torch.stack(pred_chain['snowline_1d']).numpy()
+                            pred_chain_flat = pred_chain_np.reshape(pred_chain_np.shape[0], -1)
+                            modelprms_export['snowline_err'][chain_str] = np.nanmean(pred_chain_flat - np.ravel(np.array(obs['snowline_1d'][0])), axis=1).tolist()
                         if args.option_calib_scaf_1d:
-                            modelprms_export['scaf_1d'][chain_str] = [
-                                preds.flatten().tolist() for preds in pred_chain['scaf_1d']
-                            ]
-
+                            pred_chain_np = torch.stack(pred_chain['scaf_1d']).numpy()
+                            pred_chain_flat = pred_chain_np.reshape(pred_chain_np.shape[0], -1)
+                            modelprms_export['scaf_err'][chain_str] = np.nanmean(pred_chain_flat - np.ravel(np.array(obs['scaf_1d'][0])), axis=1).tolist()
 
                         # increment n_chain only if the current iteration was a repeat
                         n_chain += 1
@@ -3053,7 +3052,7 @@ def run(list_packed_vars):
                 modelprms_export['mb_obs_mwea'] = [float(mb_obs_mwea)]
                 modelprms_export['mb_obs_mwea_err'] = [float(mb_obs_mwea_err)]
                 # mcmc keys
-                ks = ['tbias', 'kp', 'ddfsnow', 'ddfice', 'mb_mwea', 'ar', 'meltextent_1d']
+                ks = ['tbias', 'kp', 'ddfsnow', 'ddfice', 'mb_mwea', 'ar', 'meltextent_err']
                 modelprms_export['priors'] = priors
 
                 # create nested dictionary for each mcmc key
@@ -3217,9 +3216,10 @@ def run(list_packed_vars):
                         if pygem_prms['calib']['MCMC-TBIAS_params']['option_calib_glacierwide_mb_mwea']:
                             modelprms_export['mb_mwea'][chain_str] = torch.stack(pred_chain['glacierwide_mb_mwea']).tolist()
                         modelprms_export['ar'][chain_str] = ar
-                        modelprms_export['meltextent_1d'][chain_str] = [
-                            preds.flatten().tolist() for preds in pred_chain['meltextent_1d']
-                        ]
+
+                        pred_chain_np = torch.stack(pred_chain['meltextent_1d']).numpy()
+                        pred_chain_flat = pred_chain_np.reshape(pred_chain_np.shape[0], -1)
+                        modelprms_export['meltextent_err'][chain_str] = np.nanmean(pred_chain_flat - np.ravel(np.array(obs['meltextent_1d'][0])), axis=1).tolist()
 
                         # increment n_chain only if the current iteration was a repeat
                         n_chain += 1
