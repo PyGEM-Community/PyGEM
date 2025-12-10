@@ -2437,6 +2437,12 @@ def run(list_packed_vars):
                     ]
                     ks += ['rhoabl', 'rhoacc']
                 modelprms_export['priors'] = priors
+                if args.option_calib_meltextent_1d:
+                    ks += ['meltextent_1d']
+                if args.option_calib_snowline_1d:
+                    ks += ['snowline_1d']
+                if args.option_calib_scaf_1d:
+                    ks += ['scaf_1d']
 
                 # create nested dictionary for each mcmc key
                 for k in ks:
@@ -2656,7 +2662,7 @@ def run(list_packed_vars):
                         modelprms_export['ddfice'][chain_str] = (
                             m_chain[:, 2] / pygem_prms['sim']['params']['ddfsnow_iceratio']
                         ).tolist()
-                        modelprms_export['mb_mwea'][chain_str] = m_chain[:, -1].tolist()
+                        modelprms_export['mb_mwea'][chain_str] = torch.stack(pred_chain['glacierwide_mb_mwea']).tolist()
                         modelprms_export['ar'][chain_str] = ar
                         if args.option_calib_elev_change_1d:
                             modelprms_export['elev_change_1d'][chain_str] = [
@@ -2664,6 +2670,19 @@ def run(list_packed_vars):
                             ]
                             modelprms_export['rhoabl'][chain_str] = m_chain[:, 3].tolist()
                             modelprms_export['rhoacc'][chain_str] = m_chain[:, 4].tolist()
+                        if args.option_calib_meltextent_1d:
+                            modelprms_export['meltextent_1d'][chain_str] = [
+                                preds.flatten().tolist() for preds in pred_chain['meltextent_1d']
+                            ]
+                        if args.option_calib_snowline_1d:
+                            modelprms_export['snowline_1d'][chain_str] = [
+                                preds.flatten().tolist() for preds in pred_chain['snowline_1d']
+                            ]
+                        if args.option_calib_scaf_1d:
+                            modelprms_export['scaf_1d'][chain_str] = [
+                                preds.flatten().tolist() for preds in pred_chain['scaf_1d']
+                            ]
+
 
                         # increment n_chain only if the current iteration was a repeat
                         n_chain += 1
@@ -3034,7 +3053,7 @@ def run(list_packed_vars):
                 modelprms_export['mb_obs_mwea'] = [float(mb_obs_mwea)]
                 modelprms_export['mb_obs_mwea_err'] = [float(mb_obs_mwea_err)]
                 # mcmc keys
-                ks = ['tbias', 'kp', 'ddfsnow', 'ddfice', 'mb_mwea', 'ar']
+                ks = ['tbias', 'kp', 'ddfsnow', 'ddfice', 'mb_mwea', 'ar', 'meltextent_1d']
                 modelprms_export['priors'] = priors
 
                 # create nested dictionary for each mcmc key
@@ -3195,14 +3214,12 @@ def run(list_packed_vars):
                         modelprms_export['ddfice'][chain_str] = (
                             m_chain[:, 2] / pygem_prms['sim']['params']['ddfsnow_iceratio']
                         ).tolist()
-                        modelprms_export['mb_mwea'][chain_str] = m_chain[:, -1].tolist()
+                        if pygem_prms['calib']['MCMC-TBIAS_params']['option_calib_glacierwide_mb_mwea']:
+                            modelprms_export['mb_mwea'][chain_str] = torch.stack(pred_chain['glacierwide_mb_mwea']).tolist()
                         modelprms_export['ar'][chain_str] = ar
-                        if args.option_calib_elev_change_1d:
-                            modelprms_export['elev_change_1d'][chain_str] = [
-                                preds.flatten().tolist() for preds in pred_chain['elev_change_1d']
-                            ]
-                            modelprms_export['rhoabl'][chain_str] = m_chain[:, 3].tolist()
-                            modelprms_export['rhoacc'][chain_str] = m_chain[:, 4].tolist()
+                        modelprms_export['meltextent_1d'][chain_str] = [
+                            preds.flatten().tolist() for preds in pred_chain['meltextent_1d']
+                        ]
 
                         # increment n_chain only if the current iteration was a repeat
                         n_chain += 1
