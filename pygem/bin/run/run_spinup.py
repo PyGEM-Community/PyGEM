@@ -368,7 +368,7 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
             ############################
 
             # update cfg.PARAMS
-            update_cfg({'continue_on_error': False}, 'PARAMS')
+            update_cfg({'continue_on_error': True}, 'PARAMS')
             update_cfg({'store_model_geometry': True}, 'PARAMS')
 
             # optimize against binned dhdt data
