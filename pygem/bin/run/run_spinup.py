@@ -399,8 +399,6 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
 
                     # get true spinup period (note, if initial fails, oggm tries period/2)
                     spinup_period_ = gd.rgi_date + 1 - fls[0].y0
-                    if spinup_period_ in results.keys():
-                        return None
 
                     # create lookup dict (timestamp → index)
                     dtable = modelsetup.datesmodelrun(startyear=fls[0].y0, endyear=kwargs['ye'])
@@ -431,8 +429,12 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
                     if p in results.keys():
                         continue
                     kwargs['spinup_period'] = p
-                    p_, mismatch, model = _objective(**kwargs)
-                    results[p_] = (mismatch, model)
+                    out = _objective(**kwargs)
+                    if isinstance(out, tuple):
+                        p_, mismatch, model = out
+                        results[out[0]] = (out[1], out[2])
+                    else:
+                        continue
 
                 # find best
                 best_period = min(results, key=lambda k: results[k][0])
@@ -441,8 +443,7 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
                 kwargs['spinup_period'] = best_period
                 # ensure spinup start year <= min_start_yr
                 if gd.rgi_date + 1 - best_period > min_start_yr:
-                    kwargs['spinup_start_yr'] = min_start_yr
-                    kwargs.pop('spinup_period')
+                    kwargs['spinup_period'] = gd.rgi_date + 1 - min_start_yr
                     p_, best_value, best_model = _objective(**kwargs)
                     results[p_] = (mismatch, model)
                     best_period = gd.rgi_date + 1 - min_start_yr
