@@ -20,18 +20,17 @@ config_manager = ConfigManager()
 # read the config
 pygem_prms = config_manager.read_config()
 from oggm import cfg, tasks, workflow
-from oggm.core.flowline import FluxBasedModel
+from oggm.core import flowline
 
 import pygem.pygem_modelsetup as modelsetup
 from pygem import class_climate
 from pygem.massbalance import PyGEMMassBalance_wrapper
-
-# from pygem.glacierdynamics import MassRedistributionCurveModel
 from pygem.oggm_compat import (
     single_flowline_glacier_directory,
     single_flowline_glacier_directory_with_calving,
     update_cfg,
 )
+from pygem.shop import debris
 from pygem.utils._funcs import interp1d_fill_gaps, str2bool
 
 
@@ -149,6 +148,79 @@ def run_spinup(gd, **kwargs):
     return out
 
 
+# run inversion at year 2000
+def run_inversion(gd, **kwargs):
+    if gd.is_tidewater:
+        cfg.PARAMS['use_kcalving_for_inversion'] = True
+        tasks.find_inversion_calving_from_any_mb(
+            gd,
+            mb_model=PyGEMMassBalance_wrapper(
+                gd,
+                fl_str='inversion_flowlines',
+                option_areaconstant=True,
+            ),
+            glen_a=gd.get_diagnostics().get('inversion_glen_a', None),
+            fs=gd.get_diagnostics().get('inversion_fs', None),
+        )
+    else:
+        cfg.PARAMS['use_kcalving_for_inversion'] = False
+        tasks.prepare_for_inversion(gd)
+        tasks.mass_conservation_inversion(
+            gd,
+            glen_a=gd.get_diagnostics().get('inversion_glen_a', None),
+            fs=gd.get_diagnostics().get('inversion_fs', None),
+        )
+    # create the dynamic flowlines
+    workflow.execute_entity_task(tasks.init_present_time_glacier, [gd])
+
+    # add debris to model_flowlines
+    workflow.execute_entity_task(debris.debris_binned, [gd], fl_str='model_flowlines')
+
+    return _run_oggm_dynamics(gd, **kwargs)
+
+
+def _run_oggm_dynamics(gd, **kwargs):
+    """run the dynamical evolution model with a given set of model parameters"""
+    y0 = 2000
+    y1 = gd.dates_table.year.max()
+    fls = gd.read_pickle('model_flowlines')
+    # mass balance model with evolving area
+    mbmod = PyGEMMassBalance_wrapper(
+        gd,
+        fl_str='model_flowlines',
+    )
+
+    # glacier dynamics model
+    if gd.is_tidewater and pygem_prms['setup']['include_frontalablation']:
+        ev_model = flowline.FluxBasedModel(
+            fls,
+            y0=y0,
+            mb_model=mbmod,
+            glen_a=gd.get_diagnostics()['inversion_glen_a'],
+            fs=gd.get_diagnostics()['inversion_fs'],
+            is_tidewater=gd.is_tidewater,
+            water_level=gd.get_diagnostics().get('calving_water_level', None),
+            do_kcalving=pygem_prms['setup']['include_frontalablation'],
+        )
+    else:
+        ev_model = flowline.SemiImplicitModel(
+            fls,
+            y0=y0,
+            mb_model=mbmod,
+            glen_a=gd.get_diagnostics()['inversion_glen_a'],
+            fs=gd.get_diagnostics()['inversion_fs'],
+        )
+    try:
+        # run glacier dynamics model forward
+        ev_model.run_until_and_store(
+            y1 + 1, fl_diag_path=gd.get_filepath('fl_diagnostics', filesuffix='_dynamic_spinup_pygem_mb')
+        )
+        return [ev_model]
+    # safely catch any errors with dynamical run
+    except Exception:
+        return [None]
+
+
 def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=None, debug=False, ncores=1, **kwargs):
     # remove any None kwargs
     kwargs = {k: v for k, v in kwargs.items() if v is not None}
@@ -196,7 +268,7 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
                 gd.is_tidewater = True
                 if kwargs['allow_calving']:
                     kwargs['evolution_model'] = partial(
-                        FluxBasedModel, water_level=gd.get_diagnostics().get('calving_water_level', None)
+                        flowline.FluxBasedModel, water_level=gd.get_diagnostics().get('calving_water_level', None)
                     )  # use FluxBasedModel to allow for calving
                     cfg.PARAMS['use_kcalving_for_inversion'] = True
                     cfg.PARAMS['use_kcalving_for_run'] = True
@@ -296,7 +368,7 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
             ############################
 
             # update cfg.PARAMS
-            update_cfg({'continue_on_error': True}, 'PARAMS')
+            update_cfg({'continue_on_error': False}, 'PARAMS')
             update_cfg({'store_model_geometry': True}, 'PARAMS')
 
             # optimize against binned dhdt data
@@ -317,12 +389,18 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
 
                 # objective function to evaluate
                 def _objective(**kwargs):
-                    fls = run_spinup(gd, **kwargs)
+                    if gd.rgi_date + 1 - kwargs['spinup_period'] >= 2000:
+                        fls = run_inversion(gd, **kwargs)
+                    else:
+                        fls = run_spinup(gd, **kwargs)
+
                     if fls[0] is None:
                         return kwargs['spinup_period'], float('inf'), None
 
                     # get true spinup period (note, if initial fails, oggm tries period/2)
                     spinup_period_ = gd.rgi_date + 1 - fls[0].y0
+                    if spinup_period_ in results.keys():
+                        return None
 
                     # create lookup dict (timestamp → index)
                     dtable = modelsetup.datesmodelrun(startyear=fls[0].y0, endyear=kwargs['ye'])
@@ -339,7 +417,7 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
                     dhdt_hat = dh_hat / gd.elev_change_1d['nyrs']
 
                     # plot binned surface area
-                    ax.plot(dist, bin_area, label=f'{spinup_period} years: {round(1e-6 * np.sum(bin_area), 1)} km$^2$')
+                    ax.plot(dist, bin_area, label=f'{spinup_period_} years: {round(1e-6 * np.sum(bin_area), 1)} km$^2$')
 
                     # penalize positive values below specified elevation threshold
                     loss = loss_with_penalty(
@@ -350,6 +428,8 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
 
                 # evaluate candidate spinup periods
                 for p in periods2try:
+                    if p in results.keys():
+                        continue
                     kwargs['spinup_period'] = p
                     p_, mismatch, model = _objective(**kwargs)
                     results[p_] = (mismatch, model)
@@ -550,10 +630,10 @@ def main():
         '-periods2try',
         type=int,
         nargs='+',
-        default=[20, 30, 40, 50, 60],
+        default=[0, 10, 20, 30, 40, 50, 60],
         help=(
             'Optional list of spinup periods (years) to test if -optimize is used. '
-            'Ignored otherwise. Example: -periods2try 20 30 40 50 60'
+            'Ignored otherwise. Example: -periods2try 0 10 20 30 40 50 60'
         ),
     )
     parser.add_argument(
