@@ -326,7 +326,7 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
                     gd.elev_change_1d = gd.read_json('elev_change_1d')
                 else:
                     gd.elev_change_1d = None
-
+            print(gd.rgi_date + 1)
             ############################
             ####### model params #######
             ############################
@@ -389,10 +389,12 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
 
                 # objective function to evaluate
                 def _objective(**kwargs):
-                    if gd.rgi_date + 1 - kwargs['spinup_period'] >= 2000:
+                    if kwargs['spinup_period'] == 0:
                         fls = run_inversion(gd, **kwargs)
-                    else:
+                    elif gd.rgi_date + 1 - kwargs['spinup_period'] < 2000:
                         fls = run_spinup(gd, **kwargs)
+                    else:
+                        return [None]
 
                     if fls[0] is None:
                         return kwargs['spinup_period'], float('inf'), None
@@ -426,7 +428,11 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
 
                 # evaluate candidate spinup periods
                 for p in periods2try:
+                    # skip any periods that were already run
                     if p in results.keys():
+                        continue
+                    # skip any periods that would start after min_start_yr (unless p=0, in which case inversion is run at 2000)
+                    if (p != 0) and (gd.rgi_date + 1 - p > min_start_yr):
                         continue
                     kwargs['spinup_period'] = p
                     out = _objective(**kwargs)
@@ -554,7 +560,10 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
                 ############################
 
             # update spinup_period if optimized or specified as CLI argument, else remove kwarg and use OGGM default
-            run_spinup(gd, **kwargs)
+            if gd.rgi_date + 1 - kwargs['spinup_period'] == 2000:
+                fls = run_inversion(gd, **kwargs)
+            else:
+                fls = run_spinup(gd, **kwargs)
 
         except Exception as e:
             print(f'Error processing glacier {glac_no}: {e}')
