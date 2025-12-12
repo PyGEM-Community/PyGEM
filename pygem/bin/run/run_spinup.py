@@ -399,8 +399,8 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
                         return kwargs['spinup_period'], float('inf'), None
 
                     # get true spinup period (note, if initial fails, oggm tries period/2)
-                    spinup_period_ = gd.rgi_date + 1 - fls[0].y0
-
+                    if kwargs['spinup_period'] != 0:
+                        kwargs['spinup_period'] = gd.rgi_date + 1 - fls[0].y0
                     # create lookup dict (timestamp → index)
                     dtable = modelsetup.datesmodelrun(startyear=fls[0].y0, endyear=kwargs['ye'])
                     date_to_index = {d: i for i, d in enumerate(dtable['date'])}
@@ -416,14 +416,18 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
                     dhdt_hat = dh_hat / gd.elev_change_1d['nyrs']
 
                     # plot binned surface area
-                    ax.plot(dist, bin_area, label=f'{spinup_period_} years: {round(1e-6 * np.sum(bin_area), 1)} km$^2$')
+                    ax.plot(
+                        dist,
+                        bin_area,
+                        label=f'{kwargs["spinup_period"]} years: {round(1e-6 * np.sum(bin_area), 1)} km$^2$',
+                    )
 
                     # penalize positive values below specified elevation threshold
                     loss = loss_with_penalty(
                         gd.elev_change_1d['bin_centers'], gd.elev_change_1d['dhdt'], dhdt_hat, gd.ela
                     )
 
-                    return spinup_period_, loss, dhdt_hat
+                    return kwargs['spinup_period'], loss, dhdt_hat
 
                 # evaluate candidate spinup periods
                 for p in periods2try:
@@ -442,6 +446,7 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
                         continue
 
                 # find best
+                results = {k: v for k, v in results.items() if not np.isnan(v[0])}
                 best_period = min(results, key=lambda k: results[k][0])
                 best_value, best_model = results[best_period]
                 # update kwarg
@@ -559,7 +564,7 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
                 ############################
 
             # update spinup_period if optimized or specified as CLI argument, else remove kwarg and use OGGM default
-            if gd.rgi_date + 1 - kwargs['spinup_period'] == 2000:
+            if kwargs['spinup_period'] == 0:
                 fls = run_inversion(gd, **kwargs)
             else:
                 fls = run_spinup(gd, **kwargs)
