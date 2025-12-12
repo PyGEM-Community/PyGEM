@@ -556,9 +556,9 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
                         fig.savefig(f'{outdir}/{glac_no}-spinup_optimization.png', dpi=300)
                     plt.close()
                 ############################
-
             # update spinup_period if optimized or specified as CLI argument, else remove kwarg and use OGGM default
-            if kwargs['spinup_period'] == 0:
+            period = kwargs.get('spinup_period')
+            if period == 0:
                 fls = run_inversion(gd, **kwargs)
             else:
                 fls = run_spinup(gd, **kwargs)
