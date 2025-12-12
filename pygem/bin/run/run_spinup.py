@@ -451,12 +451,6 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
                 best_value, best_model = results[best_period]
                 # update kwarg
                 kwargs['spinup_period'] = best_period
-                # ensure spinup start year <= min_start_yr
-                if gd.rgi_date + 1 - best_period > min_start_yr:
-                    kwargs['spinup_period'] = gd.rgi_date + 1 - min_start_yr
-                    p_, best_value, best_model = _objective(**kwargs)
-                    results[p_] = (mismatch, model)
-                    best_period = gd.rgi_date + 1 - min_start_yr
 
                 if debug:
                     print('All results:', {k: v[0] for k, v in results.items()})
