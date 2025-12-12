@@ -326,7 +326,6 @@ def run(glacno_list, mb_model_params, optimize=False, periods2try=[20], outdir=N
                     gd.elev_change_1d = gd.read_json('elev_change_1d')
                 else:
                     gd.elev_change_1d = None
-            print(gd.rgi_date + 1)
             ############################
             ####### model params #######
             ############################
