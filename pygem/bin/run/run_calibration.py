@@ -3225,7 +3225,10 @@ def run(list_packed_vars):
                         n_chain += 1
 
                     # compute stats on mcmc parameters
-                    modelprms_export = mcmc_stats(modelprms_export)
+                    if pygem_prms['calib']['MCMC-TBIAS_params']['option_calib_glacierwide_mb_mwea']:
+                        modelprms_export = mcmc_stats(modelprms_export, params=['tbias', 'kp', 'ddfsnow', 'ddfice', 'mb_mwea'])
+                    else:
+                        modelprms_export = mcmc_stats(modelprms_export, params=['tbias', 'kp', 'ddfsnow', 'ddfice'])
 
                     modelprms_fn = glacier_str + '-modelprms_dict.json'
                     modelprms_fp = [
@@ -3285,7 +3288,7 @@ def run(list_packed_vars):
                         os.makedirs(mcmc_fail_fp, exist_ok=True)
                     txt_fn_fail = glacier_str + '-mcmc-tbias_fail.txt'
                     with open(mcmc_fail_fp + txt_fn_fail, 'w') as text_file:
-                        text_file.write(glacier_str + f' failed to complete MCMC: {err}')
+                        text_file.write(glacier_str + f' failed to complete MCMC-TBIAS: {err}')
 
 
             # ===== HUSS AND HOCK (2015) CALIBRATION =====
