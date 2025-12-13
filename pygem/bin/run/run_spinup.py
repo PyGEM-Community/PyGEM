@@ -213,7 +213,9 @@ def _run_oggm_dynamics(gd, **kwargs):
     try:
         # run glacier dynamics model forward
         ev_model.run_until_and_store(
-            y1 + 1, fl_diag_path=gd.get_filepath('fl_diagnostics', filesuffix='_dynamic_spinup_pygem_mb')
+            y1 + 1,
+            fl_diag_path=gd.get_filepath('fl_diagnostics', filesuffix='_dynamic_spinup_pygem_mb'),
+            geom_path=gd.get_filepath('model_geometry', filesuffix='_dynamic_spinup_pygem_mb'),
         )
         return [ev_model]
     # safely catch any errors with dynamical run
