@@ -1052,7 +1052,7 @@ def run(list_packed_vars):
                     ]
 
                 # load melt extent data
-                if args.option_calib_meltextent_1d or args.option_calibration == 'MCMC-TBIAS':
+                if args.option_calib_meltextent_1d or args.option_calibration == 'MCMCTBIAS':
                     if pygem_prms['time']['timestep'] != 'daily':
                         print(f"Invalid timestep: {pygem_prms['time']['timestep']}. ",
                               "Transient melt extent calibration requires 'daily' timesteps.")
@@ -2267,7 +2267,7 @@ def run(list_packed_vars):
                     if os.path.exists(fp_mcmc_tb):
                         with open(fp_mcmc_tb,'r') as f:
                             prior_prms = json.load(f)
-                        data = prior_prms['MCMC-TBIAS']['tbias']['chain_0']
+                        data = prior_prms['MCMCTBIAS']['tbias']['chain_0']
                         tbias_mu = np.mean(data)
                         tbias_sigma = np.std(data, ddof=1) # sample std (not population)
                         tbias_min, tbias_max = np.percentile(data, [2.5, 97.5])
@@ -2754,13 +2754,13 @@ def run(list_packed_vars):
             # replicates the MCMC method but uses melt extent data to determine the posterior probability 
             # distribution of the tbias parameter specifically. ddfsnow and kp are also calibrated, but are 
             # not constrained by the melt extent data such that their distributions will match the prior
-            elif args.option_calibration == 'MCMC-TBIAS':
-                option_full_smb = pygem_prms['calib']['MCMC-TBIAS_params']['option_run_full_massbalance']
+            elif args.option_calibration == 'MCMCTBIAS':
+                option_full_smb = pygem_prms['calib']['MCMCTBIAS_params']['option_run_full_massbalance']
                 outpath_sfix = '-fullsim'  # output file path suffix
 
                 # don't overwrite existing runs (skip them instead)
                 fp_exists = f'{pygem_prms["root_out"]}/Output/calibration-tbias-fullsim/01/{glacier_str}-modelprms_dict.json'
-                if os.path.exists(fp_exists) and not pygem_prms['calib']['MCMC-TBIAS_params']['overwrite_calib']:
+                if os.path.exists(fp_exists) and not pygem_prms['calib']['MCMCTBIAS_params']['overwrite_calib']:
                     print(f'Skipping glacier {glacier_str}: calibration file already exists')
                     continue
 
@@ -3039,7 +3039,7 @@ def run(list_packed_vars):
                     priors,
                     fxn2eval=mcmc_model_eval,
                     fxnargs=fxnargs,
-                    calib_glacierwide_mb_mwea=pygem_prms['calib']['MCMC-TBIAS_params']['option_calib_glacierwide_mb_mwea'],
+                    calib_glacierwide_mb_mwea=pygem_prms['calib']['MCMCTBIAS_params']['option_calib_glacierwide_mb_mwea'],
                     potential_fxns=[mb_max, must_melt, rho_constraints],
                     ela=None,
                     bin_z=None,
@@ -3213,7 +3213,7 @@ def run(list_packed_vars):
                         modelprms_export['ddfice'][chain_str] = (
                             m_chain[:, 2] / pygem_prms['sim']['params']['ddfsnow_iceratio']
                         ).tolist()
-                        if pygem_prms['calib']['MCMC-TBIAS_params']['option_calib_glacierwide_mb_mwea']:
+                        if pygem_prms['calib']['MCMCTBIAS_params']['option_calib_glacierwide_mb_mwea']:
                             modelprms_export['mb_mwea'][chain_str] = torch.stack(pred_chain['glacierwide_mb_mwea']).tolist()
                         modelprms_export['ar'][chain_str] = ar
 
@@ -3225,7 +3225,7 @@ def run(list_packed_vars):
                         n_chain += 1
 
                     # compute stats on mcmc parameters
-                    if pygem_prms['calib']['MCMC-TBIAS_params']['option_calib_glacierwide_mb_mwea']:
+                    if pygem_prms['calib']['MCMCTBIAS_params']['option_calib_glacierwide_mb_mwea']:
                         modelprms_export = mcmc_stats(modelprms_export, params=['tbias', 'kp', 'ddfsnow', 'ddfice', 'mb_mwea'])
                     else:
                         modelprms_export = mcmc_stats(modelprms_export, params=['tbias', 'kp', 'ddfsnow', 'ddfice'])
@@ -3288,7 +3288,7 @@ def run(list_packed_vars):
                         os.makedirs(mcmc_fail_fp, exist_ok=True)
                     txt_fn_fail = glacier_str + '-mcmc-tbias_fail.txt'
                     with open(mcmc_fail_fp + txt_fn_fail, 'w') as text_file:
-                        text_file.write(glacier_str + f' failed to complete MCMC-TBIAS: {err}')
+                        text_file.write(glacier_str + f' failed to complete MCMCTBIAS: {err}')
 
 
             # ===== HUSS AND HOCK (2015) CALIBRATION =====
