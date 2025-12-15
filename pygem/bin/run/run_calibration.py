@@ -2568,6 +2568,13 @@ def run(list_packed_vars):
                                     show=show,
                                     fpath=f'{fp}/{glacier_str}-chain{n_chain}.png',
                                 )
+                                graphics.plot_param_distribution(
+                                    m_chain,
+                                    priors,
+                                    glacier_str,
+                                    show=show,
+                                    fpath=f'{fp}/{glacier_str}-chain{n_chain}-MCMCdistribution.png',
+                                )
                                 for k in pred_chain.keys():
                                     graphics.plot_resid_histogram(
                                         obs[k],
