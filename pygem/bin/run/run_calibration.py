@@ -208,10 +208,22 @@ def getparser():
         help='Flag to calibrate against 1D melt extent data (default is false)',
     )
     parser.add_argument(
-        '-option_sar_plot_only',
+        '-option_meltextent_plot_only',
         action='store_true',
-        default=pygem_prms['calib']['MCMC_params']['option_sar_plot_only'],
-        help='Flag to NOT calibrate against melt extent and snowline data but still plot outputs (default is false)',
+        default=pygem_prms['calib']['MCMC_params']['option_meltextent_plot_only'],
+        help='Flag to NOT calibrate against melt extent data but still plot output (default is false)',
+    )
+    parser.add_argument(
+        '-option_snowline_plot_only',
+        action='store_true',
+        default=pygem_prms['calib']['MCMC_params']['option_snowline_plot_only'],
+        help='Flag to NOT calibrate against snowline data but still plot output (default is false)',
+    )
+    parser.add_argument(
+        '-option_scaf_plot_only',
+        action='store_true',
+        default=pygem_prms['calib']['MCMC_params']['option_scaf_plot_only'],
+        help='Flag to NOT calibrate against snow cover area fraction data but still plot output (default is false)',
     )
     parser.add_argument(
         '-spinup',
@@ -2417,7 +2429,9 @@ def run(list_packed_vars):
                     potential_fxns=[mb_max, must_melt, rho_constraints],
                     ela=gdir.ela.min() if hasattr(gdir, 'ela') else None,
                     bin_z=gdir.elev_change_1d['bin_centers'] if hasattr(gdir, 'elev_change_1d') else None,
-                    sar_plotonly=args.option_sar_plot_only,
+                    meltextent_plotonly=args.option_meltextent_plot_only,
+                    snowline_plotonly=args.option_snowline_plot_only,
+                    scaf_plotonly=args.option_scaf_plot_only,
                 )
                 # prepare export modelprms dictionary
                 modelprms_export = {}
@@ -2483,6 +2497,12 @@ def run(list_packed_vars):
                                     )
                             else:
                                 initial_guesses = torch.tensor(get_initials(get_priors(priors)))
+                                # if n_chain == 1: # get 5th and 95th percentile
+                                #     initial_guesses = torch.tensor(get_initials(get_priors(priors), pctl=0.05))
+                                # if n_chain == 2:
+                                #     initial_guesses = torch.tensor(get_initials(get_priors(priors), pctl=0.95))
+                                # else:
+                                #     initial_guesses = torch.tensor(get_initials(get_priors(priors)))
 
                             if debug:
                                 print(

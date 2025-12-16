@@ -181,7 +181,9 @@ class mbPosterior:
 
         self.ela = kwargs.get('ela', None)
         self.bin_z = kwargs.get('bin_z', None)
-        self.sar_plotonly = kwargs.get('sar_plotonly', False)
+        self.meltextent_plotonly = kwargs.get('meltextent_plotonly', False)
+        self.snowline_plotonly = kwargs.get('snowline_plotonly', False)
+        self.scaf_plotonly = kwargs.get('scaf_plotonly', False)
         if self.ela:
             self.abl_mask = self.bin_z < self.ela
 
@@ -262,8 +264,12 @@ class mbPosterior:
             if k == 'glacierwide_mb_mwea' and not self.calib_glacierwide_mb_mwea:
                 continue  # skip this model output if not calibrating glacierwide mass balance
 
-            if self.sar_plotonly and k in ['meltextent_1d', 'snowline_1d', 'scaf_1d']:
-                continue # skip this model output if not calibrating with SAR data (snowlines and melt extents)
+            if self.meltextent_plotonly and k in ['meltextent_1d']:
+                continue # skip this model output if not calibrating with melt extent data
+            if self.snowline_plotonly and k in ['snowline_1d']:
+                continue # skip this model output if not calibrating with snowline data
+            if self.scaf_plotonly and k in ['scaf_1d']:
+                continue # skip this model output if not calibrating with SCAF data
 
             # add relative weights
             w = pygem_prms['calib']['MCMC_params']['calib_obs_weights'][k]
