@@ -335,6 +335,7 @@ class ConfigManager:
         'calib.MCMC_params.option_meltextent_plot_only': bool,
         'calib.MCMC_params.option_snowline_plot_only': bool,
         'calib.MCMC_params.option_scaf_plot_only': bool,
+        'calib.MCMC_params.overwrite_calib': bool,
         'calib.MCMCTBIAS_params.option_run_full_massbalance': bool,
         'calib.MCMCTBIAS_params.option_calib_glacierwide_mb_mwea': bool,
         'calib.MCMCTBIAS_params.overwrite_calib': bool,

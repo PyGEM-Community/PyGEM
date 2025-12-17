@@ -2083,6 +2083,12 @@ def run(list_packed_vars):
                 else:
                     outpath_sfix = '-fullsim'  # output file path suffix if not using emulator
 
+                # don't overwrite existing runs (skip them instead)
+                fp_exists = f'{pygem_prms["root_out"]}/Output/calibration{outpath_sfix}/{glacier_str.split(".")[0].zfill(2)}/{glacier_str}-modelprms_dict.json'
+                if os.path.exists(fp_exists) and not pygem_prms['calib']['MCMC_params']['overwrite_calib']:
+                    print(f'Skipping glacier {glacier_str}: calibration file already exists')
+                    continue
+
                 # ---------------------------------
                 # ----- FUNCTION DECLARATIONS -----
                 # ---------------------------------
@@ -2786,7 +2792,7 @@ def run(list_packed_vars):
                 outpath_sfix = '-fullsim'  # output file path suffix
 
                 # don't overwrite existing runs (skip them instead)
-                fp_exists = f'{pygem_prms["root_out"]}/Output/calibration-tbias-fullsim/01/{glacier_str}-modelprms_dict.json'
+                fp_exists = f'{pygem_prms["root_out"]}/Output/calibration-tbias-fullsim/{glacier_str.split(".")[0].zfill(2)}/{glacier_str}-modelprms_dict.json'
                 if os.path.exists(fp_exists) and not pygem_prms['calib']['MCMCTBIAS_params']['overwrite_calib']:
                     print(f'Skipping glacier {glacier_str}: calibration file already exists')
                     continue
