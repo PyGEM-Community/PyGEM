@@ -449,6 +449,22 @@ class GCM:
                     },
                     name=vn,
                 )
+                
+                # replace bad values
+                threshold = -0.00005
+                for i, t in enumerate(time_monthly):
+                    # check condition on the current daily field
+                    if np.any(var_monthly.isel(time=i).values > threshold):
+                        y = t.year - 1
+                        m = t.month
+
+                        # find same month in previous year
+                        idx = np.where((time_monthly.year == y) & (time_monthly.month == m))[0]
+
+                        if idx.size > 0:
+                            print(f'Warning: {vn} variable data issue {m}/{y+1} replaced using {m}/{y} values')
+                            var_monthly.loc[{self.time_vn: t}] = (var_monthly.isel(time=idx[0]).values)
+                        # else: leave unchanged if previous year not available
 
                 # loop through months and fill daily slots
                 for i, t in enumerate(time_monthly):
@@ -457,6 +473,31 @@ class GCM:
 
                     # assign monthly values to these daily indices
                     daily_data[idx, :, :] = var_monthly.isel(time=i).values
+                                
+                # extrapolate last value to future values (if date extended beyond data)
+                idx_after_dates = np.where(
+                    (dates_table['year'] > time_monthly[-1].year) |
+                    ((dates_table['year'] == time_monthly[-1].year) & (dates_table['month'] > time_monthly[-1].month))
+                )[0]
+                if idx_after_dates.size > 0:
+                    print(f'Warning: {vn} variable filled using previous-year monthly values')
+                    for idx in idx_after_dates:
+                        y = dates_table.loc[idx, 'year'] - 1
+                        m = dates_table.loc[idx, 'month']
+
+                        # find matching month in previous year
+                        src = np.where(
+                            (time_monthly.year == y) &
+                            (time_monthly.month == m)
+                        )[0]
+
+                        if src.size > 0:
+                            daily_data[idx, :, :] = var_monthly.isel(time=src[0]).values
+                        else:
+                            # fallback if previous year/month not available
+                            daily_data[idx, :, :] = var_monthly.isel(time=-1).values
+                            
+                    daily_data[idx_after_dates, :, :] = var_monthly.isel(time=-3).values
 
                 # convert to Dataset with data variable vn
                 data = daily_data.to_dataset(name=vn)
