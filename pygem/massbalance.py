@@ -962,7 +962,7 @@ class PyGEMMassBalance(MassBalanceModel):
                     else:
                         snowline_idx_nan.append(ncol)
                 heights_manual = heights[snowline_idx] - heights_change[snowline_idx] / 2
-                heights_manual[snowline_idx_nan] = np.nan
+                heights_manual[snowline_idx_nan] = heights[0] # np.nan
                 # this line below causes a potential All-NaN slice encountered issue at some time steps
                 self.glac_wide_snowline[t_start : t_stop + 1] = heights_manual
 
@@ -998,7 +998,7 @@ class PyGEMMassBalance(MassBalanceModel):
                     else:
                         meltextent_idx_nan.append(ncol)
                 heights_manual = heights[meltextent_idx] + heights_change[meltextent_idx] / 2
-                heights_manual[meltextent_idx_nan] = np.nan
+                heights_manual[meltextent_idx_nan] = heights[-1] # np.nan
                 self.glac_wide_meltextent[t_start : t_stop + 1] = heights_manual
 
             # Equilibrium line altitude (m a.s.l.)
