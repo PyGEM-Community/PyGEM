@@ -296,7 +296,14 @@ def getparser():
         action='store',
         type=str,
         default=None,
-        help='model parameters filepath',
+        help='model parameters folderpath',
+    )
+    parser.add_argument(
+        '-modelprms_fn',
+        action='store',
+        type=str,
+        default=None,
+        help='model parameters filename',
     )
     parser.add_argument(
         '-outputfn_sfix',
@@ -656,12 +663,15 @@ def run(list_packed_vars):
                 # Load model parameters
                 if args.option_calibration:
                     modelprms_fp = args.modelprms_fp
+                    modelprms_fn = args.modelprms_fn
                     if not modelprms_fp:
-                        modelprms_fn = glacier_str + '-modelprms_dict.json'
                         modelprms_fp = (
                             # pygem_prms['root_out'] + '/Output/calibration-fullsim/' + glacier_str.split('.')[0].zfill(2) + '/'
                             pygem_prms['root_out'] + '/Output/calibration/' + glacier_str.split('.')[0].zfill(2) + '/'
-                        ) + modelprms_fn
+                        )
+                    if not modelprms_fn:
+                        modelprms_fn = glacier_str + '-modelprms_dict.json'
+                    modelprms_fp += modelprms_fn
 
                     assert os.path.exists(modelprms_fp), 'Calibrated parameters do not exist.'
                     with open(modelprms_fp, 'r') as f:
