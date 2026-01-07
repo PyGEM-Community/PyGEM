@@ -2080,6 +2080,8 @@ def run(list_packed_vars):
                     )
                     mbEmulator = massbalEmulator.load(em_mod_path=em_mod_fp + em_mod_fn)
                     outpath_sfix = ''  # output file path suffix if using emulator
+                elif pygem_prms['calib']['MCMC_params']['xgboost_priors_tbias_kp']:
+                    outpath_sfix = '-fullsim_xgboost-ddfsnow'
                 else:
                     outpath_sfix = '-fullsim'  # output file path suffix if not using emulator
 
@@ -2291,6 +2293,25 @@ def run(list_packed_vars):
                         tbias_min, tbias_max = np.percentile(data, [2.5, 97.5])
                     else:
                         print(f'No MCMC-TBIAS calibration file found for {glacier_str}. Using default priors')
+                # Use priors from XGBoost algorithm
+                if pygem_prms['calib']['MCMC_params']['xgboost_priors_tbias_kp']:
+                    fp_mcmc_tb = f'{pygem_prms["root_out"]}/Output/calibration-fullsim_xgboost-priors/{glacier_str}-modelprms_dict.json'
+                    if os.path.exists(fp_mcmc_tb):
+                        with open(fp_mcmc_tb,'r') as f:
+                            prior_prms = json.load(f)
+                        tbias_mu = np.mean(prior_prms['MCMC']['tbias']['chain_0'])
+                        tbias_min = np.mean(prior_prms['MCMC']['tbias_min']['chain_0'])
+                        tbias_max = np.mean(prior_prms['MCMC']['tbias_max']['chain_0'])
+                        tbias_sigma = (tbias_max - tbias_min) / 3.92
+
+                        kp_mean = np.mean(prior_prms['MCMC']['kp']['chain_0'])
+                        kp_gamma_min = np.max([np.mean(prior_prms['MCMC']['kp_min']['chain_0']), 0])
+                        kp_gamma_max = np.mean(prior_prms['MCMC']['kp_max']['chain_0'])
+                        kp_variance = ((kp_gamma_max - kp_gamma_min) / 3.92)**2
+                        kp_gamma_alpha = kp_mean**2 / kp_variance
+                        kp_gamma_beta = kp_variance / kp_mean
+                    else:
+                        print(f'Missing XGBoost calibration file for {glacier_str}. Using default priors')
                     
                 # put all priors together into a dictionary
                 priors = {

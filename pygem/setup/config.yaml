@@ -175,6 +175,7 @@ calib:
     kp_disttype: gamma                            # distribution type ('gamma' (recommended), 'lognormal', 'uniform')
     tbias_disttype: normal                        # distribution type ('normal' (recommended), 'truncnormal', 'uniform')
     # tbias and kp priors - won't be used unless priors_reg_fn is null
+    xgboost_priors_tbias_kp: false                # use tbias and kp priors from XGBoost output (this will overwrite priors_reg_fn)
     tbias_prior_from_mcmc: true                   # use tbias prior from MCMC-TBIAS calibration (this will overwrite priors_reg_fn)
     tbias_mu: 0                                   # temperature bias mean of normal distribution
     tbias_sigma: 1                                # temperature bias mean of standard deviation

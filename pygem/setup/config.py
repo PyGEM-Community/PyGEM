@@ -307,6 +307,7 @@ class ConfigManager:
         'calib.MCMC_params.ddfsnow_bndhigh': (int, float),
         'calib.MCMC_params.kp_disttype': str,
         'calib.MCMC_params.tbias_disttype': str,
+        'calib.MCMC_params.xgboost_priors_tbias_kp': bool,
         'calib.MCMC_params.tbias_prior_from_mcmc': bool,
         'calib.MCMC_params.tbias_mu': (int, float),
         'calib.MCMC_params.tbias_sigma': (int, float),
