@@ -340,6 +340,8 @@ class ConfigManager:
         'calib.MCMCTBIAS_params.option_run_full_massbalance': bool,
         'calib.MCMCTBIAS_params.option_calib_glacierwide_mb_mwea': bool,
         'calib.MCMCTBIAS_params.overwrite_calib': bool,
+        'calib.DAYTOMO_params.kp_ddfsnow_prior_relpath': (str, type(None)),
+        'calib.DAYTOMO_params.overwrite_calib': bool,
         'calib.data': dict,
         'calib.data.massbalance': dict,
         'calib.data.massbalance.massbalance_relpath': str,
