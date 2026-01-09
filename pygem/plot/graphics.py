@@ -361,6 +361,11 @@ def plot_mcmc_chain(
         if legs[i] is not None:
             ax.add_artist(legs[i])
 
+    if tadj:
+        for i, dy, ymin in zip(range(3), [1, 0.5, 0.003], [-np.inf, 0, 0]):
+            ymean = np.mean(m_chain[:, i])
+            axes[i].set_ylim([max(ymean - dy, ymin), ymean + dy])
+
     axes[0].set_xlim([0, m_chain.shape[0]])
     axes[0].set_title(title, fontsize=fontsize)
     plt.tight_layout()

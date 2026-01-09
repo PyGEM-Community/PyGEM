@@ -3517,48 +3517,6 @@ def run(list_packed_vars):
                 # ------------------
                 # ----- PRIORS -----
                 # ------------------
-                # Prior distributions (specified or informed by regions)
-                if pygem_prms['calib']['priors_reg_fn'] is not None:
-                    # Load priors
-                    priors_df = pd.read_csv(
-                        pygem_prms['root_out'] + '/Output/calibration/' + pygem_prms['calib']['priors_reg_fn']
-                    )
-                    priors_idx = np.where(
-                        (priors_df.O1Region == glacier_rgi_table['O1Region'])
-                        & (priors_df.O2Region == glacier_rgi_table['O2Region'])
-                    )[0][0]
-                    # Precipitation factor priors
-                    kp_gamma_alpha = float(priors_df.loc[priors_idx, 'kp_alpha'])
-                    kp_gamma_beta = float(priors_df.loc[priors_idx, 'kp_beta'])
-                    kp_gamma_min = float(priors_df.loc[priors_idx, 'kp_min'])
-                    kp_gamma_max = float(priors_df.loc[priors_idx, 'kp_max'])
-                    # Temperature bias priors
-                    tbias_mu = float(priors_df.loc[priors_idx, 'tbias_mean'])
-                    tbias_sigma = float(priors_df.loc[priors_idx, 'tbias_std'])
-                    tbias_min = float(priors_df.loc[priors_idx, 'tbias_min'])
-                    tbias_max = float(priors_df.loc[priors_idx, 'tbias_max'])
-                else:
-                    # Precipitation factor priors
-                    kp_gamma_alpha = pygem_prms['calib']['MCMC_params']['kp_gamma_alpha']
-                    kp_gamma_beta = pygem_prms['calib']['MCMC_params']['kp_gamma_beta']
-                    kp_gamma_min = pygem_prms['calib']['MCMC_params']['kp_bndlow']
-                    kp_gamma_max = pygem_prms['calib']['MCMC_params']['kp_bndhigh']
-                    # Temperature bias priors
-                    tbias_mu = pygem_prms['calib']['MCMC_params']['tbias_mu']
-                    tbias_sigma = pygem_prms['calib']['MCMC_params']['tbias_sigma']
-                    tbias_min = pygem_prms['calib']['MCMC_params']['tbias_bndlow']
-                    tbias_max = pygem_prms['calib']['MCMC_params']['tbias_bndhigh']
-
-                tbias_type = pygem_prms['calib']['MCMC_params']['tbias_disttype']
-                kp_type = pygem_prms['calib']['MCMC_params']['kp_disttype']
-                kp_gamma_mu = 1
-                kp_gamma_sigma = 1e-6
-                ddfsnow_type = pygem_prms['calib']['MCMC_params']['ddfsnow_disttype']
-                ddfsnow_mu = pygem_prms['calib']['MCMC_params']['ddfsnow_mu']
-                ddfsnow_min = pygem_prms['calib']['MCMC_params']['ddfsnow_bndlow']
-                ddfsnow_max = pygem_prms['calib']['MCMC_params']['ddfsnow_bndhigh']
-                ddfsnow_sigma = pygem_prms['calib']['MCMC_params']['ddfsnow_sigma']
-
                 tadj_type = pygem_prms['calib']['MCMCTADJ_params']['tadj_disttype']
                 tadj_mu = pygem_prms['calib']['MCMCTADJ_params']['tadj_mu']
                 tadj_sigma = pygem_prms['calib']['MCMCTADJ_params']['tadj_sigma']
@@ -3595,7 +3553,8 @@ def run(list_packed_vars):
                     ddfsnow_min = ddfsnow_mu - d_prm
                     ddfsnow_max = ddfsnow_mu + d_prm
                 else:
-                    print(f'Missing calibration file for {glacier_str}. Using default priors')
+                    print(f'Missing calibration file for {glacier_str}. Skipping glacier.')
+                    continue
                     
                 # put all priors together into a dictionary
                 priors = {
@@ -3608,8 +3567,6 @@ def run(list_packed_vars):
                     },
                     'kp': {
                         'type': kp_type,
-                        'alpha': float(kp_gamma_alpha),
-                        'beta': float(kp_gamma_beta),
                         'low': float(kp_gamma_min),
                         'high': float(kp_gamma_max),
                         'mu': float(kp_gamma_mu),
@@ -3775,13 +3732,6 @@ def run(list_packed_vars):
                                     show=show,
                                     fpath=f'{fp}/{glacier_str}-chain{n_chain}.png',
                                     tadj=True,
-                                )
-                                graphics.plot_param_distribution(
-                                    m_chain,
-                                    priors,
-                                    glacier_str,
-                                    show=show,
-                                    fpath=f'{fp}/{glacier_str}-chain{n_chain}-MCMCdistribution.png',
                                 )
                                 for k in pred_chain.keys():
                                     graphics.plot_resid_histogram(

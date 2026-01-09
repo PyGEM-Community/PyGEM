@@ -248,6 +248,13 @@ def getparser():
         help='Degree-day factor of snow',
     )
     parser.add_argument(
+        '-tadj',
+        action='store',
+        type=float,
+        default=pygem_prms['sim']['params']['tadj'],
+        help='Temperature bias adjustment (daily to monthly calibration)',
+    )
+    parser.add_argument(
         '-oggm_working_dir',
         action='store',
         type=str,
@@ -665,10 +672,18 @@ def run(list_packed_vars):
                     modelprms_fp = args.modelprms_fp
                     modelprms_fn = args.modelprms_fn
                     if not modelprms_fp:
-                        modelprms_fp = (
-                            # pygem_prms['root_out'] + '/Output/calibration-fullsim/' + glacier_str.split('.')[0].zfill(2) + '/'
-                            pygem_prms['root_out'] + '/Output/calibration/' + glacier_str.split('.')[0].zfill(2) + '/'
-                        )
+                        if args.option_calibration == 'MCMC':
+                            modelprms_fp = (
+                                pygem_prms['root_out'] + '/Output/calibration-fullsim/' + glacier_str.split('.')[0].zfill(2) + '/'
+                            )
+                        elif args.option_calibration == 'MCMCTADJ':
+                            modelprms_fp = (
+                                pygem_prms['root_out'] + '/Output/calibration-fullsim-tadj/' + glacier_str.split('.')[0].zfill(2) + '/'
+                            )
+                        else:
+                            modelprms_fp = (
+                                pygem_prms['root_out'] + '/Output/calibration/' + glacier_str.split('.')[0].zfill(2) + '/'
+                            )
                     if not modelprms_fn:
                         modelprms_fn = glacier_str + '-modelprms_dict.json'
                     modelprms_fp += modelprms_fn
@@ -688,6 +703,7 @@ def run(list_packed_vars):
                                 'kp': [np.median(modelprms_all['kp']['chain_0'])],
                                 'tbias': [np.median(modelprms_all['tbias']['chain_0'])],
                                 'ddfsnow': [np.median(modelprms_all['ddfsnow']['chain_0'])],
+                                'tadj': [0],
                                 'ddfice': [np.median(modelprms_all['ddfice']['chain_0'])],
                                 'tsnow_threshold': modelprms_all['tsnow_threshold'],
                                 'precgrad': modelprms_all['precgrad'],
@@ -705,12 +721,24 @@ def run(list_packed_vars):
                                 'kp': [modelprms_all['kp']['chain_0'][mp_idx] for mp_idx in mp_idx_all],
                                 'tbias': [modelprms_all['tbias']['chain_0'][mp_idx] for mp_idx in mp_idx_all],
                                 'ddfsnow': [modelprms_all['ddfsnow']['chain_0'][mp_idx] for mp_idx in mp_idx_all],
+                                'tadj': [0 for mp_idx in mp_idx_all],
                                 'ddfice': [modelprms_all['ddfice']['chain_0'][mp_idx] for mp_idx in mp_idx_all],
                                 'tsnow_threshold': modelprms_all['tsnow_threshold'] * nsims,
                                 'precgrad': modelprms_all['precgrad'] * nsims,
                             }
                     else:
                         nsims = 1
+
+                    if args.option_calibration == 'MCMCTADJ':
+                        modelprms_all = {
+                            'kp': [np.median(modelprms_all['kp']['chain_0'])],
+                            'tbias': [np.median(modelprms_all['tbias']['chain_0'])],
+                            'ddfsnow': [np.median(modelprms_all['ddfsnow']['chain_0'])],
+                            'tadj': [np.median(modelprms_all['ddfsnow']['chain_0'])],
+                            'ddfice': [np.median(modelprms_all['ddfice']['chain_0'])],
+                            'tsnow_threshold': modelprms_all['tsnow_threshold'],
+                            'precgrad': modelprms_all['precgrad'],
+                        }
 
                     # Calving parameter
                     if (
@@ -773,6 +801,7 @@ def run(list_packed_vars):
                         'kp': [args.kp],
                         'tbias': [args.tbias],
                         'ddfsnow': [args.ddfsnow],
+                        'tadj': [args.tadj],
                         'ddfice': [args.ddfsnow / pygem_prms['sim']['params']['ddfsnow_iceratio']],
                         'tsnow_threshold': [pygem_prms['sim']['params']['tsnow_threshold']],
                         'precgrad': [pygem_prms['sim']['params']['precgrad']],
@@ -876,6 +905,7 @@ def run(list_packed_vars):
                         'kp': modelprms_all['kp'][n_iter],
                         'tbias': modelprms_all['tbias'][n_iter],
                         'ddfsnow': modelprms_all['ddfsnow'][n_iter],
+                        'tadj': modelprms_all['tadj'][n_iter],
                         'ddfice': modelprms_all['ddfice'][n_iter],
                         'tsnow_threshold': modelprms_all['tsnow_threshold'][n_iter],
                         'precgrad': modelprms_all['precgrad'][n_iter],
@@ -890,6 +920,8 @@ def run(list_packed_vars):
                             + str(np.round(modelprms['ddfsnow'], 4))
                             + ' tbias: '
                             + str(np.round(modelprms['tbias'], 2))
+                            + ' tadj: '
+                            + str(np.round(modelprms['tadj'], 2))
                         )
 
                     # ----- ICE THICKNESS INVERSION using OGGM -----
