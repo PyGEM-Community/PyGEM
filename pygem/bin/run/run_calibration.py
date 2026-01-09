@@ -488,7 +488,7 @@ def mcmc_model_eval(
 
     if mbfxn is not None:
         # grab current values from modelprms for the emulator
-        mb_args = [modelprms['tbias'], modelprms['kp'], modelprms['ddfsnow']]
+        mb_args = [modelprms['tbias'], modelprms['kp'], modelprms['ddfsnow'], modelprms['tadj']]
         glacierwide_mb_mwea = mbfxn(*[mb_args])
     else:
         if mbmod is None:
@@ -1167,6 +1167,7 @@ def run(list_packed_vars):
                 'kp': pygem_prms['sim']['params']['kp'],
                 'tbias': pygem_prms['sim']['params']['tbias'],
                 'ddfsnow': pygem_prms['sim']['params']['ddfsnow'],
+                'tadj': pygem_prms['sim']['params']['tadj'],
                 'ddfice': pygem_prms['sim']['params']['ddfsnow'] / pygem_prms['sim']['params']['ddfsnow_iceratio'],
                 'tsnow_threshold': pygem_prms['sim']['params']['tsnow_threshold'],
                 'precgrad': pygem_prms['sim']['params']['precgrad'],
@@ -3347,12 +3348,12 @@ def run(list_packed_vars):
 
             # ===== DAILY TO MONTHLY TIMESTEP CALIBRATION ======
             # replicates the MCMC method but calibrates only the temperature bias parameter 
-            elif args.option_calibration == 'DAY-TO-MO':
-                outpath_sfix = '-fullsim-daytomonth'  # output file path suffix
+            elif args.option_calibration == 'MCMCTADJ':
+                outpath_sfix = '-fullsim-tadj'  # output file path suffix
 
                 # don't overwrite existing runs (skip them instead)
                 fp_exists = f'{pygem_prms["root_out"]}/Output/calibration{outpath_sfix}/{glacier_str.split(".")[0].zfill(2)}/{glacier_str}-modelprms_dict.json'
-                if os.path.exists(fp_exists) and not pygem_prms['calib']['DAYTOMO_params']['overwrite_calib']:
+                if os.path.exists(fp_exists) and not pygem_prms['calib']['MCMCTADJ_params']['overwrite_calib']:
                     print(f'Skipping glacier {glacier_str}: calibration file already exists')
                     continue
 
@@ -3376,7 +3377,7 @@ def run(list_packed_vars):
                         * (glacier_rgi_table.loc[pygem_prms['mb']['option_elev_ref_downscale']] - glacier_gcm_elev)
                         + glacier_gcm_lr
                         * (min_elev - glacier_rgi_table.loc[pygem_prms['mb']['option_elev_ref_downscale']])
-                        + modelprms['tbias']
+                        + (modelprms['tbias'] + modelprms['tadj'])
                     )
                     # Precipitation using precipitation factor and precipitation gradient
                     #  P_bin = P_gcm * prec_factor * (1 + prec_grad * (z_bin - z_ref))
@@ -3465,6 +3466,7 @@ def run(list_packed_vars):
                     modelprms_copy['tbias'] = float(kwargs['tbias'])
                     modelprms_copy['kp'] = float(kwargs['kp'])
                     modelprms_copy['ddfsnow'] = float(kwargs['ddfsnow'])
+                    modelprms_copy['tadj'] = float(kwargs['tadj'])
                     modelprms_copy['ddfice'] = (
                         modelprms_copy['ddfsnow'] / pygem_prms['sim']['params']['ddfsnow_iceratio']
                     )
@@ -3547,6 +3549,7 @@ def run(list_packed_vars):
                     tbias_min = pygem_prms['calib']['MCMC_params']['tbias_bndlow']
                     tbias_max = pygem_prms['calib']['MCMC_params']['tbias_bndhigh']
 
+                tbias_type = pygem_prms['calib']['MCMC_params']['tbias_disttype']
                 kp_type = pygem_prms['calib']['MCMC_params']['kp_disttype']
                 kp_gamma_mu = 1
                 kp_gamma_sigma = 1e-6
@@ -3556,9 +3559,15 @@ def run(list_packed_vars):
                 ddfsnow_max = pygem_prms['calib']['MCMC_params']['ddfsnow_bndhigh']
                 ddfsnow_sigma = pygem_prms['calib']['MCMC_params']['ddfsnow_sigma']
 
+                tadj_type = pygem_prms['calib']['MCMCTADJ_params']['tadj_disttype']
+                tadj_mu = pygem_prms['calib']['MCMCTADJ_params']['tadj_mu']
+                tadj_sigma = pygem_prms['calib']['MCMCTADJ_params']['tadj_sigma']
+                tadj_min = pygem_prms['calib']['MCMCTADJ_params']['tadj_bndlow']
+                tadj_max = pygem_prms['calib']['MCMCTADJ_params']['tadj_bndhigh']
+
                 # Use priors from XGBoost algorithm
-                if pygem_prms['calib']['DAYTOMO_params']['kp_ddfsnow_prior_relpath']:
-                    fp_mcmc_tb = f"{pygem_prms['root_out']}/{pygem_prms['calib']['DAYTOMO_params']['kp_ddfsnow_prior_relpath']}/{glacier_str}-modelprms_dict.json"
+                if pygem_prms['calib']['MCMCTADJ_params']['kp_ddfsnow_prior_relpath']:
+                    fp_mcmc_tb = f"{pygem_prms['root_out']}/{pygem_prms['calib']['MCMCTADJ_params']['kp_ddfsnow_prior_relpath']}/{glacier_str}-modelprms_dict.json"
                 else:
                     fp_mcmc_tb = f"{pygem_prms['root_out']}/Output/calibration-fullsim_xgboost-priors/{glacier_str}-modelprms_dict.json" 
                 if os.path.exists(fp_mcmc_tb):
@@ -3569,7 +3578,12 @@ def run(list_packed_vars):
                     tbias_sigma = np.std(data, ddof=1) # sample std (not population)
                     tbias_min, tbias_max = np.percentile(data, [2.5, 97.5])
 
-                    d_prm = 1e-9
+                    d_prm = 1e-12
+                    tbias_type = 'truncnormal'
+                    tbias_mu = np.mean(prior_prms['MCMC']['tbias']['chain_0'])
+                    tbias_sigma = d_prm
+                    tbias_min = tbias_mu - d_prm
+                    tbias_max = tbias_mu + d_prm
                     kp_type = 'truncnormal'
                     kp_gamma_mu = np.mean(prior_prms['MCMC']['kp']['chain_0'])
                     kp_gamma_sigma = d_prm
@@ -3586,7 +3600,7 @@ def run(list_packed_vars):
                 # put all priors together into a dictionary
                 priors = {
                     'tbias': {
-                        'type': pygem_prms['calib']['MCMC_params']['tbias_disttype'],
+                        'type': tbias_type,
                         'mu': float(tbias_mu),
                         'sigma': float(tbias_sigma),
                         'low': float(tbias_min),
@@ -3607,6 +3621,13 @@ def run(list_packed_vars):
                         'sigma': float(ddfsnow_sigma),
                         'low': float(ddfsnow_min),
                         'high': float(ddfsnow_max),
+                    },
+                    'tadj': {
+                        'type': tadj_type,
+                        'mu': float(tadj_mu),
+                        'sigma': float(tadj_sigma),
+                        'low': float(tadj_min),
+                        'high': float(tadj_max),
                     },
                 }
                 # ------------------
@@ -3633,7 +3654,7 @@ def run(list_packed_vars):
 
                 # instantiate mbPosterior given priors, and observed values
                 # note, mbEmulator.eval expects the modelprms to be ordered like so: [tbias, kp, ddfsnow], so priors and initial guesses must also be ordered as such)
-                priors = {key: priors[key] for key in ['tbias', 'kp', 'ddfsnow', 'rhoabl', 'rhoacc'] if key in priors}
+                priors = {key: priors[key] for key in ['tbias', 'kp', 'ddfsnow', 'tadj', 'rhoabl', 'rhoacc'] if key in priors}
                 mb = mcmc.mbPosterior(
                     obs,
                     priors,
@@ -3643,6 +3664,7 @@ def run(list_packed_vars):
                     potential_fxns=[mb_max, must_melt, rho_constraints],
                     ela=gdir.ela.min() if hasattr(gdir, 'ela') else None,
                     bin_z=gdir.elev_change_1d['bin_centers'] if hasattr(gdir, 'elev_change_1d') else None,
+                    tadj_calib=True,
                 )
                 # prepare export modelprms dictionary
                 modelprms_export = {}
@@ -3652,7 +3674,7 @@ def run(list_packed_vars):
                 modelprms_export['mb_obs_mwea'] = [float(mb_obs_mwea)]
                 modelprms_export['mb_obs_mwea_err'] = [float(mb_obs_mwea_err)]
                 # mcmc keys
-                ks = ['tbias', 'kp', 'ddfsnow', 'ddfice', 'mb_mwea', 'ar']
+                ks = ['tbias', 'kp', 'ddfsnow', 'tadj', 'ddfice', 'mb_mwea', 'ar']
                 modelprms_export['priors'] = priors
 
                 # create nested dictionary for each mcmc key
@@ -3663,8 +3685,7 @@ def run(list_packed_vars):
                 # --------------------
                 # ----- run MCMC -----
                 # --------------------
-                # try:
-                if 1==1: # TO DO
+                try:
                     ### loop over chains, adjust initial guesses accordingly. done in a while loop as to repeat a chain up to one time if it remained stuck throughout ###
                     attempts_per_chain = 2  # number of repeats per chain (each with different initial guesses)
                     n_chain = 0
@@ -3677,27 +3698,23 @@ def run(list_packed_vars):
                                 initial_guesses = torch.tensor(
                                     (
                                         tbias_mu,
-                                        kp_gamma_alpha / kp_gamma_beta,
+                                        kp_gamma_mu,
                                         ddfsnow_mu,
+                                        tadj_mu,
                                     )
                                 )
                             else:
                                 initial_guesses = torch.tensor(get_initials(get_priors(priors)))
-                                # if n_chain == 1: # get 5th and 95th percentile
-                                #     initial_guesses = torch.tensor(get_initials(get_priors(priors), pctl=0.05))
-                                # if n_chain == 2:
-                                #     initial_guesses = torch.tensor(get_initials(get_priors(priors), pctl=0.95))
-                                # else:
-                                #     initial_guesses = torch.tensor(get_initials(get_priors(priors)))
 
                             if debug:
                                 print(
                                     f'{glacier_str} chain {n_chain} attempt {n_attempts} initials:\n'
-                                    f'tbias: {initial_guesses[0]:.2f}, kp: {initial_guesses[1]:.2f}, ddfsnow: {initial_guesses[2]:.4f}'
+                                    f'tbias: {initial_guesses[0]:.2f}, kp: {initial_guesses[1]:.2f},' 
+                                    f'ddfsnow: {initial_guesses[2]:.4f}, tadj: {initial_guesses[3]:.2f}'
                                 )
 
                             # instantiate sampler
-                            sampler = mcmc.Metropolis(mb.means, mb.stds)
+                            sampler = mcmc.Metropolis(mb.means, mb.stds, tadj_calib=True)
                             # draw samples
                             m_chain, pred_chain, m_primes, pred_primes, _, ar = sampler.sample(
                                 initial_guesses,
@@ -3709,8 +3726,8 @@ def run(list_packed_vars):
                                 progress_bar=args.progress_bar,
                             )
 
-                            # Check if stuck - this simply checks if the first column of the chain (tbias) is constant
-                            if (m_chain[:, 0] == m_chain[0, 0]).all():
+                            # Check if stuck - this simply checks if the last column of the chain (tadj) is constant
+                            if (m_chain[:, -1] == m_chain[0, -1]).all():
                                 if debug:
                                     print(
                                         f'Chain {n_chain}, attempt {n_attempts}: stuck. Trying a different initial guess.'
@@ -3721,10 +3738,6 @@ def run(list_packed_vars):
                                 chain_completed = True
                                 break
 
-                        if not chain_completed and debug:
-                            print(
-                                f'Chain {n_chain}: failed to produce an unstuck result after {attempts_per_chain} initial guesses.'
-                            )
 
                         if debug:
                             print(
@@ -3761,6 +3774,7 @@ def run(list_packed_vars):
                                     glacier_str,
                                     show=show,
                                     fpath=f'{fp}/{glacier_str}-chain{n_chain}.png',
+                                    tadj=True,
                                 )
                                 graphics.plot_param_distribution(
                                     m_chain,
@@ -3786,6 +3800,7 @@ def run(list_packed_vars):
                         modelprms_export['tbias'][chain_str] = m_chain[:, 0].tolist()
                         modelprms_export['kp'][chain_str] = m_chain[:, 1].tolist()
                         modelprms_export['ddfsnow'][chain_str] = m_chain[:, 2].tolist()
+                        modelprms_export['tadj'][chain_str] = m_chain[:, 3].tolist()
                         modelprms_export['ddfice'][chain_str] = (
                             m_chain[:, 2] / pygem_prms['sim']['params']['ddfsnow_iceratio']
                         ).tolist()
@@ -3837,19 +3852,19 @@ def run(list_packed_vars):
                     with open(mcmc_good_fp + txt_fn_good, 'w') as text_file:
                         text_file.write(glacier_str + ' successfully exported mcmc results')
 
-                # except Exception as err:
-                #     # MCMC LOG FAILURE
-                #     mcmc_fail_fp = (
-                #         pygem_prms['root_out']
-                #         + f'/Output/mcmc_fail{outpath_sfix}/'
-                #         + glacier_str.split('.')[0].zfill(2)
-                #         + '/'
-                #     )
-                #     if not os.path.exists(mcmc_fail_fp):
-                #         os.makedirs(mcmc_fail_fp, exist_ok=True)
-                #     txt_fn_fail = glacier_str + '-mcmc_fail.txt'
-                #     with open(mcmc_fail_fp + txt_fn_fail, 'w') as text_file:
-                #         text_file.write(glacier_str + f' failed to complete MCMC: {err}')
+                except Exception as err:
+                    # MCMCTADJ LOG FAILURE
+                    mcmc_fail_fp = (
+                        pygem_prms['root_out']
+                        + f'/Output/mcmc_fail{outpath_sfix}/'
+                        + glacier_str.split('.')[0].zfill(2)
+                        + '/'
+                    )
+                    if not os.path.exists(mcmc_fail_fp):
+                        os.makedirs(mcmc_fail_fp, exist_ok=True)
+                    txt_fn_fail = glacier_str + '-mcmc_fail.txt'
+                    with open(mcmc_fail_fp + txt_fn_fail, 'w') as text_file:
+                        text_file.write(glacier_str + f' failed to complete MCMC: {err}')
                 # --------------------
 
 

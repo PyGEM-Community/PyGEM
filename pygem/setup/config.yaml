@@ -94,7 +94,7 @@ climate:
 
 # ===== CALIBRATION OPTIONS =====
 calib:
-  option_calibration: MCMC                        # calibration option ('emulator', 'MCMC', 'MCMC-TBIAS', 'HH2015', 'HH2015mod', 'null')
+  option_calibration: MCMC                        # calibration option ('emulator', 'MCMC', 'MCMC-TBIAS', 'MCMCTADJ', 'HH2015', 'HH2015mod', 'null')
   priors_reg_fn: priors_region.csv                # Prior distribution (specify filename, relative to `path`/Output/calibration/, or set to null)
 
   # HH2015 params
@@ -230,7 +230,12 @@ calib:
     option_run_full_massbalance: false            # option to run the full mass balance module instead of only obtaining melt extent
     option_calib_glacierwide_mb_mwea: false       # option to calibrate against average glacierwide mass balance data in addition to melt extent (true or false). Must set `option_run_full_massbalance` to `true`
     overwrite_calib: true                         # option whether to overwrite existing MCMC-TBIAS calibration file (true or false)
-  DAYTOMO_params:
+  MCMCTADJ_params:
+    tadj_disttype: normal                         # temperature bias adjustment distribution type
+    tadj_mu: 0                                    # temperature bias adjustment mean of normal distribution
+    tadj_sigma: 3                                 # temperature bias adjustment mean of standard deviation
+    tadj_bndlow: -10                              # temperature bias adjustment lower bound
+    tadj_bndhigh: 10                              # temperature bias adjustment upper bound
     kp_ddfsnow_prior_relpath:                     # relative filepath for kp and ddfsnow parameter distributions (if differing from default: Output/calibration-fullsim_xgboost-priors/)
     overwrite_calib: true                         # option whether to overwrite existing calibration
 

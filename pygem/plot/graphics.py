@@ -154,7 +154,7 @@ def plot_modeloutput_section(
 
 
 def plot_mcmc_chain(
-    m_primes, m_chain, pred_primes, pred_chain, obs, ar, title, ms=1, fontsize=8, show=False, fpath=None, plot_mb=True,
+    m_primes, m_chain, pred_primes, pred_chain, obs, ar, title, ms=1, fontsize=8, show=False, fpath=None, plot_mb=True, tadj=False,
 ):
     # Plot the trace of the parameters
     nparams = m_primes.shape[1]
@@ -211,7 +211,22 @@ def plot_mcmc_chain(
     legs.append(l2)
     axes[2].set_ylabel(r'$fsnow$', fontsize=fontsize)
 
-    if nparams > 3:
+    if tadj:
+        # axes[3] is tadj if included
+        m_chain[:, 3] = m_chain[:, 3]
+        m_primes[:, 3] = m_primes[:, 3]
+        axes[3].plot(m_primes[:, 3], '.', ms=ms, c='tab:blue')
+        axes[3].plot(m_chain[:, 3], '.', ms=ms, c='tab:orange')
+        axes[3].plot(
+            [],
+            [],
+            label=f'median={np.median(m_chain[:, 3]):.3f}\niqr={np.subtract(*np.percentile(m_chain[:, 3], [75, 25])):.3f}',
+        )
+        l3 = axes[3].legend(loc='upper right', handlelength=0, borderaxespad=0, fontsize=fontsize)
+        legs.append(l3)
+        axes[3].set_ylabel(r'$t_{adj}$', fontsize=fontsize)
+
+    if (nparams > 4 and tadj) or (nparams > 3 and not tadj):
         # axes[3] will be rho_ablation if more than 3 model params
         m_chain[:, 3] = m_chain[:, 3]
         m_primes[:, 3] = m_primes[:, 3]

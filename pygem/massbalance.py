@@ -318,7 +318,7 @@ class PyGEMMassBalance(MassBalanceModel):
                 * (self.glacier_rgi_table.loc[pygem_prms['mb']['option_elev_ref_downscale']] - self.glacier_gcm_elev)
                 + self.glacier_gcm_lrglac[t_start : t_stop + 1]
                 * (heights - self.glacier_rgi_table.loc[pygem_prms['mb']['option_elev_ref_downscale']])[:, np.newaxis]
-                + self.modelprms['tbias']
+                + (self.modelprms['tbias'] + self.modelprms['tadj'])
             )
 
             # PRECIPITATION/ACCUMULATION: Downscale the precipitation (liquid and solid) to each bin

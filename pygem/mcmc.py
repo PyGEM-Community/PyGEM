@@ -184,6 +184,7 @@ class mbPosterior:
         self.meltextent_plotonly = kwargs.get('meltextent_plotonly', False)
         self.snowline_plotonly = kwargs.get('snowline_plotonly', False)
         self.scaf_plotonly = kwargs.get('scaf_plotonly', False)
+        self.tadj_calib = kwargs.get('tadj_calib', False)
         if self.ela:
             self.abl_mask = self.bin_z < self.ela
 
@@ -218,7 +219,10 @@ class mbPosterior:
 
     # update modelprms for evaluation
     def update_modelprms(self, m):
-        for i, k in enumerate(['tbias', 'kp', 'ddfsnow']):
+        input_modelprms = ['tbias', 'kp', 'ddfsnow']
+        if self.tadj_calib:
+            input_modelprms.append('tadj')
+        for i, k in enumerate(input_modelprms):
             self.fxnargs[1][k] = float(m[i])
         self.fxnargs[1]['ddfice'] = self.fxnargs[1]['ddfsnow'] / pygem_prms['sim']['params']['ddfsnow_iceratio']
 
@@ -290,14 +294,18 @@ class mbPosterior:
             'kp': m[0],
             'tbias': m[1],
             'ddfsnow': m[2],
+            'tadj': m[3] if self.tadj_calib else 0,
             'massbal': self.preds['glacierwide_mb_mwea'],
         }
 
-        # --- Optional arguments(if len(m) > 3) ---
+        # --- Optional arguments (if len(m) > 4) ---
         # rhoabl, rhoacc
-        if len(m) > 3:
+        if len(m) == 5:
             kwargs['rhoabl'] = m[3]
             kwargs['rhoacc'] = m[4]
+        elif len(m) == 6:
+            kwargs['rhoabl'] = m[4]
+            kwargs['rhoacc'] = m[5]
 
         # --- Evaluate all potential functions ---
         return sum(pf(**kwargs) for pf in self.potential_functions)
@@ -311,7 +319,7 @@ class mbPosterior:
 
 # Metropolis-Hastings Markov chain Monte Carlo class
 class Metropolis:
-    def __init__(self, means, stds):
+    def __init__(self, means, stds, **kwargs):
         # Initialize chains
         self.steps = []
         self.P_chain = []
@@ -324,6 +332,7 @@ class Metropolis:
         self.n_rm = 0
         self.means = means
         self.stds = stds
+        self.tadj_calib = kwargs.get('tadj_calib', False)
 
     def get_n_rm(self, tol=0.1):
         """
@@ -427,7 +436,7 @@ class Metropolis:
                         self.preds_primes[k].append(pred_1[k])
 
             # trim off any initial steps that are stagnant
-            if (i == (n_samples - 1)) and (trim):
+            if (i == (n_samples - 1)) and (trim) and (not self.tadj_calib):
                 self.get_n_rm()
                 if self.n_rm > 0:
                     if self.n_rm < len(self.m_chain) - 1:
