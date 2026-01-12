@@ -2284,7 +2284,7 @@ def run(list_packed_vars):
                     tbias_max = pygem_prms['calib']['MCMC_params']['tbias_bndhigh']
                 # Use temperature bias priors from MCMC-TBIAS calibration
                 if pygem_prms['calib']['MCMC_params']['tbias_prior_from_mcmc']:
-                    fp_mcmc_tb = f'{pygem_prms["root_out"]}/Output/calibration-tbias-fullsim/01/{glacier_str}-modelprms_dict.json'
+                    fp_mcmc_tb = f'{pygem_prms["root_out"]}/Output/calibration-tbias-fullsim/{glacier_str.split(".")[0].zfill(2)}/{glacier_str}-modelprms_dict.json'
                     if os.path.exists(fp_mcmc_tb):
                         with open(fp_mcmc_tb,'r') as f:
                             prior_prms = json.load(f)
@@ -2296,7 +2296,7 @@ def run(list_packed_vars):
                         print(f'No MCMC-TBIAS calibration file found for {glacier_str}. Using default priors')
                 # Use priors from XGBoost algorithm
                 if pygem_prms['calib']['MCMC_params']['xgboost_priors_tbias_kp']:
-                    fp_mcmc_tb = f'{pygem_prms["root_out"]}/Output/calibration-fullsim_xgboost-priors/{glacier_str}-modelprms_dict.json'
+                    fp_mcmc_tb = f'{pygem_prms["root_out"]}/Output/calibration-fullsim_xgboost-priors/{glacier_str.split(".")[0].zfill(2)}/{glacier_str}-modelprms_dict.json'
                     if os.path.exists(fp_mcmc_tb):
                         with open(fp_mcmc_tb,'r') as f:
                             prior_prms = json.load(f)
@@ -3525,9 +3525,9 @@ def run(list_packed_vars):
 
                 # Use priors from XGBoost algorithm
                 if pygem_prms['calib']['MCMCTADJ_params']['kp_ddfsnow_prior_relpath']:
-                    fp_mcmc_tb = f"{pygem_prms['root_out']}/{pygem_prms['calib']['MCMCTADJ_params']['kp_ddfsnow_prior_relpath']}/{glacier_str}-modelprms_dict.json"
+                    fp_mcmc_tb = f"{pygem_prms['root_out']}/{pygem_prms['calib']['MCMCTADJ_params']['kp_ddfsnow_prior_relpath']}/{glacier_str.split('.')[0].zfill(2)}/{glacier_str}-modelprms_dict.json"
                 else:
-                    fp_mcmc_tb = f"{pygem_prms['root_out']}/Output/calibration-fullsim_xgboost-priors/{glacier_str}-modelprms_dict.json" 
+                    fp_mcmc_tb = f"{pygem_prms['root_out']}/Output/calibration-fullsim_xgboost-priors/{glacier_str.split('.')[0].zfill(2)}/{glacier_str}-modelprms_dict.json" 
                 if os.path.exists(fp_mcmc_tb):
                     with open(fp_mcmc_tb,'r') as f:
                         prior_prms = json.load(f)
