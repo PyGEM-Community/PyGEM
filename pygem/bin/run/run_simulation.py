@@ -730,6 +730,9 @@ def run(list_packed_vars):
                         nsims = 1
 
                     if args.option_calibration == 'MCMCTADJ':
+                        if nsims != 1:
+                            print('Warning: MCMCTADJ does not support `nsims` > 1. `nsims` is being set to 1')
+                            nsims = 1
                         modelprms_all = {
                             'kp': [np.median(modelprms_all['kp']['chain_0'])],
                             'tbias': [np.median(modelprms_all['tbias']['chain_0'])],

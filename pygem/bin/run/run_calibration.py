@@ -3531,6 +3531,7 @@ def run(list_packed_vars):
                 if os.path.exists(fp_mcmc_tb):
                     with open(fp_mcmc_tb,'r') as f:
                         prior_prms = json.load(f)
+                        
                     data = prior_prms['MCMC']['tbias']['chain_0']
                     tbias_mu = np.mean(data)
                     tbias_sigma = np.std(data, ddof=1) # sample std (not population)
