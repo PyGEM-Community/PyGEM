@@ -2252,6 +2252,9 @@ def run(list_packed_vars):
                 # ----- PRIORS -----
                 # ------------------
                 # Prior distributions (specified or informed by regions)
+                tbias_disttype = pygem_prms['calib']['MCMC_params']['tbias_disttype']
+                kp_disttype = pygem_prms['calib']['MCMC_params']['kp_disttype']                
+                ddfsnow_disttype = pygem_prms['calib']['MCMC_params']['ddfsnow_disttype']
                 if pygem_prms['calib']['priors_reg_fn'] is not None:
                     # Load priors
                     priors_df = pd.read_csv(
@@ -2264,6 +2267,8 @@ def run(list_packed_vars):
                     # Precipitation factor priors
                     kp_gamma_alpha = float(priors_df.loc[priors_idx, 'kp_alpha'])
                     kp_gamma_beta = float(priors_df.loc[priors_idx, 'kp_beta'])
+                    kp_mu = kp_gamma_alpha / kp_gamma_beta
+                    kp_sigma = np.nan
                     kp_gamma_min = float(priors_df.loc[priors_idx, 'kp_min'])
                     kp_gamma_max = float(priors_df.loc[priors_idx, 'kp_max'])
                     # Temperature bias priors
@@ -2275,6 +2280,8 @@ def run(list_packed_vars):
                     # Precipitation factor priors
                     kp_gamma_alpha = pygem_prms['calib']['MCMC_params']['kp_gamma_alpha']
                     kp_gamma_beta = pygem_prms['calib']['MCMC_params']['kp_gamma_beta']
+                    kp_mu = kp_gamma_alpha / kp_gamma_beta
+                    kp_sigma = np.nan
                     kp_gamma_min = pygem_prms['calib']['MCMC_params']['kp_bndlow']
                     kp_gamma_max = pygem_prms['calib']['MCMC_params']['kp_bndhigh']
                     # Temperature bias priors
@@ -2300,38 +2307,44 @@ def run(list_packed_vars):
                     if os.path.exists(fp_mcmc_tb):
                         with open(fp_mcmc_tb,'r') as f:
                             prior_prms = json.load(f)
+
+                        tbias_disttype = 'truncnormal'
                         tbias_mu = np.mean(prior_prms['MCMC']['tbias']['chain_0'])
                         tbias_min = np.mean(prior_prms['MCMC']['tbias_min']['chain_0'])
                         tbias_max = np.mean(prior_prms['MCMC']['tbias_max']['chain_0'])
                         tbias_sigma = (tbias_max - tbias_min) / 3.92
 
-                        kp_mean = np.mean(prior_prms['MCMC']['kp']['chain_0'])
+                        kp_disttype = 'truncnormal'
+                        kp_mu = np.mean(prior_prms['MCMC']['kp']['chain_0'])
                         kp_gamma_min = np.max([np.mean(prior_prms['MCMC']['kp_min']['chain_0']), 0])
                         kp_gamma_max = np.mean(prior_prms['MCMC']['kp_max']['chain_0'])
-                        kp_variance = ((kp_gamma_max - kp_gamma_min) / 3.92)**2
-                        kp_gamma_alpha = kp_mean**2 / kp_variance
-                        kp_gamma_beta = kp_variance / kp_mean
+                        kp_sigma = (kp_gamma_max - kp_gamma_min) / 3.92
+                        kp_variance = kp_sigma**2
+                        kp_gamma_alpha = kp_mu**2 / kp_variance
+                        kp_gamma_beta = kp_variance / kp_mu
                     else:
                         print(f'Missing XGBoost calibration file for {glacier_str}. Using default priors')
                     
                 # put all priors together into a dictionary
                 priors = {
                     'tbias': {
-                        'type': pygem_prms['calib']['MCMC_params']['tbias_disttype'],
+                        'type': tbias_disttype,
                         'mu': float(tbias_mu),
                         'sigma': float(tbias_sigma),
                         'low': float(tbias_min),
                         'high': float(tbias_max),
                     },
                     'kp': {
-                        'type': pygem_prms['calib']['MCMC_params']['kp_disttype'],
+                        'type': kp_disttype,
                         'alpha': float(kp_gamma_alpha),
                         'beta': float(kp_gamma_beta),
                         'low': float(kp_gamma_min),
                         'high': float(kp_gamma_max),
+                        'mu': float(kp_mu),
+                        'sigma': float(kp_sigma),
                     },
                     'ddfsnow': {
-                        'type': pygem_prms['calib']['MCMC_params']['ddfsnow_disttype'],
+                        'type': ddfsnow_disttype,
                         'mu': pygem_prms['calib']['MCMC_params']['ddfsnow_mu'],
                         'sigma': pygem_prms['calib']['MCMC_params']['ddfsnow_sigma'],
                         'low': float(pygem_prms['calib']['MCMC_params']['ddfsnow_bndlow']),
@@ -2507,7 +2520,7 @@ def run(list_packed_vars):
                                 initial_guesses = torch.tensor(
                                     (
                                         tbias_mu,
-                                        kp_gamma_alpha / kp_gamma_beta,
+                                        kp_mu,
                                         pygem_prms['calib']['MCMC_params']['ddfsnow_mu'],
                                     )
                                 )
