@@ -326,7 +326,6 @@ class PyGEMMassBalance(MassBalanceModel):
                 assert pygem_prms['time']['timestep'] != 'daily', (
                     'Option 3 for ablation should not be used with daily data'
                 )
-
                 # option 3: monthly temperature superimposed with daily temperature variability
                 # daily temperature variation in each bin for the monthly timestep
                 #    Seed randomness for repeatability, but base it on step to ensure the daily variability is not
@@ -335,12 +334,11 @@ class PyGEMMassBalance(MassBalanceModel):
                 # number of bins and timesteps
                 nbins = heights.shape[0]
                 t_idx = np.arange(t_start, t_stop + 1)
-
-                # reproducible randomness per timestep
                 rng = np.random.default_rng(seed=0)
 
                 # generate daily temperature variability for all timesteps
-                days_option3 = np.ones_like(self.days_in_step) * 30 # assume 30 days; or replace with self.days_in_step[t]
+                # days_option3 = np.ones_like(self.days_in_step) * 30 # assume 30 days
+                days_option3 = self.days_in_step # exact days in month
                 bin_tempstd_daily = [
                     np.repeat(
                         rng.normal(
@@ -353,8 +351,9 @@ class PyGEMMassBalance(MassBalanceModel):
                     )
                     for t in t_idx
                 ]
-                assert np.abs(np.sum(bin_tempstd_daily)) < 1e-5, 'Temperature standard deviation not 0'
-
+                assert np.abs(np.sum([np.sum(arr) for arr in bin_tempstd_daily])) < 1e-5, (
+                        'Temperature standard deviation not 0'
+                    )
                 # stack into shape: (nbins, total days)
                 bin_tempstd_daily = np.concatenate(bin_tempstd_daily, axis=1)
                 # repeat monthly bin temps to daily resolution
@@ -586,9 +585,6 @@ class PyGEMMassBalance(MassBalanceModel):
                     # Energy available for melt [degC day] = sum of daily energy available
                     melt_energy_available = bin_temp_daily.sum(axis=1)
                 elif pygem_prms['mb']['option_ablation'] == 3:
-                    assert pygem_prms['time']['timestep'] != 'daily', (
-                        'Option 3 for ablation should not be used with daily data'
-                    )
                     melt_energy_available = bin_temp_daily[: , month_edges[i_month] : month_edges[i_month + 1]].sum(axis=1)
 
                 # SNOW MELT [m w.e.]

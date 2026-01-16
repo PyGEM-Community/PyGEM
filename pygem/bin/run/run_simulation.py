@@ -553,13 +553,13 @@ def run(list_packed_vars):
     if pygem_prms['mb']['option_ablation'] != 2:
         gcm_tempstd = np.zeros((main_glac_rgi.shape[0], dates_table.shape[0]))
         ref_tempstd = np.zeros((main_glac_rgi.shape[0], dates_table_ref.shape[0]))
-    elif pygem_prms['mb']['option_ablation'] == 2 and sim_climate_name in ['ERA5']:
+    elif pygem_prms['mb']['option_ablation'] in [2, 3] and sim_climate_name in ['ERA5']:
         assert pygem_prms['time']['timestep'] != 'daily', 'Option 2 for ablation should not be used with daily data'
         gcm_tempstd, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(
             gcm.tempstd_fn, gcm.tempstd_vn, main_glac_rgi, dates_table, verbose=debug
         )
         ref_tempstd = gcm_tempstd
-    elif pygem_prms['mb']['option_ablation'] == 2 and args.ref_climate_name in ['ERA5']:
+    elif pygem_prms['mb']['option_ablation'] in [2, 3] and args.ref_climate_name in ['ERA5']:
         assert pygem_prms['time']['timestep'] != 'daily', 'Option 2 for ablation should not be used with daily data'
         # Compute temp std based on reference climate data
         ref_tempstd, ref_dates = ref_gcm.importGCMvarnearestneighbor_xarray(
