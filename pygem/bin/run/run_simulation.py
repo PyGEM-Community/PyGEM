@@ -727,10 +727,7 @@ def run(list_packed_vars):
                                 'tsnow_threshold': modelprms_all['tsnow_threshold'] * nsims,
                                 'precgrad': modelprms_all['precgrad'] * nsims,
                             }
-                    else:
-                        nsims = 1
-
-                    if args.option_calibration == 'MCMCTADJ':
+                    elif args.option_calibration == 'MCMCTADJ':
                         if nsims != 1:
                             print('Warning: MCMCTADJ does not support `nsims` > 1. `nsims` is being set to 1')
                             nsims = 1
@@ -743,6 +740,8 @@ def run(list_packed_vars):
                             'tsnow_threshold': modelprms_all['tsnow_threshold'],
                             'precgrad': modelprms_all['precgrad'],
                         }
+                    else:
+                        nsims = 1
 
                     # Calving parameter
                     if (

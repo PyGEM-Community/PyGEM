@@ -321,112 +321,230 @@ class PyGEMMassBalance(MassBalanceModel):
                 + (self.modelprms['tbias'] + self.modelprms['tadj'])
             )
 
+            # option_ablation replicates option_ablation = 2 but applies corrections to precipitation as well
+            if pygem_prms['mb']['option_ablation'] == 3:
+                assert pygem_prms['time']['timestep'] != 'daily', (
+                    'Option 3 for ablation should not be used with daily data'
+                )
+
+                # option 3: monthly temperature superimposed with daily temperature variability
+                # daily temperature variation in each bin for the monthly timestep
+                #    Seed randomness for repeatability, but base it on step to ensure the daily variability is not
+                #    the same for every single time step
+
+                # number of bins and timesteps
+                nbins = heights.shape[0]
+                t_idx = np.arange(t_start, t_stop + 1)
+
+                # reproducible randomness per timestep
+                rng = np.random.default_rng(seed=0)
+
+                # generate daily temperature variability for all timesteps
+                days_option3 = np.ones_like(self.days_in_step) * 30 # assume 30 days; or replace with self.days_in_step[t]
+                bin_tempstd_daily = [
+                    np.repeat(
+                        rng.normal(
+                            loc=0,
+                            scale=self.glacier_gcm_tempstd[t],
+                            size=days_option3[t],
+                        )[None, :],
+                        nbins,
+                        axis=0,
+                    )
+                    for t in t_idx
+                ]
+                assert np.abs(np.sum(bin_tempstd_daily)) < 1e-5, 'Temperature standard deviation not 0'
+
+                # stack into shape: (nbins, total days)
+                bin_tempstd_daily = np.concatenate(bin_tempstd_daily, axis=1)
+                # repeat monthly bin temps to daily resolution
+                bin_temp_daily = np.concatenate(
+                    [
+                        self.bin_temp[:, t][:, None].repeat(days_option3[t], axis=1)
+                        for t in t_idx
+                    ],
+                    axis=1,
+                ) + bin_tempstd_daily
+                # remove negative values
+                bin_temp_daily[bin_temp_daily < 0] = 0
+
+                # get daily precipitation as the average of each day for the month
+                bin_precsnow = (
+                    self.glacier_gcm_prec[t_start : t_stop + 1]
+                    * self.modelprms['kp']
+                    * (
+                        1
+                        + self.modelprms['precgrad']
+                        * (heights - self.glacier_rgi_table.loc[pygem_prms['mb']['option_elev_ref_downscale']])
+                    )[:, np.newaxis]
+                )
+                bin_precsnow_daily = np.concatenate(
+                    [
+                        (bin_precsnow[:, i][:, None] / days_option3[t])
+                        .repeat(days_option3[t], axis=1)
+                        for i, t in enumerate(t_idx)
+                    ],
+                    axis=1,
+                )
+            
+                # compute accumulation with daily temperature
+                assert pygem_prms['mb']['option_accumulation'] in [1, 2], 'option_ablation=3 only supports option_accumulation 1 or 2'
+                # if temperature between min/max, then mix of snow/rain using linear relationship between min/max
+                bin_prec_daily = np.zeros_like(bin_precsnow_daily)
+                bin_acc_daily = np.zeros_like(bin_precsnow_daily)
+
+                if pygem_prms['mb']['option_accumulation'] == 1:
+                    # all rain
+                    mask_rain = bin_temp_daily > self.modelprms['tsnow_threshold']
+                    bin_prec_daily[mask_rain] = bin_precsnow_daily[mask_rain]
+                    bin_acc_daily[mask_rain] = 0
+                    # all snow
+                    mask_snow = bin_temp_daily <= self.modelprms['tsnow_threshold']
+                    bin_acc_daily[mask_snow] = bin_precsnow_daily[mask_snow]
+                    bin_prec_daily[mask_snow] = 0
+                elif pygem_prms['mb']['option_accumulation'] == 2:
+                    # linear transition zone: mixed rain/snow
+                    mask_mixed = (
+                        (bin_temp_daily > self.modelprms['tsnow_threshold'] - 1)
+                        & (bin_temp_daily <= self.modelprms['tsnow_threshold'] + 1)
+                    )
+
+                    bin_prec_daily[mask_mixed] = (
+                        0.5 + (bin_temp_daily[mask_mixed] - self.modelprms['tsnow_threshold']) / 2
+                    ) * bin_precsnow_daily[mask_mixed]
+
+                    bin_acc_daily[mask_mixed] = (
+                        bin_precsnow_daily[mask_mixed] - bin_prec_daily[mask_mixed]
+                    )
+                    # all rain
+                    mask_rain = bin_temp_daily > self.modelprms['tsnow_threshold'] + 1
+                    bin_prec_daily[mask_rain] = bin_precsnow_daily[mask_rain]
+                    bin_acc_daily[mask_rain] = 0
+                    # all snow
+                    mask_snow = bin_temp_daily <= self.modelprms['tsnow_threshold'] - 1
+                    bin_acc_daily[mask_snow] = bin_precsnow_daily[mask_snow]
+                    bin_prec_daily[mask_snow] = 0
+
+                # aggregrate from days back to months
+                month_edges = np.concatenate(([0], np.cumsum(days_option3[t_start : t_stop + 1])))
+                self.bin_prec[:, t_start : t_stop + 1] = np.add.reduceat(
+                    bin_prec_daily,
+                    month_edges[:-1],
+                    axis=1,
+                )
+                self.bin_acc[:, t_start : t_stop + 1] = np.add.reduceat(
+                    bin_acc_daily,
+                    month_edges[:-1],
+                    axis=1,
+                )
+
             # PRECIPITATION/ACCUMULATION: Downscale the precipitation (liquid and solid) to each bin
             # Precipitation using precipitation factor and precipitation gradient
             #  P_bin = P_gcm * prec_factor * (1 + prec_grad * (z_bin - z_ref))
-            bin_precsnow[:, t_start : t_stop + 1] = (
-                self.glacier_gcm_prec[t_start : t_stop + 1]
-                * self.modelprms['kp']
-                * (
-                    1
-                    + self.modelprms['precgrad']
-                    * (heights - self.glacier_rgi_table.loc[pygem_prms['mb']['option_elev_ref_downscale']])
-                )[:, np.newaxis]
-            )
-            # Option to adjust prec of uppermost 25% of glacier for wind erosion and reduced moisture content
-            if pygem_prms['mb']['option_preclimit'] == 1:
-                # Elevation range based on all flowlines
-                raw_min_elev = []
-                raw_max_elev = []
-                if len(fl.surface_h[fl.widths_m > 0]):
-                    raw_min_elev.append(fl.surface_h[fl.widths_m > 0].min())
-                    raw_max_elev.append(fl.surface_h[fl.widths_m > 0].max())
-                elev_range = np.max(raw_max_elev) - np.min(raw_min_elev)
-                elev_75 = np.min(raw_min_elev) + 0.75 * (elev_range)
+            if pygem_prms['mb']['option_ablation'] != 3:
+                bin_precsnow[:, t_start : t_stop + 1] = (
+                    self.glacier_gcm_prec[t_start : t_stop + 1]
+                    * self.modelprms['kp']
+                    * (
+                        1
+                        + self.modelprms['precgrad']
+                        * (heights - self.glacier_rgi_table.loc[pygem_prms['mb']['option_elev_ref_downscale']])
+                    )[:, np.newaxis]
+                )
+                # Option to adjust prec of uppermost 25% of glacier for wind erosion and reduced moisture content
+                if pygem_prms['mb']['option_preclimit'] == 1:
+                    # Elevation range based on all flowlines
+                    raw_min_elev = []
+                    raw_max_elev = []
+                    if len(fl.surface_h[fl.widths_m > 0]):
+                        raw_min_elev.append(fl.surface_h[fl.widths_m > 0].min())
+                        raw_max_elev.append(fl.surface_h[fl.widths_m > 0].max())
+                    elev_range = np.max(raw_max_elev) - np.min(raw_min_elev)
+                    elev_75 = np.min(raw_min_elev) + 0.75 * (elev_range)
 
-                # If elevation range > 1000 m, apply corrections to uppermost 25% of glacier (Huss and Hock, 2015)
-                if elev_range > 1000:
-                    # Indices of upper 25%
-                    glac_idx_upper25 = glac_idx_t0[heights[glac_idx_t0] >= elev_75]
-                    # Exponential decay according to elevation difference from the 75% elevation
-                    #  prec_upper25 = prec * exp(-(elev_i - elev_75%)/(elev_max- - elev_75%))
-                    # height at 75% of the elevation
-                    height_75 = heights[glac_idx_upper25].min()
-                    glac_idx_75 = np.where(heights == height_75)[0][0]
-                    # exponential decay
-                    bin_precsnow[glac_idx_upper25, t_start : t_stop + 1] = (
-                        bin_precsnow[glac_idx_75, t_start : t_stop + 1]
-                        * np.exp(
-                            -1
-                            * (heights[glac_idx_upper25] - height_75)
-                            / (heights[glac_idx_upper25].max() - heights[glac_idx_upper25].min())
-                        )[:, np.newaxis]
-                    )
-                    # Precipitation cannot be less than 87.5% of the maximum accumulation elsewhere on the glacier
-                    # compute max values for each step over glac_idx_t0, compare, and replace if needed
-                    max_values = np.tile(
-                        0.875 * np.max(bin_precsnow[glac_idx_t0, t_start : t_stop + 1], axis=0),
-                        (8, 1),
-                    )
-                    uncorrected_values = bin_precsnow[glac_idx_upper25, t_start : t_stop + 1]
-                    corrected_values = np.max(np.stack([uncorrected_values, max_values], axis=0), axis=0)
-                    bin_precsnow[glac_idx_upper25, t_start : t_stop + 1] = corrected_values
+                    # If elevation range > 1000 m, apply corrections to uppermost 25% of glacier (Huss and Hock, 2015)
+                    if elev_range > 1000:
+                        # Indices of upper 25%
+                        glac_idx_upper25 = glac_idx_t0[heights[glac_idx_t0] >= elev_75]
+                        # Exponential decay according to elevation difference from the 75% elevation
+                        #  prec_upper25 = prec * exp(-(elev_i - elev_75%)/(elev_max- - elev_75%))
+                        # height at 75% of the elevation
+                        height_75 = heights[glac_idx_upper25].min()
+                        glac_idx_75 = np.where(heights == height_75)[0][0]
+                        # exponential decay
+                        bin_precsnow[glac_idx_upper25, t_start : t_stop + 1] = (
+                            bin_precsnow[glac_idx_75, t_start : t_stop + 1]
+                            * np.exp(
+                                -1
+                                * (heights[glac_idx_upper25] - height_75)
+                                / (heights[glac_idx_upper25].max() - heights[glac_idx_upper25].min())
+                            )[:, np.newaxis]
+                        )
+                        # Precipitation cannot be less than 87.5% of the maximum accumulation elsewhere on the glacier
+                        # compute max values for each step over glac_idx_t0, compare, and replace if needed
+                        max_values = np.tile(
+                            0.875 * np.max(bin_precsnow[glac_idx_t0, t_start : t_stop + 1], axis=0),
+                            (8, 1),
+                        )
+                        uncorrected_values = bin_precsnow[glac_idx_upper25, t_start : t_stop + 1]
+                        corrected_values = np.max(np.stack([uncorrected_values, max_values], axis=0), axis=0)
+                        bin_precsnow[glac_idx_upper25, t_start : t_stop + 1] = corrected_values
 
-            # Separate total precipitation into liquid (bin_prec) and solid (bin_acc)
-            if pygem_prms['mb']['option_accumulation'] == 1:
-                # if temperature above threshold, then rain
-                (
-                    self.bin_prec[:, t_start : t_stop + 1][
+                # Separate total precipitation into liquid (bin_prec) and solid (bin_acc)
+                if pygem_prms['mb']['option_accumulation'] == 1:
+                    # if temperature above threshold, then rain
+                    (
+                        self.bin_prec[:, t_start : t_stop + 1][
+                            self.bin_temp[:, t_start : t_stop + 1] > self.modelprms['tsnow_threshold']
+                        ]
+                    ) = bin_precsnow[:, t_start : t_stop + 1][
                         self.bin_temp[:, t_start : t_stop + 1] > self.modelprms['tsnow_threshold']
                     ]
-                ) = bin_precsnow[:, t_start : t_stop + 1][
-                    self.bin_temp[:, t_start : t_stop + 1] > self.modelprms['tsnow_threshold']
-                ]
-                # if temperature below threshold, then snow
-                (
-                    self.bin_acc[:, t_start : t_stop + 1][
+                    # if temperature below threshold, then snow
+                    (
+                        self.bin_acc[:, t_start : t_stop + 1][
+                            self.bin_temp[:, t_start : t_stop + 1] <= self.modelprms['tsnow_threshold']
+                        ]
+                    ) = bin_precsnow[:, t_start : t_stop + 1][
                         self.bin_temp[:, t_start : t_stop + 1] <= self.modelprms['tsnow_threshold']
                     ]
-                ) = bin_precsnow[:, t_start : t_stop + 1][
-                    self.bin_temp[:, t_start : t_stop + 1] <= self.modelprms['tsnow_threshold']
-                ]
-            elif pygem_prms['mb']['option_accumulation'] == 2:
-                # if temperature between min/max, then mix of snow/rain using linear relationship between min/max
-                self.bin_prec[:, t_start : t_stop + 1] = (
-                    0.5 + (self.bin_temp[:, t_start : t_stop + 1] - self.modelprms['tsnow_threshold']) / 2
-                ) * bin_precsnow[:, t_start : t_stop + 1]
-                self.bin_acc[:, t_start : t_stop + 1] = (
-                    bin_precsnow[:, t_start : t_stop + 1] - self.bin_prec[:, t_start : t_stop + 1]
-                )
-                # if temperature above maximum threshold, then all rain
-                (
-                    self.bin_prec[:, t_start : t_stop + 1][
+                elif pygem_prms['mb']['option_accumulation'] == 2:
+                    # if temperature between min/max, then mix of snow/rain using linear relationship between min/max
+                    self.bin_prec[:, t_start : t_stop + 1] = (
+                        0.5 + (self.bin_temp[:, t_start : t_stop + 1] - self.modelprms['tsnow_threshold']) / 2
+                    ) * bin_precsnow[:, t_start : t_stop + 1]
+                    self.bin_acc[:, t_start : t_stop + 1] = (
+                        bin_precsnow[:, t_start : t_stop + 1] - self.bin_prec[:, t_start : t_stop + 1]
+                    )
+                    # if temperature above maximum threshold, then all rain
+                    (
+                        self.bin_prec[:, t_start : t_stop + 1][
+                            self.bin_temp[:, t_start : t_stop + 1] > self.modelprms['tsnow_threshold'] + 1
+                        ]
+                    ) = bin_precsnow[:, t_start : t_stop + 1][
                         self.bin_temp[:, t_start : t_stop + 1] > self.modelprms['tsnow_threshold'] + 1
                     ]
-                ) = bin_precsnow[:, t_start : t_stop + 1][
-                    self.bin_temp[:, t_start : t_stop + 1] > self.modelprms['tsnow_threshold'] + 1
-                ]
-                (
-                    self.bin_acc[:, t_start : t_stop + 1][
-                        self.bin_temp[:, t_start : t_stop + 1] > self.modelprms['tsnow_threshold'] + 1
-                    ]
-                ) = 0
-                # if temperature below minimum threshold, then all snow
-                (
-                    self.bin_acc[:, t_start : t_stop + 1][
+                    (
+                        self.bin_acc[:, t_start : t_stop + 1][
+                            self.bin_temp[:, t_start : t_stop + 1] > self.modelprms['tsnow_threshold'] + 1
+                        ]
+                    ) = 0
+                    # if temperature below minimum threshold, then all snow
+                    (
+                        self.bin_acc[:, t_start : t_stop + 1][
+                            self.bin_temp[:, t_start : t_stop + 1] <= self.modelprms['tsnow_threshold'] - 1
+                        ]
+                    ) = bin_precsnow[:, t_start : t_stop + 1][
                         self.bin_temp[:, t_start : t_stop + 1] <= self.modelprms['tsnow_threshold'] - 1
                     ]
-                ) = bin_precsnow[:, t_start : t_stop + 1][
-                    self.bin_temp[:, t_start : t_stop + 1] <= self.modelprms['tsnow_threshold'] - 1
-                ]
-                (
-                    self.bin_prec[:, t_start : t_stop + 1][
-                        self.bin_temp[:, t_start : t_stop + 1] <= self.modelprms['tsnow_threshold'] - 1
-                    ]
-                ) = 0
+                    (
+                        self.bin_prec[:, t_start : t_stop + 1][
+                            self.bin_temp[:, t_start : t_stop + 1] <= self.modelprms['tsnow_threshold'] - 1
+                        ]
+                    ) = 0
 
             # ENTER TIME STEP LOOP (loop is required since surface type changes)
-            for step in range(t_start, t_stop):
+            for i_month, step in enumerate(range(t_start, t_stop)):
                 # ACCUMULATION, MELT, REFREEZE, AND CLIMATIC MASS BALANCE
                 # Snowpack [m w.e.] = snow remaining + new snow
                 if step == 0:
@@ -446,7 +564,6 @@ class PyGEMMassBalance(MassBalanceModel):
                     assert pygem_prms['time']['timestep'] != 'daily', (
                         'Option 2 for ablation should not be used with daily data'
                     )
-
                     # option 2: monthly temperature superimposed with daily temperature variability
                     # daily temperature variation in each bin for the monthly timestep
                     #    Seed randomness for repeatability, but base it on step to ensure the daily variability is not
@@ -468,6 +585,12 @@ class PyGEMMassBalance(MassBalanceModel):
                     bin_temp_daily[bin_temp_daily < 0] = 0
                     # Energy available for melt [degC day] = sum of daily energy available
                     melt_energy_available = bin_temp_daily.sum(axis=1)
+                elif pygem_prms['mb']['option_ablation'] == 3:
+                    assert pygem_prms['time']['timestep'] != 'daily', (
+                        'Option 3 for ablation should not be used with daily data'
+                    )
+                    melt_energy_available = bin_temp_daily[: , month_edges[i_month] : month_edges[i_month + 1]].sum(axis=1)
+
                 # SNOW MELT [m w.e.]
                 self.bin_meltsnow[:, step] = self.surfacetype_ddf_dict[2] * melt_energy_available
                 # snow melt cannot exceed the snow depth

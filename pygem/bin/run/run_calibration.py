@@ -3775,7 +3775,8 @@ def run(list_packed_vars):
                         n_chain += 1
 
                     # compute stats on mcmc parameters
-                    modelprms_export = mcmc_stats(modelprms_export)
+                    modelprms_export = mcmc_stats(modelprms_export, params=['tbias', 'kp', 'ddfsnow', 'ddfice', 'tadj', 'rhoabl', 'rhoacc', 'mb_mwea'])
+
 
                     modelprms_fn = glacier_str + '-modelprms_dict.json'
                     modelprms_fp = [
