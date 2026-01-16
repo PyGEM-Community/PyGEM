@@ -550,7 +550,7 @@ def run(list_packed_vars):
 
     # ----- Other Climate Datasets (Air temperature variability [degC] and Lapse rate [K m-1])
     # Air temperature variability [degC]
-    if pygem_prms['mb']['option_ablation'] != 2:
+    if pygem_prms['mb']['option_ablation'] not in [2, 3]:
         gcm_tempstd = np.zeros((main_glac_rgi.shape[0], dates_table.shape[0]))
         ref_tempstd = np.zeros((main_glac_rgi.shape[0], dates_table_ref.shape[0]))
     elif pygem_prms['mb']['option_ablation'] in [2, 3] and sim_climate_name in ['ERA5']:

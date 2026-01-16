@@ -334,11 +334,12 @@ class PyGEMMassBalance(MassBalanceModel):
                 # number of bins and timesteps
                 nbins = heights.shape[0]
                 t_idx = np.arange(t_start, t_stop + 1)
-                rng = np.random.default_rng(seed=0)
+                rng = np.random.default_rng()
+                # rng = np.random.default_rng(seed=0)
 
                 # generate daily temperature variability for all timesteps
-                # days_option3 = np.ones_like(self.days_in_step) * 30 # assume 30 days
-                days_option3 = self.days_in_step # exact days in month
+                days_option3 = np.ones_like(self.days_in_step) * 30 # assume 30 days
+                # days_option3 = self.days_in_step # exact days in month
                 bin_tempstd_daily = [
                     np.repeat(
                         rng.normal(
@@ -351,9 +352,6 @@ class PyGEMMassBalance(MassBalanceModel):
                     )
                     for t in t_idx
                 ]
-                assert np.abs(np.sum([np.sum(arr) for arr in bin_tempstd_daily])) < 1e-5, (
-                        'Temperature standard deviation not 0'
-                    )
                 # stack into shape: (nbins, total days)
                 bin_tempstd_daily = np.concatenate(bin_tempstd_daily, axis=1)
                 # repeat monthly bin temps to daily resolution
