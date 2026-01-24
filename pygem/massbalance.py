@@ -541,7 +541,7 @@ class PyGEMMassBalance(MassBalanceModel):
                     ) = 0
 
             # ENTER TIME STEP LOOP (loop is required since surface type changes)
-            for i_month, step in enumerate(range(t_start, t_stop)):
+            for i_month, step in enumerate(range(t_start, t_stop + 1)):
                 # ACCUMULATION, MELT, REFREEZE, AND CLIMATIC MASS BALANCE
                 # Snowpack [m w.e.] = snow remaining + new snow
                 if step == 0:
