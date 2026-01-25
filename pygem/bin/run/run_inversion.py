@@ -401,13 +401,11 @@ def main():
         nargs='+',
         help='Randoph Glacier Inventory glacier number (can take multiple)',
     )
-    (
-        parser.add_argument(
-            '-rgi_glac_number_fn',
-            type=str,
-            default=None,
-            help='Filepath containing list of rgi_glac_number, helpful for running batches on spc',
-        ),
+    parser.add_argument(
+        '-rgi_glac_number_fn',
+        type=str,
+        default=None,
+        help='Filepath containing list of rgi_glac_number, helpful for running batches on spc',
     )
     parser.add_argument(
         '-calibrate_regional_glen_a',
@@ -473,10 +471,10 @@ def main():
             # format appropriately
             glac_no = [float(g) for g in glac_no]
             batches = [f'{g:.5f}' if g >= 10 else f'0{g:.5f}' for g in glac_no]
-            regional_inv = False  # flag to indicate per-glacier inversion
         elif args.rgi_glac_number_fn is not None:
             with open(args.rgi_glac_number_fn, 'r') as f:
                 batches = json.load(f)
+        regional_inv = False  # flag to indicate per-glacier inversion
 
     # set up partial function with common arguments
     run_partial = partial(

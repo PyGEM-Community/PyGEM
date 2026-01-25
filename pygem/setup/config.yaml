@@ -246,7 +246,7 @@ sim:
       - median
       - mad
     # export options (booleans)
-    export_all_simiters: false                    # Exprort individual simulation results (false exports median and MAD from all sim_iters)
+    export_all_simiters: false                    # Export individual simulation results (false exports median and MAD from all sim_iters)
     export_extra_vars: false                      # Option to export extra variables (temp, prec, melt, acc, etc.)
     export_binned_data: false                     # Export binned ice thickness
     export_binned_components: false               # Export binned mass balance components (accumulation, melt, refreeze)

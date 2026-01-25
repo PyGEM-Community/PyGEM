@@ -354,13 +354,10 @@ def calc_thick_change_1d(gdir, fls, mbmod, ds):
     years_subannual = np.array([d.year for d in gdir.dates_table['date']])
     yrs = np.unique(years_subannual)
     # grab components of interest
-    bin_thick_annual = ds[0].thickness_m.values.T  # glacier thickness [m ice], (nbins, nyears)
-    bin_massbalclim_ice_annual = ds[0].climatic_mb_myr.values.T[
+    bin_massbalclim_ice_annual = ds[0].climatic_mb.values.T[
         :, 1:
     ]  # annual climatic mass balance [m ice] (nbins, nyears - 1)
-    bin_delta_thick_annual = ds[0].dhdt_myr.values.T[
-        :, 1:
-    ]  # annual change in ice thickness [m ice] (nbins, nyears - 1)
+    bin_delta_thick_annual = ds[0].dhdt.values.T[:, 1:]  # annual change in ice thickness [m ice] (nbins, nyears - 1)
     bin_flux_divergence_annual = (
         bin_massbalclim_ice_annual - bin_delta_thick_annual
     )  # annual flux divergence [m ice] (nbins, nyears - 1)
@@ -384,8 +381,9 @@ def calc_thick_change_1d(gdir, fls, mbmod, ds):
     bin_delta_thick_subannual = bin_massbalclim_ice - bin_flux_divergence_subannual
 
     # --- Step 4: calculate subannual thickness = running thickness change + initial thickness---
+    bin_thick_initial = ds[0].thickness_m.isel(time=0).values  # initial glacier thickness [m ice], (nbins)
     running_bin_delta_thick_subannual = np.nancumsum(bin_delta_thick_subannual, axis=-1)
-    bin_thick_subannual = running_bin_delta_thick_subannual + bin_thick_annual[:, 0][:, np.newaxis]
+    bin_thick_subannual = running_bin_delta_thick_subannual + bin_thick_initial[:, np.newaxis]
 
     # --- Step 5: rebin ---
     # get surface height at the specified reference year

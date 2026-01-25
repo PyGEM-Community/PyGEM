@@ -156,13 +156,19 @@ def run(simpath, debug=False):
             gdir,
             fl_diag=pygem_fl_diag,
             concat_input_filesuffix='_spinup_historical',  # concatenate with the historical spinup
-            output_filesuffix=f'_pygem_{f_suffix}',  # filesuffix added to the output filename gridded_simulation.nc, if empty input_filesuffix is used
+            output_filesuffix=f'_{f_suffix}',  # filesuffix added to the output filename gridded_simulation.nc, if empty input_filesuffix is used
         )[0]
-        print(
-            '2D simulated ice thickness created: ',
-            gdir.get_filepath('gridded_simulation', filesuffix=f'_pygem_{f_suffix}'),
-        )
+
+        # copy glacier_ext from gridded_data
+        with xr.open_dataset(gdir.get_filepath('gridded_data')) as ds0:
+            ds['glacier_ext'] = ds0['glacier_ext']
+            ds.to_netcdf(gdir.get_filepath('gridded_simulation', filesuffix=f'_{f_suffix}'))
+
         if debug:
+            print(
+                '2D simulated ice thickness created: ',
+                gdir.get_filepath('gridded_simulation', filesuffix=f'_{f_suffix}'),
+            )
             plot_distributed_thickness(ds)
 
     return
