@@ -28,6 +28,7 @@ import numpy as np
 import pandas as pd
 import sklearn.model_selection
 import torch
+import xarray as xr
 from scipy import stats
 from scipy.optimize import minimize
 
@@ -891,9 +892,15 @@ def run(list_packed_vars):
 
                 # optionally adjust ref_startyear based on earliest available elevation calibration data (must be <= 2000)
                 if args.spinup:
-                    args.ref_startyear = min(
+                    min_ref_startyear = min(
                         2000, *(int(date[:4]) for pair in gdir.elev_change_1d['dates'] for date in pair)
                     )
+                    # check if min_ref_startyear in spinup flowlines
+                    with xr.open_dataset(
+                        gdir.get_filepath('model_geometry', filesuffix='_dynamic_spinup_pygem_mb')
+                    ) as ds:
+                        min_spinup_yr = int(ds.time.values.min())
+                    args.ref_startyear = max(min_ref_startyear, min_spinup_yr)
                     # adjust dates table and climate data
                     mask = gdir.dates_table['year'] >= args.ref_startyear
                     gdir.dates_table = gdir.dates_table.loc[mask].reset_index(drop=True)
