@@ -209,7 +209,7 @@ class mbPosterior:
                 del self.priors[k][i]
 
         for k in self.priors.keys():
-            if self.priors[k]['type'] == 'gamma' and 'mu' not in self.priors[k].keys():
+            if (self.priors[k]['type'] == 'gamma' and 'mu' not in self.priors[k]) or np.isnan(self.priors[k]['sigma']):
                 self.priors[k]['mu'] = self.priors[k]['alpha'] / self.priors[k]['beta']
                 self.priors[k]['sigma'] = float(np.sqrt(self.priors[k]['alpha']) / self.priors[k]['beta'])
 
