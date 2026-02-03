@@ -836,7 +836,7 @@ def run(list_packed_vars):
                         glena_O1regions = [int(x) for x in glena_df.O1Region.values]
                         assert glacier_rgi_table.O1Region in glena_O1regions, glacier_str + ' O1 region not in glena_df'
                         glena_idx = np.where(glena_O1regions == glacier_rgi_table.O1Region)[0][0]
-                        glen_a_multiplier = glena_df.loc[glena_idx, 'glen_a_multiplier']
+                        glen_a_multiplier = glena_df.loc[glena_idx, 'glens_a_multiplier']
                         fs = glena_df.loc[glena_idx, 'fs']
                     else:
                         args.option_dynamics = None
