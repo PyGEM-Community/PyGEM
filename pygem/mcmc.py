@@ -221,10 +221,12 @@ class mbPosterior:
     def update_modelprms(self, m):
         input_modelprms = ['tbias', 'kp', 'ddfsnow']
         if self.tadj_calib:
-            input_modelprms.append('tadj')
-        for i, k in enumerate(input_modelprms):
-            self.fxnargs[1][k] = float(m[i])
-        self.fxnargs[1]['ddfice'] = self.fxnargs[1]['ddfsnow'] / pygem_prms['sim']['params']['ddfsnow_iceratio']
+            input_modelprms = ['tadj'] # only change the tadj parameter
+            self.fxnargs[1]['tadj'] = float(m[-1])
+        else:
+            for i, k in enumerate(input_modelprms):
+                self.fxnargs[1][k] = float(m[i])
+            self.fxnargs[1]['ddfice'] = self.fxnargs[1]['ddfsnow'] / pygem_prms['sim']['params']['ddfsnow_iceratio']
 
     # get model predictions
     def get_model_pred(self, m):
@@ -291,8 +293,8 @@ class mbPosterior:
         # --- Base arguments ---
         # kp, tbias, ddfsnow, massbal
         kwargs = {
-            'kp': m[0],
-            'tbias': m[1],
+            'tbias': m[0],
+            'kp': m[1],
             'ddfsnow': m[2],
             'tadj': m[3] if self.tadj_calib else 0,
             'massbal': self.preds['glacierwide_mb_mwea'],
